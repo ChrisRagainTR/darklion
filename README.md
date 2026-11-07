@@ -22,7 +22,7 @@ All screens show fictional demo data.
 
 ## Quick start (local)
 
-Requires Node 20+ and Postgres 15+.
+Requires Node 20+ and Postgres 15+. In production you also need S3-compatible storage, Chromium for PDFs (included in the Dockerfile), and Resend for email. Pusher (live updates) and inbound email replies are optional. The full list of software and services is in [docs/self-hosting.md](docs/self-hosting.md#software-you-need).
 
 ```bash
 git clone https://github.com/ChrisRagainTR/darklion.git

@@ -6,7 +6,7 @@ const path = require('path');
 const { pool } = require('../db');
 const { uploadFile, buildKey, sanitizeFilename } = require('./s3');
 
-// Set EMAIL_REPLY_DOMAIN to the inbound domain you route to /api/email/inbound.
+// Set EMAIL_REPLY_DOMAIN to the inbound domain you route to /api/email-replies/inbound.
 const DEFAULT_REPLY_DOMAIN = 'messages.example.com';
 const TOKEN_BYTES = 18;
 const MAX_INBOUND_ATTACHMENT_BYTES = 25 * 1024 * 1024;

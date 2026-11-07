@@ -26,7 +26,9 @@ const { ZipArchive } = require('archiver');
 
 function failClosedEnabled() {
   if (process.env.COMMUNICATION_ARCHIVE_FAIL_CLOSED === 'false') return false;
-  return archiveConfigured() || process.env.NODE_ENV === 'production';
+  if (process.env.COMMUNICATION_ARCHIVE_FAIL_CLOSED === 'true') return true;
+  // The archive is optional. Once a bucket is configured, sends stop if capture fails.
+  return archiveConfigured();
 }
 
 async function insertReceipt({ event, sourceKey, objectMeta, status = 'archived', error = null, requestedBy = null }) {

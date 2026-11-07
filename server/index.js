@@ -891,9 +891,14 @@ function startEmmaBriefingCron() {
 
 // ── Pusher setup ─────────────────────────────────────────────────────────────
 const Pusher = require('pusher');
+const pusherConfigured = Boolean(process.env.PUSHER_APP_ID && process.env.PUSHER_KEY && process.env.PUSHER_SECRET && process.env.PUSHER_CLUSTER);
 const pusher = isolatedStaging(process.env) ? {
   trigger: (channels, event, data) => captureNotification('realtime', { channels, event, data }),
   authorizeChannel: () => { throw new Error('REALTIME_DISABLED_IN_STAGING'); },
+} : !pusherConfigured ? {
+  // Realtime is optional. Without Pusher keys, pages fall back to polling.
+  trigger: async () => ({ skipped: true }),
+  authorizeChannel: () => { throw new Error('REALTIME_NOT_CONFIGURED'); },
 } : new Pusher({
   appId: process.env.PUSHER_APP_ID,
   key: process.env.PUSHER_KEY,
