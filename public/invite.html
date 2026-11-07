@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <title>Accept Invite — DarkLion</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0f1923; --charcoal: #1c2b3a; --card: #1e2f40;
+      --gold: #c9a84c; --gold-light: #e2c068; --text: #e8edf2;
+      --muted: #8fa3b8; --border: rgba(201,168,76,0.25);
+      --green: #3ecf8e; --red: #f56565;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .invite-wrap {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 2rem;
+      text-decoration: none;
+    }
+    .brand-name {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .brand-name span { color: var(--gold); }
+
+    .invite-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .invite-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    .invite-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .invite-header h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+    .invite-firm {
+      font-size: 0.9rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .invite-email {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.1rem;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+    .form-group input {
+      width: 100%;
+      background: var(--charcoal);
+      border: 1px solid rgba(201,168,76,0.2);
+      color: var(--text);
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+    .form-group input::placeholder { color: var(--muted); }
+
+    .password-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 0.5rem;
+    }
+    .btn-submit:hover { background: var(--gold-light); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      background: rgba(245,101,101,0.1);
+      border: 1px solid rgba(245,101,101,0.3);
+      border-radius: 8px;
+      color: var(--red);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+
+    .invalid-card {
+      text-align: center;
+      padding: 2rem;
+    }
+    .invalid-card h2 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .invalid-card p { font-size: 0.85rem; color: var(--muted); }
+
+    .loading-card {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+    .signin-link {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .signin-link a { color: var(--gold); text-decoration: none; }
+    .signin-link a:hover { color: var(--gold-light); }
+  </style>
+</head>
+<body>
+  <div class="invite-wrap">
+    <a class="brand" href="/">
+      <img src="/lion-logo.png" alt="DarkLion" width="36" height="36">
+      <span class="brand-name">Dark<span>Lion</span></span>
+    </a>
+
+    <div class="invite-card" id="invite-card">
+      <div class="loading-card" id="loading-state">
+        <p>Loading invite…</p>
+      </div>
+
+      <div id="valid-state" style="display:none;">
+        <div class="invite-header">
+          <div class="invite-icon">🎉</div>
+          <h1>You're Invited!</h1>
+          <div class="invite-firm" id="invite-firm-name"></div>
+          <div class="invite-email" id="invite-email-display"></div>
+        </div>
+
+        <div class="error-msg" id="error-msg"></div>
+
+        <form id="accept-form" method="post" onsubmit="acceptInvite(event)">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" id="input-name" placeholder="Full name" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label>Set Password</label>
+            <input type="password" id="input-password" placeholder="Create a password" autocomplete="new-password" required>
+            <div class="password-hint">At least 8 characters, one uppercase letter, one number</div>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="input-password2" placeholder="Confirm your password" autocomplete="new-password" required>
+          </div>
+          <button type="submit" class="btn-submit" id="btn-accept">Create Account & Sign In</button>
+        </form>
+
+        <hr class="divider">
+        <div class="signin-link">Already have an account? <a href="/login">Sign in</a></div>
+      </div>
+
+      <div id="invalid-state" style="display:none;" class="invalid-card">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">❌</div>
+        <h2 id="invalid-title">Invalid Invite</h2>
+        <p id="invalid-detail">This invite link is invalid or has expired.</p>
+        <br>
+        <a href="/login" style="color:var(--gold);font-size:0.85rem;">Go to Sign In →</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = window.location.pathname.split('/invite/')[1]?.split('/')[0];
+
+    async function loadInvite() {
+      if (!token) return showInvalid('Invalid Link', 'No invite token found in URL.');
+
+      try {
+        const res = await fetch('/firms/invite-lookup/' + token);
+        const data = await res.json();
+
+        if (!data.valid) {
+          if (data.alreadyAccepted) return showInvalid('Already Accepted', 'This invite has already been accepted. Please sign in.');
+          if (data.expired) return showInvalid('Invite Expired', 'This invite link has expired. Please ask for a new invite.');
+          return showInvalid('Invalid Invite', 'This invite link is invalid or no longer available.');
+        }
+
+        document.getElementById('invite-firm-name').textContent = data.firmName;
+        document.getElementById('invite-email-display').textContent = data.email;
+        if (data.name) document.getElementById('input-name').value = data.name;
+
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('valid-state').style.display = '';
+      } catch (e) {
+        showInvalid('Error', 'Failed to load invite. Please try again.');
+      }
+    }
+
+    function showInvalid(title, detail) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('valid-state').style.display = 'none';
+      document.getElementById('invalid-state').style.display = '';
+      document.getElementById('invalid-title').textContent = title;
+      document.getElementById('invalid-detail').textContent = detail;
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function clearError() {
+      document.getElementById('error-msg').classList.remove('show');
+    }
+
+    async function acceptInvite(e) {
+      e.preventDefault();
+      clearError();
+
+      const name = document.getElementById('input-name').value.trim();
+      const password = document.getElementById('input-password').value;
+      const password2 = document.getElementById('input-password2').value;
+
+      if (password !== password2) return showError('Passwords do not match.');
+      if (password.length < 8) return showError('Password must be at least 8 characters.');
+      if (!/[A-Z]/.test(password)) return showError('Password must contain at least one uppercase letter.');
+      if (!/[0-9]/.test(password)) return showError('Password must contain at least one number.');
+
+      const btn = document.getElementById('btn-accept');
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+
+      try {
+        const res = await fetch('/firms/invite-lookup/' + token + '/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error || 'Failed to accept invite.');
+          btn.disabled = false;
+          btn.textContent = 'Create Account & Sign In';
+          return;
+        }
+
+        // Store token and redirect
+        if(data.signInRequired){location.href='/login';return;}
+        localStorage.setItem('dl_token', data.token);
+        localStorage.setItem('dl_firm', JSON.stringify(data.firm));
+        if(data.mfaSetupRequired){location.href='/account?required=1';return;}
+        window.location.replace('/dashboard');
+      } catch (e) {
+        showError('Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Create Account & Sign In';
+      }
+    }
+
+    loadInvite();
+  </script>
+</body>
+</html>

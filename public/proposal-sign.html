@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Engagement Letter</title>
+  <link rel="icon" type="image/png" href="/lion-logo.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0f1923; --gold: #c9a84c; --gold-light: #e2c068;
+      --text: #1a202c; --muted: #718096; --border: #e2e8f0;
+      --card-bg: #ffffff; --page-bg: #f7fafc;
+      --green: #38a169; --red: #e53e3e;
+    }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--page-bg); color: var(--text); }
+
+    .site-header { background: var(--navy); padding: 0.9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+    .site-header-logo { height: 56px; max-width: 280px; object-fit: contain; }
+    .site-logo { color: #fff; font-weight: 800; font-size: 1rem; }
+    .site-logo span { color: var(--gold); }
+    .secure-badge { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3); color: var(--gold); font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 999px; }
+
+    .content { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem; }
+
+    /* LOE Document styles */
+    .loe-doc { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 2.5rem; margin-bottom: 2rem; }
+
+    /* Signature card */
+    .sig-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem; }
+    .sig-card h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1.25rem; text-align: left; }
+    .signer-block { border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .signer-label { font-size: 0.78rem; font-weight: 700; color: #462161; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; text-align: left; }
+    .form-group label { text-align: left; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+    .form-control { width: 100%; border: 1.5px solid var(--border); border-radius: 7px; padding: 0.5rem 0.75rem; font-size: 0.9rem; color: var(--text); outline: none; transition: border-color 0.15s; font-family: inherit; }
+    .form-control:focus { border-color: var(--gold); }
+
+    /* Canvas */
+    .canvas-wrap { position: relative; }
+    .sig-canvas { border: 2px solid var(--border); border-radius: 7px; background: #fff; width: 100%; cursor: crosshair; touch-action: none; display: block; }
+    .sig-canvas.active { border-color: var(--navy); }
+    .canvas-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 0.8rem; color: #cbd5e0; pointer-events: none; }
+    .clear-btn { margin-top: 0.4rem; font-size: 0.78rem; background: none; border: 1px solid var(--border); border-radius: 5px; padding: 0.25rem 0.6rem; cursor: pointer; color: var(--muted); }
+    .clear-btn:hover { border-color: var(--navy); color: var(--navy); }
+
+    /* Checkbox */
+    .agree-row { display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 0.75rem; }
+    .agree-row input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--gold); flex-shrink: 0; }
+    .agree-row label { font-size: 0.82rem; color: var(--muted); line-height: 1.5; cursor: pointer; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.7rem 1.5rem; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.15s; text-decoration: none; font-family: inherit; width: 100%; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-gold { background: #c9a84c; color: #0f1923; font-weight: 700; }
+    .btn-gold:not(:disabled):hover { background: #e2c068; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+
+    .back-link { display: block; text-align: center; margin-top: 1rem; font-size: 0.82rem; color: var(--muted); cursor: pointer; text-decoration: underline; }
+
+    .success-state { text-align: center; padding: 3rem 1rem; }
+    .app-store-nudge { max-width: 360px; margin: 1.25rem auto 0; padding: 1rem; border: 1px solid #eadfbf; border-radius: 10px; background: #fffaf0; }
+    .app-store-nudge-title { font-size: 0.86rem; font-weight: 800; color: var(--navy); margin-bottom: 0.35rem; }
+    .app-store-nudge p { font-size: 0.8rem; color: var(--muted); line-height: 1.45; margin-bottom: 0.75rem; }
+    .app-store-nudge img { display: block; width: 150px; max-width: 100%; height: auto; margin: 0 auto; border: 0; }
+    .loading-state { text-align: center; padding: 3rem 1rem; }
+    .spin { display: inline-block; width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: var(--navy); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .content { padding: 1rem; }
+      .loe-doc { padding: 1.25rem; }
+    }
+  </style>
+
+  <!-- LOE Document Styles (verbatim from original app) -->
+  <style id="loe-styles">
+    .loe-content {
+      color: #374151; line-height: 1.7; font-size: 14px;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      text-align: left;
+    }
+    .loe-content p { margin: 0 0 12px 0; text-align: left; }
+    .loe-content h1, .loe-content h2, .loe-content h3 { color: #1a1a2e; margin-top: 28px; margin-bottom: 10px; }
+    .loe-content h1 { font-size: 22px; }
+    .loe-content h2 { font-size: 16px; border-bottom: 1px solid #e5e2eb; padding-bottom: 6px; }
+    .loe-content h3 { font-size: 15px; font-weight: 700; color: #462161; border-bottom: 1px solid rgba(70,33,97,0.2); padding-bottom: 4px; }
+    .loe-confidential { text-align: left; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; color: #462161; margin-bottom: 18px; }
+    .loe-client-info { margin-bottom: 24px; }
+    .loe-client-info p { margin: 2px 0; }
+    .loe-client-name { font-size: 16px; }
+    .loe-elections-title { font-size: 18px !important; color: #462161 !important; margin-top: 32px !important; border-bottom: 2px solid #462161 !important; padding-bottom: 8px !important; }
+    .loe-cover-heading { color: #462161 !important; font-size: 15px !important; margin-top: 24px !important; }
+    .loe-fee-line { font-size: 14px; margin-top: 8px; color: #462161; font-weight: 500; }
+    .loe-services-table, .loe-monthly-table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 13px; }
+    .loe-services-table th, .loe-monthly-table th { text-align: left; background: #7c4daa; padding: 8px 12px; font-weight: 600; color: white; font-size: 12px; }
+    .loe-monthly-table th:last-child { text-align: right; }
+    .loe-services-table td, .loe-monthly-table td { padding: 7px 12px; border-bottom: 1px solid #e5e2eb; vertical-align: top; text-align: left; }
+    .loe-svc-name { font-weight: 500; text-align: left; }
+    .loe-svc-name { width: 75%; }
+    .loe-svc-price { text-align: right !important; font-weight: 600; color: #1a1a2e; white-space: nowrap; vertical-align: top; width: 25%; }
+    .loe-svc-status { text-align: right !important; width: 25%; }
+    .loe-svc-status { text-align: right; }
+    .loe-status-included { color: #059669; font-weight: 600; font-size: 12px; }
+    .loe-total-row td { font-weight: 700; color: #462161; border-top: 2px solid #462161; padding: 8px 12px; }
+    .loe-total-row td:last-child { text-align: right !important; }
+    .loe-monthly-table th:last-child, .loe-svc-price-hdr { text-align: right !important; }
+    .loe-backwork-table td:last-child { text-align: right !important; }
+    .loe-election-box { background: #f4f1f9; border: 2px solid #462161; border-radius: 8px; padding: 16px; margin: 20px 0; }
+    .loe-election-summary { width: 100%; font-size: 14px; }
+    .loe-election-summary td { padding: 4px 0; }
+    .loe-agreement-title { text-align: left; font-size: 20px !important; margin: 28px 0 20px !important; border: none !important; color: #462161 !important; font-weight: 800 !important; }
+    .loe-section { margin-bottom: 16px; }
+    .loe-section-heading { font-size: 16px; font-weight: 700; color: #462161; border-bottom: 2px solid #462161; padding-bottom: 6px; margin: 32px 0 16px; }
+    .loe-checkbox-line { font-size: 14px; margin: 10px 0 6px; padding: 8px 12px; background: rgba(70,33,97,0.06); border-left: 3px solid #462161; border-radius: 4px; display: flex; align-items: center; font-weight: 600; color: #1a1a2e; }
+    .loe-service-list, .loe-doc-list { margin: 12px 0 16px 24px; padding-left: 8px; list-style-type: disc; }
+    .loe-bk-list, .loe-planning-list { margin: 12px 0 16px 24px; padding-left: 8px; list-style-type: decimal; }
+    .loe-service-list li, .loe-bk-list li, .loe-doc-list li, .loe-planning-list li { margin-bottom: 8px; line-height: 1.6; padding-left: 4px; }
+    .loe-acceptance-block { margin-top: 40px; padding-top: 24px; border-top: 2px solid #462161; }
+    .loe-acceptance-title { text-align: left; color: #462161 !important; font-size: 16px !important; border: none !important; }
+    .loe-sig-label { margin-top: 24px; }
+    .loe-sig-block { margin: 12px 0 24px; }
+    .loe-sig-name-italic { font-style: italic; font-size: 18px; font-family: Georgia, serif; color: #1a1a2e; }
+    .loe-sig-line { width: 200px; border-bottom: 1px solid #1a1a2e; margin: 4px 0; }
+    .loe-sig-detail { font-size: 12px; color: #6b7280; margin: 2px 0; }
+    .loe-sig-closing { font-style: italic; margin-bottom: 20px; }
+    .loe-consent-block { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e2eb; }
+    .loe-tax-confidential { font-size: 13px; font-weight: 600; text-decoration: underline; margin-bottom: 18px; color: #1a1a2e; }
+    .loe-monthly-table tbody tr:nth-child(even):not(.loe-total-row) { background: #f8f6fb; }
+    .loe-accepted-agreed { font-weight: 700; font-size: 14px; margin-top: 32px; margin-bottom: 16px; text-decoration: underline; color: #1a1a2e; }
+    .loe-sig-lines { display: flex; gap: 40px; align-items: flex-end; margin-top: 8px; }
+    .loe-sig-line-group { display: flex; flex-direction: column; }
+    .loe-sig-line-long { width: 280px; border-bottom: 1px solid #1a1a2e; margin-bottom: 4px; height: 28px; }
+    .loe-sig-line-short { width: 160px; border-bottom: 1px solid #1a1a2e; margin-bottom: 4px; height: 28px; }
+    .loe-sig-line-label { font-size: 11px; color: #6b7280; }
+    .loe-consent-heading { font-size: 16px; font-weight: 700; color: #1a1a2e; border-bottom: 1px solid #e5e2eb; padding-bottom: 6px; margin-bottom: 16px; margin-top: 28px; }
+    .loe-consent-options { margin: 16px 0; }
+    .loe-consent-option { margin: 8px 0; font-size: 14px; }
+    .loe-consent-x { display: inline-block; border: 1px solid #1a1a2e; font-weight: 700; font-size: 12px; margin-right: 8px; text-align: center; min-width: 24px; }
+    .loe-consent-blank { display: inline-block; border: 1px solid #1a1a2e; font-size: 12px; margin-right: 8px; text-align: center; min-width: 24px; color: transparent; }
+    .loe-consent-signatures { display: flex; gap: 40px; margin: 24px 0; padding: 16px 0; border-top: 1px solid #e5e2eb; }
+    .loe-consent-sig-col { flex: 1; }
+    .loe-consent-sig-field { margin: 12px 0; font-size: 13px; color: #374151; }
+    .loe-tigta-notice { font-size: 11px; color: #6b7280; margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e2eb; font-style: italic; }
+    .loe-backwork-section { margin-top: 24px; margin-bottom: 24px; }
+    .loe-backwork-title { font-size: 14px; font-weight: 700; color: #1a1a2e; border-bottom: 2px solid #462161; padding-bottom: 4px; margin-bottom: 8px; text-decoration: underline; }
+    .loe-backwork-table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 13px; }
+    .loe-backwork-table th { background: #462161; color: white; padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 600; }
+    .loe-backwork-table th:last-child { text-align: right; }
+    .loe-backwork-table td { padding: 7px 12px; border-bottom: 1px solid #e5e2eb; }
+    .loe-bw-total-row { background: #f4f1f9; }
+    .loe-bw-total-row td { font-weight: 700; color: #462161; border-top: 2px solid #462161; }
+    .loe-svc-name-hdr { text-align: left; font-size: 12px; font-weight: 600; padding: 8px 12px; }
+    .loe-svc-price-hdr { text-align: right; font-size: 12px; font-weight: 600; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <img src="/lion-logo.png" alt="Your firm" class="site-header-logo" onerror="this.style.display='none';document.getElementById('fallback-logo').style.display=''">
+  <span id="fallback-logo" style="display:none;" class="site-logo">Dark<span>Lion</span></span>
+  <div class="secure-badge">🔒 Secure Document</div>
+</header>
+
+<div id="root" class="loading-state">
+  <div class="spin"></div>
+  <p style="margin-top:1rem;color:var(--muted);">Loading engagement letter…</p>
+</div>
+
+<script>
+const token = location.pathname.split('/').slice(-2)[0]; // /p/:token/sign
+const API_BASE = '/api/proposals/public/' + token;
+const CLIENT_APP_STORE_URL = window.DARKLION_APP_STORE_URL || '';
+const APP_STORE_BADGE_URL = 'https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83';
+
+let engagement = null;
+// Firm details come from the engagement API (name, address, owner).
+function FIRM() { return (engagement && engagement.firm) || {}; }
+function FIRM_NAME() { return FIRM().name || 'our firm'; }
+let canvases = [];
+let canvasData = [null, null]; // base64 for each signer
+let drawing = [false, false];
+
+async function init() {
+  try {
+    const r = await fetch(API_BASE + '/engagement');
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showError(err.error || 'Engagement not found. Please accept the proposal first.');
+      return;
+    }
+    engagement = await r.json();
+
+    // PDF-only mode: Puppeteer loads this page to render the LOE for printing
+    if (new URLSearchParams(location.search).get('pdf') === '1') {
+      renderPdfOnlyMode();
+      return;
+    }
+
+    if (engagement.status === 'signed') {
+      showSuccess();
+      // If ?download=1, auto-trigger download after a short delay for the page to render
+      if (new URLSearchParams(location.search).get('download') === '1') {
+        setTimeout(() => downloadDoc(), 800);
+      }
+      return;
+    }
+
+    renderSignPage();
+  } catch(e) {
+    showError('Failed to load. Please try again.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('root').innerHTML = `
+    <div class="content">
+      <div style="text-align:center;padding:3rem 1rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">😕</div>
+        <div style="font-size:1.25rem;font-weight:800;margin-bottom:0.5rem;">Engagement Not Found</div>
+        <p style="color:var(--muted);">${escHtml(msg)}</p>
+        <a href="/p/${token}" style="display:inline-block;margin-top:1.5rem;font-size:0.85rem;color:var(--navy);">← Return to Proposal</a>
+      </div>
+    </div>`;
+}
+
+function showSuccess() {
+  document.getElementById('root').innerHTML = `
+    <div class="content">
+      <div class="success-state">
+        <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
+        <div style="font-size:1.5rem;font-weight:800;margin-bottom:0.5rem;">Engagement Signed!</div>
+        <p style="color:var(--muted);margin-bottom:1.5rem;">Your engagement letter has been fully executed. Your advisor will be in touch shortly.</p>
+        <button class="btn btn-gold" style="max-width:280px;margin:0 auto;" onclick="downloadDoc()">⬇ Download / Print Copy</button>
+        <div class="app-store-nudge">
+          <div class="app-store-nudge-title">Use the client portal on iPhone</div>
+          <p>Download the client portal app for secure messages, document uploads, requests, and notifications.</p>
+          <a href="${CLIENT_APP_STORE_URL}" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+            <img src="${APP_STORE_BADGE_URL}" alt="Download on the App Store" />
+          </a>
+        </div>
+        <p style="margin-top:0.75rem;font-size:0.8rem;color:var(--muted);">You may close this window.</p>
+      </div>
+    </div>`;
+}
+
+function downloadDoc() {
+  // Show feedback — Puppeteer takes 15-20s
+  const btn = document.querySelector('[onclick="downloadDoc()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF…'; }
+  const a = document.createElement('a');
+  a.href = API_BASE + '/pdf';
+  a.download = 'Engagement-Letter.pdf';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '⬇ Download / Print Copy'; } }, 25000);
+}
+
+function renderPdfOnlyMode() {
+  // Puppeteer calls this page with ?pdf=1 — force white background, clean fonts
+  document.documentElement.style.cssText = 'background:#fff!important;color:#1a1a2e!important;';
+  document.body.style.cssText = 'background:#fff!important;color:#1a1a2e!important;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif!important;font-size:10.5pt;';
+
+  const eng = engagement;
+  const loeHtml = eng.engagement_type === 'wealth' ? generateWealthLOE(eng) : generateTaxLOE(eng);
+  const auditHtml = generateSignatureAuditHtml(eng);
+
+  // Inject PDF overrides — white backgrounds, Arial font, no tinting
+  const pdfStyle = document.createElement('style');
+  pdfStyle.textContent = `
+    * { font-family: Arial, Helvetica, sans-serif !important; }
+    .loe-content, .loe-content * { background: #fff !important; }
+    .loe-total-row td, .loe-bw-total-row td { background: #fff !important; }
+    .loe-election-box { background: #fff !important; border: 1pt solid #462161; }
+    .loe-monthly-table tbody tr:nth-child(even), .loe-services-table tbody tr:nth-child(even) { background: #fff !important; }
+    .loe-cover-header-block { border-bottom-color: #462161; }
+    table th { background: #462161 !important; color: #fff !important; }
+    .loe-svc-price, .loe-total-row td:last-child, .loe-bw-total-row td:last-child,
+    .loe-monthly-table th:last-child, .loe-svc-price-hdr, .loe-backwork-table td:last-child,
+    .loe-svc-status { text-align: right !important; }
+    .loe-svc-name { width: 75% !important; }
+    .loe-svc-price, .loe-svc-status { width: 25% !important; }
+  `;
+  document.head.appendChild(pdfStyle);
+
+  document.getElementById('root').innerHTML = `
+    <div class="loe-content" style="background:#fff;color:#1a1a2e;">${loeHtml}${auditHtml}</div>`;
+
+  // Hide nav header so PDF is clean
+  const header = document.querySelector('header');
+  if (header) header.style.display = 'none';
+}
+
+function renderSignPage() {
+  const eng = engagement;
+  const isDual = eng.require_dual_signature;
+  const loeHtml = eng.engagement_type === 'wealth' ? generateWealthLOE(eng) : generateTaxLOE(eng);
+  const sigTitle = isDual ? 'Sign This Agreement — Both Parties Required' : 'Sign This Agreement';
+
+  document.getElementById('root').innerHTML = `
+    <div class="content">
+      <div class="loe-doc loe-content" id="loe-document">${loeHtml}</div>
+
+      <div class="sig-card">
+        <h2>✍️ ${escHtml(sigTitle)}</h2>
+        ${renderSignerBlock(0, isDual ? 'First Signer' : 'Your Signature')}
+        ${isDual ? renderSignerBlock(1, 'Second Signer') : ''}
+
+        <button class="btn btn-gold" id="sign-btn" onclick="submitSignatures()" disabled>
+          Sign &amp; Accept Agreement
+        </button>
+        <a class="back-link" onclick="resetAndGoBack()">← Choose a Different Package</a>
+      </div>
+    </div>`;
+
+  initCanvases(isDual ? 2 : 1);
+  updateSignBtn();
+}
+
+function renderSignerBlock(i, label) {
+  return `<div class="signer-block" id="signer-block-${i}">
+    <div class="signer-label">${escHtml(label)}</div>
+    <div class="form-group">
+      <label>Full Legal Name</label>
+      <input type="text" class="form-control" id="sig-name-${i}" placeholder="Type your full legal name" oninput="updateSignBtn()">
+    </div>
+    <div class="form-group">
+      <label>Signature</label>
+      <div class="canvas-wrap">
+        <canvas id="sig-canvas-${i}" class="sig-canvas" height="140"></canvas>
+        <div class="canvas-label" id="canvas-hint-${i}">Sign here with mouse or finger</div>
+      </div>
+      <button class="clear-btn" onclick="clearCanvas(${i})">Clear</button>
+    </div>
+    <div class="agree-row">
+      <input type="checkbox" id="agree-${i}" onchange="updateSignBtn()">
+      <label for="agree-${i}">I agree this electronic signature is legally binding and serves as my signature on the above Engagement Letter.</label>
+    </div>
+  </div>`;
+}
+
+function initCanvases(count) {
+  for (let i = 0; i < count; i++) {
+    const canvas = document.getElementById('sig-canvas-' + i);
+    if (!canvas) continue;
+    canvases[i] = canvas;
+
+    // Retina scaling
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = canvas.offsetWidth || 600;
+    canvas.width = w * dpr;
+    canvas.height = 140 * dpr;
+    canvas.style.height = '140px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#1a202c';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+
+    function getPos(e) {
+      const r = canvas.getBoundingClientRect();
+      if (e.touches) {
+        return [e.touches[0].clientX - r.left, e.touches[0].clientY - r.top];
+      }
+      return [e.clientX - r.left, e.clientY - r.top];
+    }
+
+    function startDraw(e) {
+      e.preventDefault();
+      isDrawing = true;
+      [lastX, lastY] = getPos(e);
+      canvas.classList.add('active');
+      const hint = document.getElementById('canvas-hint-' + i);
+      if (hint) hint.style.display = 'none';
+    }
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const [x, y] = getPos(e);
+      const c = canvas.getContext('2d');
+      c.beginPath();
+      c.moveTo(lastX, lastY);
+      c.lineTo(x, y);
+      c.stroke();
+      [lastX, lastY] = [x, y];
+    }
+    function endDraw(e) {
+      if (!isDrawing) return;
+      isDrawing = false;
+      canvasData[i] = canvas.toDataURL('image/png');
+      updateSignBtn();
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mouseleave', endDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', endDraw);
+  }
+}
+
+function clearCanvas(i) {
+  const canvas = canvases[i];
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  canvasData[i] = null;
+  const hint = document.getElementById('canvas-hint-' + i);
+  if (hint) hint.style.display = '';
+  canvas.classList.remove('active');
+  updateSignBtn();
+}
+
+function updateSignBtn() {
+  const isDual = engagement && engagement.require_dual_signature;
+  const count = isDual ? 2 : 1;
+  let ready = true;
+  for (let i = 0; i < count; i++) {
+    const name = document.getElementById('sig-name-' + i)?.value.trim();
+    const agreed = document.getElementById('agree-' + i)?.checked;
+    const hasCanvas = !!canvasData[i];
+    if (!name || !agreed || !hasCanvas) { ready = false; break; }
+  }
+  const btn = document.getElementById('sign-btn');
+  if (btn) btn.disabled = !ready;
+}
+
+async function submitSignatures() {
+  const btn = document.getElementById('sign-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  const isDual = engagement.require_dual_signature;
+  const count = isDual ? 2 : 1;
+
+  try {
+    let lastResult;
+    for (let i = 0; i < count; i++) {
+      const name = document.getElementById('sig-name-' + i).value.trim();
+      const sig = canvasData[i];
+      const r = await fetch(API_BASE + '/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signerIndex: i, signed_by_name: name, signature_data: sig }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to submit signature');
+      }
+      lastResult = await r.json();
+    }
+    engagement.status = 'signed';
+    showSuccess();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Sign & Accept Agreement';
+    alert(e.message || 'Failed to submit. Please try again.');
+  }
+}
+
+async function resetAndGoBack() {
+  if (!confirm('This will cancel your selection and return to the proposal. Continue?')) return;
+  try {
+    await fetch(API_BASE + '/reset', { method: 'POST' });
+  } catch(e) {}
+  window.location = '/p/' + token;
+}
+
+// ============================================================
+// LOE GENERATION
+// ============================================================
+
+function loeCoverHeader(eng) {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const clientName = eng.company_name || eng.client_name || '';
+  const owners = eng.owners || '';
+  const email = eng.contact_email || '';
+  const addr1 = eng.address_line1 || '';
+  const addr2 = eng.address_line2 || '';
+
+  return `<div class="loe-cover-header-block" style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid #462161;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0;color:#374151;margin-bottom:10px;">${today}</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0;text-decoration:underline;color:#462161;margin-bottom:10px;">PRIVATE &amp; CONFIDENTIAL</div>
+      ${clientName ? `<div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">${escHtml(clientName)}</div>` : ''}
+      <div style="font-size:13px;color:#374151;line-height:1.5;">
+        ${owners ? `<div>${escHtml(owners)}</div>` : ''}
+        ${email ? `<div>${escHtml(email)}</div>` : ''}
+        ${addr1 ? `<div>${escHtml(addr1)}</div>` : ''}
+        ${addr2 ? `<div>${escHtml(addr2)}</div>` : ''}
+      </div>
+    </div>
+    <div style="flex-shrink:0;margin-left:2rem;text-align:right;">
+      <img src="/lion-logo.png" alt="Your firm" style="height:56px;width:auto;object-fit:contain;" onerror="this.parentElement.innerHTML='<div style=&quot;font-size:11px;font-weight:800;color:#462161;text-align:right;&quot;>Dark<br>Lion &amp; Tax</div>'">
+    </div>
+  </div>`;
+}
+
+function formatOrdinalDate(d) {
+  const day = d.getDate();
+  const suffix = [11,12,13].includes(day) ? 'th' :
+    day % 10 === 1 ? 'st' : day % 10 === 2 ? 'nd' : day % 10 === 3 ? 'rd' : 'th';
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${day}${suffix} day of ${months[d.getMonth()]}, ${d.getFullYear()}`;
+}
+
+function fmtDate(d) {
+  if (!d) return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function getTierName(eng) {
+  const tiers = eng.tiers || [];
+  if (eng.engagement_type === 'wealth') {
+    const indices = eng.selected_tier_indices || [];
+    if (indices.length) return indices.map(i => (tiers[i] && tiers[i].name) || '').filter(Boolean).join(' + ');
+    return tiers[0]?.name || 'Selected Package';
+  }
+  const idx = eng.selected_tier_index;
+  if (idx !== null && idx !== undefined && tiers[idx]) return tiers[idx].name;
+  return tiers[0]?.name || 'Selected Package';
+}
+
+function getTierBullets(eng) {
+  const tiers = eng.tiers || [];
+  if (eng.engagement_type === 'wealth') {
+    const indices = eng.selected_tier_indices || [];
+    return indices.flatMap(i => (tiers[i] && tiers[i].bullets) || []);
+  }
+  const idx = eng.selected_tier_index;
+  if (idx !== null && idx !== undefined && tiers[idx]) return tiers[idx].bullets || [];
+  return tiers[0]?.bullets || [];
+}
+
+// ─── TAX MANAGEMENT SUBSCRIPTION ITEMS ────────────────────────────────────
+const TAX_MGMT_SUB_ITEMS = [
+  'Tax Projections',
+  'Tax Strategy Presentation',
+  'Retirement Plan Consultation',
+  'Tax Financials Review',
+  'Payroll Review',
+  'Reasonable Comp Monitor',
+  'Sec 199 Optimization',
+  'Assist in new Compliance Requirements',
+  'Chat Support: Unlimited',
+  'Meeting Support: Up to 30 min/mo',
+];
+
+function buildTaxFeeTableRows(eng) {
+  const CORP_RETURN = 20;
+  const PERSONAL_RETURN = 10;
+  const selectedIdx = eng.selected_tier_index != null ? eng.selected_tier_index : 0;
+  const selectedTier = (eng.tiers || [])[selectedIdx];
+  const tierPrice = selectedTier ? (selectedTier.monthlyPrice || selectedTier.price || 0) : 0;
+  const tierName = selectedTier ? (selectedTier.name || 'Tax Subscription') : 'Tax Subscription';
+  const subscriptionPrice = tierPrice - CORP_RETURN - PERSONAL_RETURN;
+
+  const subscriptionServicesHtml = TAX_MGMT_SUB_ITEMS.map(item =>
+    `<tr><td class="loe-svc-name">${escHtml(item)}</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>`
+  ).join('\n');
+
+  const subscriptionRowHtml = `<tr>
+    <td class="loe-svc-name">${escHtml(tierName)}</td>
+    <td class="loe-svc-price">$${subscriptionPrice.toLocaleString()}</td>
+  </tr>`;
+
+  const bottomRows = [];
+  bottomRows.push(`<tr>
+    <td class="loe-svc-name">Corporate Tax Return Preparation</td>
+    <td class="loe-svc-price">$${CORP_RETURN}</td>
+  </tr>`);
+  bottomRows.push(`<tr>
+    <td class="loe-svc-name">Personal Tax Return Preparation</td>
+    <td class="loe-svc-price">$${PERSONAL_RETURN}</td>
+  </tr>`);
+
+  let addonsTotal = 0;
+  const addOns = eng.add_ons || [];
+  for (const addon of addOns) {
+    addonsTotal += addon.monthlyPrice || 0;
+    bottomRows.push(`<tr>
+      <td class="loe-svc-name">${escHtml(addon.description)}</td>
+      <td class="loe-svc-price">$${(addon.monthlyPrice||0).toLocaleString()}</td>
+    </tr>`);
+  }
+
+  const totalMonthly = tierPrice + addonsTotal;
+  return { subscriptionRowHtml, subscriptionServicesHtml, bottomRowsHtml: bottomRows.join('\n'), totalMonthly };
+}
+
+function generateTaxLOE(eng) {
+  const year = new Date().getFullYear().toString();
+  const { subscriptionRowHtml, subscriptionServicesHtml, bottomRowsHtml, totalMonthly } = buildTaxFeeTableRows(eng);
+
+  const selectedIdx = eng.selected_tier_index != null ? eng.selected_tier_index : 0;
+  const selectedTier = (eng.tiers || [])[selectedIdx];
+  const tierName = (selectedTier ? (selectedTier.name || '') : '').toLowerCase();
+  const hasBookkeeping = tierName.includes('bookkeeping');
+  const hasFinancialPlanning = tierName.includes('financial planning');
+
+  const backwork = eng.backwork || [];
+
+  return `
+    <!-- COVER PAGE -->
+    <div class="loe-section">
+      ${loeCoverHeader(eng)}
+
+      <p>This Letter is to confirm our understanding of the terms and objectives of our engagement and the nature and
+      limitations of the services we will provide. ${escHtml(FIRM_NAME())} will provide you with the services stated below in accordance
+      with the terms and conditions set forth in this letter (the &ldquo;Services&rdquo;).</p>
+
+      <p>This engagement is for a term of twelve (12) months (the &ldquo;Term&rdquo;) and will auto-renew after the initial twelve (12)
+      month term, unless you provide us with written notice of cancellation ten (10) days before the monthly renewal date.
+      Your 12 month term will end on 12/31/${year}.</p>
+
+      <h2 class="loe-elections-title">Summary of Engagement Fees</h2>
+
+      <h3 class="loe-cover-heading"><u>Monthly Subscription Services</u></h3>
+      <table class="loe-services-table">
+        <thead><tr><th>Included Services</th><th>Status</th></tr></thead>
+        <tbody>
+          ${subscriptionServicesHtml}
+        </tbody>
+      </table>
+
+      ${hasBookkeeping ? `
+      <h3 class="loe-cover-heading"><u>Bookkeeping Services Included</u></h3>
+      <table class="loe-services-table">
+        <thead><tr><th>Included Services</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="loe-svc-name">Monthly Bookkeeping &amp; Reconciliation</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Financial Statement Preparation</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Cash Flow Monitoring &amp; Analysis</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Year-End Close &amp; Adjusting Entries</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+        </tbody>
+      </table>
+      ` : ''}
+
+      ${hasFinancialPlanning ? `
+      <h3 class="loe-cover-heading"><u>Financial Planning Services Included</u></h3>
+      <table class="loe-services-table">
+        <thead><tr><th>Included Services</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="loe-svc-name">Comprehensive Financial Plan &amp; Roadmap</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Retirement &amp; Cashflow Planning</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Investment Guidance &amp; Portfolio Review</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Estate &amp; Legacy Planning Strategy</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+          <tr><td class="loe-svc-name">Insurance &amp; Risk Assessment</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>
+        </tbody>
+      </table>
+      ` : ''}
+
+      <table class="loe-monthly-table" style="margin-top: 16px;">
+        <thead><tr><th class="loe-svc-name-hdr">Service</th><th class="loe-svc-price-hdr">Monthly Fee</th></tr></thead>
+        <tbody>
+          ${subscriptionRowHtml}
+          ${bottomRowsHtml}
+          <tr class="loe-total-row">
+            <td><strong>Total Monthly Package:</strong></td>
+            <td><strong>$${totalMonthly.toLocaleString()}/mo</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      ${backwork.length > 0 ? `
+      <div class="loe-backwork-section">
+        <div class="loe-backwork-title"><u>One-Time Services</u></div>
+        <table class="loe-backwork-table">
+          <thead><tr><th>Description</th><th>Fee</th></tr></thead>
+          <tbody>
+            ${backwork.map(bw => `<tr>
+              <td>${escHtml(bw.description)}</td>
+              <td style="text-align:right; font-weight:600;">$${(bw.flatFee||0).toLocaleString()}</td>
+            </tr>`).join('')}
+            ${backwork.length > 1 ? `<tr class="loe-bw-total-row">
+              <td><strong>Total One-Time Fees:</strong></td>
+              <td style="text-align:right;"><strong>$${backwork.reduce((s,b) => s+(b.flatFee||0), 0).toLocaleString()}</strong></td>
+            </tr>` : ''}
+          </tbody>
+        </table>
+        <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">One-time fees are billed separately and are not included in the monthly package total.</p>
+      </div>
+      ` : ''}
+    </div>
+
+    <!-- BODY PAGES -->
+    <div class="loe-section">
+      <div class="loe-section-heading">Tax Services</div>
+
+      <p>We will prepare your federal income tax return, and income tax returns for any states (if necessary)
+      (individually, a &ldquo;Return&rdquo;, collectively, the &ldquo;Returns&rdquo;) with supporting schedules, and perform related research as
+      considered necessary. <strong>We are not responsible for the preparation of any other tax returns that may be
+      due to any taxing authority if such returns are not named in the above fee schedule.</strong> Our Services will be
+      complete upon the delivery of the completed returns to you. If eligible, we will e-file your returns on your behalf,
+      otherwise you will be solely responsible to file the returns with the appropriate taxing authorities.</p>
+
+      <p>If, during our work, we discover information that affects your prior-year tax returns, we will make you aware of
+      such information. However, we will not be responsible for identifying all items that may affect prior-year returns.
+      If you become aware of such information during the year, please contact us to discuss the best resolution of the
+      issue. Your returns may be selected for review by one or more taxing authorities. Any proposed adjustments by
+      a government examining agent are subject to certain rights of appeal.</p>
+
+      <p>In the event of such a government tax examination, if you wish to have us represent you during the examination
+      and/or during any appeal, please make that request to us in writing. If we agree to represent you in that regard,
+      such representation will be the subject of, and governed by, a separate engagement letter.</p>
+
+      <p>Certain communications involving tax advice may be privileged and not subject to disclosure to the IRS. By
+      disclosing the contents of those communications to anyone, or by turning over information about those
+      communications to the government, you (or other employees) may be waiving this privilege. To protect this right
+      to privileged communication, please consult with us or your attorney prior to disclosing any information about
+      our tax advice.</p>
+
+      <p>Applicable laws may impose certain penalties and interest when taxpayers understate their tax liability. <strong>You
+      acknowledge that any such understated tax and any imposed interest and penalties, are your sole
+      responsibility, and that we will not be responsible for such penalties.</strong> If you would like information on the amount
+      or circumstances of these penalties, please contact us.</p>
+
+      <p>We may encounter instances where the law is unclear, or where there may be conflicts between the taxing
+      authorities&rsquo; interpretations of the law and other supporting positions. In those instances, we will outline for you
+      each of the responsible alternative courses of action, including the risks and consequences of each such
+      alternative. In the end, we will adopt, on your behalf, the alternative which you select after evaluating the
+      information provided by us.</p>
+
+      <p>Without disclosure in the Return itself of the specific position taken on a given issue, we must have a
+      reasonable belief that, it is more likely than not, that the position will be held to be the correct position upon
+      examination by taxing authorities. If we do not have that reasonable belief, we must be satisfied that there is at
+      least a reasonable basis for the position, and in such a case, the position must be formally disclosed on Form
+      8275 or 8275-R, which form would be filed as part of the Return. If we believe there is no reasonable basis for
+      the position, either the position cannot be taken or we cannot sign the Return. In order for us to make these
+      determinations, we must rely on the accuracy and completeness of the information you provide to us, and, in
+      the event we and/or you are assessed penalties due to our reliance on inaccurate, incomplete, or misleading
+      information you supplied to us (with or without your knowledge or intent), you will indemnify us, defend us and
+      hold us harmless as to those penalties, including any reasonable attorney&rsquo;s fees and expenses we may incur.</p>
+
+      <p>Our fees for the engagement are not contingent on the results of our services. Rather, our fees for this
+      engagement, including preparation of your returns and any representation of your interests during an
+      examination by a taxing authority and/or any subsequent appeal, will be based solely on our standard value
+      pricing, as set forth in this letter of engagement. In addition, you agree to reimburse us for any out-of-pocket
+      costs incurred in connection with the performance of the Services.</p>
+
+      <p>You should retain all the documents, canceled checks and other data that form the basis of income and
+      deductions. These may be necessary to prove the accuracy and completeness of the Returns to a taxing
+      authority. You have the final responsibility for the income tax returns and, therefore, you should carefully review
+      them before you sign them.</p>
+
+      ${hasBookkeeping ? `
+      <div class="loe-section-heading">Bookkeeping Services</div>
+
+      <p>For the period of time stated on page 1 of this agreement, we will provide the following bookkeeping services.</p>
+
+      <ol class="loe-bk-list">
+        <li>Prepare general ledger</li>
+        <li>Post all deposits and expenses</li>
+        <li>Prepare all bank reconciliations</li>
+        <li>Deliver monthly financial statements</li>
+      </ol>
+
+      <p>We will not audit or review your financial statements, or any other accounting documents and information you
+      provide, in accordance with generally accepted auditing standards. Accordingly, we ask that you not in any
+      manner refer to this as an audit or review. Nor will we otherwise verify the data you submit for accuracy or
+      completeness. Rather, we will rely on the accuracy and completeness of the documents and information you
+      provide to us. Accordingly, our engagement cannot be relied upon to disclose errors, fraud, or other illegal acts
+      that may exist. However, it may be necessary to ask you for clarification of some of the information you provide,
+      and we will inform you of any material errors, fraud or other illegal acts that come to our attention, unless they
+      are clearly inconsequential. In addition, we have no responsibility to identify and communicate significant
+      deficiencies or material weaknesses in your internal controls as part of this engagement, and our engagement
+      cannot, therefore, be relied upon to make disclosure of such matters.</p>
+
+      <p>You are responsible for adopting sound accounting policies, for maintaining an adequate and efficient
+      accounting system, for safeguarding assets, for authorizing transactions, for retaining supporting
+      documentation for those transactions, and for devising a system of internal controls that will, among other
+      things, help assure the preparation of proper financial statements. Furthermore, you are responsible for
+      management decisions and functions, for designating a competent employee to oversee any of the services we
+      provide, and for evaluating the adequacy and results of those services.</p>
+
+      <p>You are responsible for the design and implementation of programs and controls to prevent and detect fraud,
+      and for informing us about all known or suspected fraud affecting the Company involving (a) management (b)
+      employees who have significant roles in internal control, and (c) others where the fraud could have a material
+      effect on the financial statements. You are also responsible for informing us of your knowledge of any
+      allegations of fraud or suspected fraud affecting the Company received in communications from employees,
+      former employees, regulators, or others. In addition, you are responsible for identifying and ensuring that the
+      entity complies with applicable laws and regulations.</p>
+
+      <p>Prior to preparation and execution of this engagement letter, we discussed with you the fact that we provide
+      clients with levels of service higher than bookkeeping, such as audit, review, and compilation services, and we
+      explained to you the manner in which such levels of service differ from bookkeeping. We also explained to you
+      that we provide clients with services specifically focused on identifying and addressing weaknesses in internal
+      controls (internal control review), and on searching for the existence of fraud within your company (fraud audit).
+      We further explained the additional costs associated with such higher and different levels of service. After
+      consideration of such services, you have informed us that you wish to retain us to perform only the bookkeeping
+      services described in this letter.</p>
+
+      <p>In order for us to complete this engagement, and to do so efficiently, we require unrestricted access to the
+      following documents and information concerning your company:</p>
+
+      <ul class="loe-doc-list">
+        <li>Copies of basic documents reflecting your financial transactions, including check stubs, summaries of
+        cash receipts and sales (cash and charge), bank statements and canceled checks, listings of accounts
+        receivable and accounts payable, and documentary support of property and equipment
+        transactions&mdash;purchases, trades, sales, and other dispositions;</li>
+        <li>Information concerning any mortgage or pledge of business assets on business debts, any personal
+        guarantees or debt, leases, or other information that effects or may affect the results of operations of the
+        business;</li>
+        <li>Any other financial information necessary for purpose of reflection on your accounting records, trial
+        balance and tax returns;</li>
+        <li>Identification of all cash receipts as to source (i.e., loans, sales, etc.), and information concerning all
+        transactions that are consummated with cash.</li>
+      </ul>
+
+      <p>Any failure to provide such documents and information, and to do so on a timely basis, will impede our services,
+      and may require us to suspend our services or withdraw from the engagement. You agree to accept
+      responsibility for any effect on your accounting records and financial statements of basic financial information or
+      transaction documents not submitted to us for processing and entry, or losses that may result from their
+      absence.</p>
+
+      <p>If this engagement is cancelled by either party before the annual term of the subscription, the bookkeeping work
+      will stop as of the date of cancellation and no further work will be permitted.</p>
+
+      <p>For purposes of entry of the financial information from your basic transaction documents, classification
+      according to the agreed-upon chart of accounts will be performed by you or your employees. As business
+      conditions change, we may mutually agree to change/modify this arrangement.</p>
+      ` : ''}
+
+      ${hasFinancialPlanning ? `
+      <div class="loe-section-heading">Financial Planning Services</div>
+
+      <p>As part of your subscription, the following comprehensive financial planning services are included. Your
+      financial planning engagement includes an initial comprehensive review of your current financial position,
+      goals, and risk tolerance, followed by the development of a personalized financial plan.</p>
+
+      <ul class="loe-planning-list">
+        <li>Comprehensive Financial Plan &amp; Roadmap</li>
+        <li>Retirement &amp; Cashflow Planning</li>
+        <li>Investment Guidance &amp; Portfolio Review</li>
+        <li>Estate &amp; Legacy Planning Strategy</li>
+        <li>Insurance &amp; Risk Assessment</li>
+        <li>Education &amp; Goal-Based Savings Planning</li>
+      </ul>
+
+      <p>Your plan will be periodically reviewed and updated as your life circumstances, financial situation, and goals
+      evolve. We will coordinate with your other professional advisors &mdash; including estate attorneys, insurance
+      agents, and investment professionals &mdash; to ensure your financial plan is implemented holistically.</p>
+
+      <p>Financial planning recommendations are advisory in nature and are intended to help you make informed
+      decisions about your financial future. As part of this service, we may request documentation such as investment
+      account statements, insurance policies, estate planning documents, and retirement plan information. Any failure
+      to provide such documents and information, and to do so on a timely basis, will impede our services, and may
+      require us to suspend the service.</p>
+      ` : ''}
+
+      <div class="loe-section-heading">Tax Projections &amp; Planning</div>
+
+      <p>As part of the Tax Management Subscription, tax projections are included with this agreement while
+      subscribed. We will provide strategies for you each summer after tax season and tax projections in the fall of
+      what to expect to owe/have refunded in the upcoming tax season. As part of this service you will have full
+      access to our tax planning software called Tax Planner Pro. Your CPA will prepare both a business and
+      personal tax projection for the year. The software will also offer strategies to reduce taxable income. This
+      service includes:</p>
+
+      <ul class="loe-planning-list">
+        <li>Post tax season strategies and planning ideas to reduce taxable income in the current year</li>
+        <li>Preparation of Tax Projections (Business &amp; Personal) in the fall</li>
+        <li>Unlimited use of Tax Planner Pro Software</li>
+      </ul>
+
+      <p>As part of this service we may request documentation from you such as certain personal expenses, pay stubs,
+      wages, interest &amp; dividend income, and estimated taxes paid. Any failure to provide such documents and
+      information, and to do so on a timely basis, will impede our services, and may require us to suspend the
+      service.</p>
+
+      <div class="loe-section-heading">Other Fees</div>
+
+      <p>If you do not want to file your tax returns by the deadline, we can file extensions for you for federal and state
+      returns. The fee for these filings is $125 each.</p>
+
+      <p>If tax returns are filed within seven days of a deadline they will require a rush service fee which will be a 50%
+      upcharge of the price listed on page 1. Extensions prepared and filed within 3 days of a deadline will also
+      require the 50% upcharge.</p>
+
+      <p>Each year we impose an inflationary price adjustment of 4% per year. This increase does not change the terms
+      of the agreement and the increase will be imposed automatically without new engagement documents being
+      drafted. Once the increase is in effect, the terms of the engagement remain the same including disputes about
+      billing or late payments/engagement termination.</p>
+
+      <div class="loe-section-heading">Support</div>
+
+      <p>From time to time we may require conversations by meeting, email, or phone call in order to complete your tax
+      filings and bookkeeping services that are included in your existing plan as outlined. Other support discussions
+      may be billed separately and in addition to the monthly fees noted on page 1 of this engagement letter. It will be
+      at management discretion if additional fees are to be billed for support. Additional CPA time bills at $160 per
+      hour. A 15 minute minimum is required per interaction. Billing for support time will be invoiced each month in the
+      first week of the month for the prior month&rsquo;s time. These fees will be billed to the credit card you have on file
+      with our firm.</p>
+
+      <p>Premium Support: This can be purchased for $999.00 per year and includes 90 minutes of CPA support each
+      month for the year.</p>
+
+      <div class="loe-section-heading">General Terms &amp; Conditions</div>
+
+      <p>Invoicing for this agreement will be done each month and auto drafted as specified on your Credit Card
+      Authorization form. If for any reason we are unable to process the monthly fee on your designated credit card,
+      we will contact you so you can provide us with updated payment information. From time to time we will review
+      the revenue of your business and adjust your fee accordingly.</p>
+
+      <p>Any invoices that remain unpaid for thirty (30) days past the billing date may be deemed delinquent and are
+      subject to an interest charge of 1.0% per month. We reserve the right to submit any unpaid invoices to
+      collections after ninety (90) days of nonpayment. We reserve the right to suspend our services or to withdraw
+      from this engagement in the event that any of our invoices are deemed delinquent. In the event that any
+      collection action is required to collect unpaid balances due us, you agree to reimburse us for our costs of
+      collection, including attorneys&rsquo; fees and related expenses.</p>
+
+      <p>If you elect to terminate this engagement for any reason before the end of the Term (but after tax returns have
+      been filed) you acknowledge and agree that upon termination, all tax return preparation fees due to us until the
+      end of the Term will be immediately due and payable. Should you elect to terminate services prior to tax returns
+      being filed, no further payments will be collected and we will refund the amount of tax preparation fees you have
+      paid so far for the year. Tax Management Subscription fees are not refundable. You understand that we are
+      providing you with a monthly subscription for tax services as a convenience to you, however, the full amount of
+      the 12 months subscription and tax prep fees will be due if you decide to cancel the Services before the end of
+      the one-year term if tax returns have been filed. We request you provide us with written notice ten (10) days
+      prior to the effective termination date.</p>
+
+      <p>If we elect to terminate our services for nonpayment, or for any other reason, our engagement will be deemed
+      to have been completed upon written notification of termination, even if we have not completed your tax returns
+      or other future work (including bookkeeping services). If we elect to terminate services prior to tax returns being
+      filed, no further payments will be collected and we will refund the amount of tax preparation fees you have paid
+      so far for the year. Tax Management Subscription fees are not refundable.</p>
+
+      <p>It is our policy to retain engagement documentation for a period of three (3) years, after which time we will
+      commence the process of destroying the contents of our engagement files. To the extent we accumulate any of
+      your original records during the engagement, those documents will be returned to you promptly upon
+      completion of the engagement, and you will provide us with a receipt for the return of such records. The
+      balance of our engagement file, other than the compiled financial statement, which we will provide to you at the
+      conclusion of the engagement, is our property, and we will provide copies of such documents at our discretion
+      and if compensated for any time and costs associated with the effort.</p>
+
+      <p>In connection with this engagement, we may communicate with you or others via email transmission. As emails
+      can be intercepted and read, disclosed, or otherwise used or communicated by an unintended third party, or
+      may not be delivered to each of the parties to whom they are directed and only to such parties, we cannot
+      guarantee or warrant that emails from us will be properly delivered and read only by the addressee. Therefore,
+      we specifically disclaim and waive any liability or responsibility whatsoever for interception of any email
+      communications made pursuant to the Services and this engagement.</p>
+
+      <p>You acknowledge and agree that we shall have no liability whatsoever for any loss or damage to you, or any
+      person or entity resulting from the Services, including any consequential, incidental, direct, indirect, or special
+      damages, such as loss of revenues or anticipated profits, or disclosure or communication of confidential or
+      proprietary information.</p>
+
+      <p>In the event we are required to respond to a subpoena, court order or other legal process for the production of
+      documents and/or testimony relative to information we obtained and/or prepared during the course of this
+      engagement, you agree to compensate us at our standard hourly rates then existing for the time we expend in
+      connection with such response, and to reimburse us for all of our out-of-pocket costs incurred in that regard.</p>
+
+      <p>In the event that we become obligated to pay any judgment, fine, penalty, or similar award or sanction; agree to
+      pay any amount in settlement; and/or incur any costs, as a result of a claim, investigation, or other proceeding
+      instituted by any third party, including any governmental or quasi-governmental body, and if such obligation is a
+      direct or indirect result of any inaccurate or incomplete information that you provide to us during the course of
+      this engagement, whether intentionally or negligently, and whether known or unknown to you at the time, and
+      not any failure on our part to comply with professional standards, you agree to indemnify us, defend us, and
+      hold us harmless as against such obligations, agreements, and/or costs, including any reasonable attorney&rsquo;s
+      fees and expenses.</p>
+
+      <p>You agree that any dispute (other than our efforts to collect an outstanding invoice) that may arise regarding the
+      meaning, performance or enforcement of this engagement or any prior engagement that we have performed for
+      you, will, prior to resorting to litigation, be submitted to mediation, and that the parties will engage in the
+      mediation process in good faith once a written request of this engagement shall be administered within the county
+      of the firm's principal office, according to its mediation rules, and any ensuing litigation shall be conducted within said county
+      according to the laws of that state. The results of any such mediation shall be binding upon agreement of each party to be
+      bound. The costs of any mediation proceeding shall be shared equally by the participating parties.</p>
+
+      <p>Any litigation arising out of this engagement, except actions by us to enforce payment of our professional
+      invoices, must be filed within one year from the completion of the engagement, notwithstanding any statutory
+      provision to the contrary. In the event of litigation brought against us, any judgment you obtain shall be limited in
+      amount, and shall not exceed the amount of the fee charged by us, and paid by you, for the services set forth in
+      this engagement letter. In no event will we be responsible for any additional tax that may be assessed against
+      you, or any interest that may be assessed against you with respect to such additional tax.</p>
+
+      <p>We will not respond to any request from banks, mortgage brokers or others for verification of any information
+      reported on tax returns or bookkeeping services we provide to you. We do not communicate with third parties or
+      provide them with copies of tax returns or financial statements.</p>
+
+      <p>This engagement letter is contractual in nature, and includes all of the relevant terms that will govern the
+      engagement for which it has been prepared. The terms of this letter supersedes any prior oral or written
+      representations or commitments by or between the parties. Any material changes or additions to the terms set
+      forth in this letter will only become effective if evidenced by a written amendment to this letter, signed by all of
+      the parties.</p>
+
+      <p>If, after full consideration and consultation with counsel if so desired, you agree that the foregoing terms shall
+      govern this engagement, please sign this letter in the space provided and return the original signed letter to me,
+      keeping a fully-executed copy for your records.</p>
+
+      <p>Thank you for your attention to this matter, and please contact me with any questions that you may have.</p>
+
+      <!-- SIGNATURE BLOCK -->
+      <div class="loe-acceptance-block">
+        <div class="loe-sig-closing">Very Truly Yours,</div>
+        <p class="loe-sig-name-italic">${escHtml(FIRM().owner_name || '')}</p>
+        <p class="loe-sig-detail">${escHtml(FIRM_NAME())}</p>
+
+        <div class="loe-accepted-agreed">ACCEPTED AND AGREED:</div>
+        <div class="loe-sig-lines">
+          <div class="loe-sig-line-group">
+            <div class="loe-sig-line-long"></div>
+            <div class="loe-sig-line-label">Signature of Officer</div>
+          </div>
+          <div class="loe-sig-line-group loe-sig-date">
+            <div class="loe-sig-line-short"></div>
+            <div class="loe-sig-line-label">Date</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSENT PAGE -->
+      <div class="loe-consent-block">
+        <div class="loe-consent-heading">Consent to foreign disclosure of tax return information</div>
+
+        <p>Federal law requires this consent form be provided to you. Unless authorized by law, we cannot disclose your tax
+        return information to third parties for purposes other than the preparation and filing of your tax return without your
+        consent. If you consent to the disclosure of your tax return information, federal law may not protect your tax return
+        information from further use or distribution.</p>
+
+        <p>You are not required to complete this form to engage our tax return preparation services. If we obtain your signature
+        on this form by conditioning our tax return preparation services on your consent, your consent will not be valid. If you
+        agree to the disclosure of your tax return information, your consent is valid for the amount of time that you specify. If
+        you do not specify the duration of your consent, your consent is valid for one year from the date of signature.</p>
+
+        <p>This consent to disclose may result in your tax return information being disclosed to a tax return preparer located
+        outside the United States, including your personally identifiable information such as your Social Security number
+        (SSN). Both the tax return preparer in the United States that will disclose your SSN and the tax return preparer
+        located outside the United States that will receive your SSN maintain an adequate data protection safeguard (as
+        required by the regulations under 26 U.S.C. section 7216) to protect privacy and prevent unauthorized access of tax
+        return information. If you consent to the disclosure of your tax return information, federal agencies may not be able to
+        enforce United States laws that protect the privacy of your tax return information against a tax return preparer located
+        outside of the United States to whom the information is disclosed.</p>
+
+        <p>The duration of this consent will continue as indicated below, unless ${escHtml(FIRM_NAME())} is notified in writing to no longer
+        disclose your tax return information to this recipient:</p>
+
+        <div class="loe-consent-options">
+          <div class="loe-consent-option"><span class="loe-consent-x">&nbsp;X&nbsp;</span> Remain effective to the extent ${escHtml(FIRM_NAME())} is engaged</div>
+          <div class="loe-consent-option"><span class="loe-consent-blank">___</span> Other: _________________________________________</div>
+        </div>
+
+        <p>If you approve the disclosure of your tax return information, including your SSN(s), to Entegrity Inc. for purposes of
+        assisting in providing tax return preparation services for the duration indicated above, please sign below.</p>
+
+        <p>If married, both spouses must sign the consent.</p>
+
+        <div class="loe-consent-signatures">
+          <div class="loe-consent-sig-col">
+            <div class="loe-consent-sig-field">Name: ________________________</div>
+            <div class="loe-consent-sig-field">Signature: _____________________</div>
+            <div class="loe-consent-sig-field">Date: _________________________</div>
+          </div>
+          <div class="loe-consent-sig-col">
+            <div class="loe-consent-sig-field">Name: ______________________________</div>
+            <div class="loe-consent-sig-field">Signature: ___________________________</div>
+            <div class="loe-consent-sig-field">Date: _______________________________</div>
+          </div>
+        </div>
+
+        <p class="loe-tigta-notice">If you believe your tax return information has been disclosed or used improperly in a manner unauthorized by law or
+        without your permission, you may contact the Treasury Inspector General for Tax Administration (TIGTA) by
+        telephone at 1-800-366-4484 or by email at complaints@tigta.treas.gov.</p>
+      </div>
+    </div>
+  `;
+}
+
+
+function generateWealthLOE(eng) {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const ordinalDate = formatOrdinalDate(new Date());
+
+  const selectedIndices = eng.selected_tier_indices && eng.selected_tier_indices.length
+    ? eng.selected_tier_indices
+    : (eng.selected_tier_index != null ? [eng.selected_tier_index] : [0]);
+  const tiers = eng.tiers || [];
+  const selectedTiers = selectedIndices.map(i => tiers[i]).filter(Boolean);
+
+  const hasTP = selectedTiers.some(t => {
+    const n = (t.name||'').toLowerCase();
+    return (n.includes('tax') && (n.includes('plan') || n.includes('&'))) && !n.includes('legacy') && !n.includes('blueprint');
+  });
+  const hasBP = selectedTiers.some(t => {
+    const n = (t.name||'').toLowerCase();
+    return n.includes('legacy') || n.includes('blueprint');
+  });
+  const hasIM = selectedTiers.some(t => (t.name||'').toLowerCase().includes('investment'));
+
+  const showTP = hasTP;
+  const showBP = hasBP;
+  const showIM = hasIM;
+
+  const tpTier = selectedTiers.find(t => {
+    const n = (t.name||'').toLowerCase();
+    return (n.includes('tax') && (n.includes('plan') || n.includes('&'))) && !n.includes('legacy') && !n.includes('blueprint');
+  });
+  const bpTier = selectedTiers.find(t => {
+    const n = (t.name||'').toLowerCase();
+    return n.includes('legacy') || n.includes('blueprint');
+  });
+  const tpPrice = tpTier ? (tpTier.monthlyPrice || tpTier.price || 299) : 299;
+  const bpPrice = bpTier ? (bpTier.monthlyPrice || bpTier.price || 599) : 599;
+
+  const ADVISOR_ENTITY = escHtml(FIRM_NAME());
+  const ADVISOR_ADDRESS = (FIRM().address || '').replace(/\s*\n\s*/g, ', ');
+  const aumPct = eng.aum_fee_percent != null ? parseFloat(eng.aum_fee_percent) : 0.69;
+  const FEE_PCT = aumPct.toFixed(2).replace(/\.?0+$/, '') || '0';
+  const FEE_BPS = Math.round(aumPct * 100).toString();
+  const CUSTODIAN = 'the Custodian';
+  const ADVISOR_NAME = escHtml(FIRM().owner_name || FIRM_NAME());
+
+  const TAX_PLANNING_SERVICES = [
+    'Tax Return Preparation &amp; Planning',
+    'Proactive Tax Strategy &amp; Projections',
+    'Retirement Income Strategies',
+    'Tax-Advantaged Distribution Planning',
+    'Year-Round Advisory Support',
+  ];
+  const LEGACY_BLUEPRINT_SERVICES = [
+    'Healthcare &amp; Medicaid Planning',
+    'Fraud Protection &amp; Tech Safety',
+    'Age-Related Financial Oversight',
+    'Emergency Procedures Outline',
+    'Household Process Vault',
+    'Wellness Checks &amp; Support',
+    'Property Maintenance Planning',
+  ];
+
+  let nextLetter = 65;
+  const tpLetter = showTP ? String.fromCharCode(nextLetter++) : '';
+  const bpLetter = showBP ? String.fromCharCode(nextLetter++) : '';
+  const imLetter = showIM ? String.fromCharCode(nextLetter++) : '';
+
+  const makeRows = svcs => svcs.map(svc =>
+    `<tr><td class="loe-svc-name">${svc}</td><td class="loe-svc-status"><span class="loe-status-included">Included</span></td></tr>`
+  ).join('\n');
+
+  const tpServiceRows = makeRows(TAX_PLANNING_SERVICES);
+  const bpServiceRows = makeRows(LEGACY_BLUEPRINT_SERVICES);
+
+  const tpCheck = hasTP ? `<span style="display:inline-block;width:16px;height:16px;border:2px solid #462161;background:#462161;color:white;text-align:center;line-height:14px;font-size:12px;font-weight:900;margin-right:6px;vertical-align:middle;">✓</span>` : `<span style="display:inline-block;width:16px;height:16px;border:2px solid #999;background:white;margin-right:6px;vertical-align:middle;"></span>`;
+  const bpCheck = hasBP ? `<span style="display:inline-block;width:16px;height:16px;border:2px solid #462161;background:#462161;color:white;text-align:center;line-height:14px;font-size:12px;font-weight:900;margin-right:6px;vertical-align:middle;">✓</span>` : `<span style="display:inline-block;width:16px;height:16px;border:2px solid #999;background:white;margin-right:6px;vertical-align:middle;"></span>`;
+  const imCheck = hasIM ? `<span style="display:inline-block;width:16px;height:16px;border:2px solid #462161;background:#462161;color:white;text-align:center;line-height:14px;font-size:12px;font-weight:900;margin-right:6px;vertical-align:middle;">✓</span>` : `<span style="display:inline-block;width:16px;height:16px;border:2px solid #999;background:white;margin-right:6px;vertical-align:middle;"></span>`;
+
+  const elections = [];
+  if (hasTP) elections.push('Taxes &amp; Planning');
+  if (hasBP) elections.push('Legacy BluePrint');
+  if (hasIM) elections.push('Investment Management');
+  const electionText = elections.length > 0 ? elections.join(' + ') : 'No services elected';
+
+  const tpBullets = TAX_PLANNING_SERVICES.map(s => `<li>${s}</li>`).join('\n');
+  const bpBullets = LEGACY_BLUEPRINT_SERVICES.map(s => `<li>${s}</li>`).join('\n');
+
+  const addressFull = [eng.address_line1, eng.address_line2].filter(Boolean).join(', ');
+
+  let taxPlanningSection = '';
+  if (showTP) {
+    taxPlanningSection = `
+      <h3 class="loe-cover-heading"><u>${tpLetter}. Taxes &amp; Planning</u></h3>
+      <table class="loe-services-table">
+        <thead><tr><th>Included Services</th><th>Status</th></tr></thead>
+        <tbody>${tpServiceRows}</tbody>
+      </table>
+      <p class="loe-fee-line">Taxes &amp; Planning Fee: <strong>$${tpPrice.toLocaleString()}/month</strong></p>
+    `;
+  }
+  let blueprintSection = '';
+  if (showBP) {
+    blueprintSection = `
+      <h3 class="loe-cover-heading"><u>${bpLetter}. Legacy BluePrint (Financial Planning &amp; Oversight)</u></h3>
+      <table class="loe-services-table">
+        <thead><tr><th>Included Services</th><th>Status</th></tr></thead>
+        <tbody>${bpServiceRows}</tbody>
+      </table>
+      <p class="loe-fee-line">Legacy BluePrint Fee: <strong>$${bpPrice.toLocaleString()}/month</strong></p>
+    `;
+  }
+  let investmentSection = '';
+  if (showIM) {
+    investmentSection = `
+      <h3 class="loe-cover-heading"><u>${imLetter}. Investment Management (Discretionary Portfolio Management)</u></h3>
+      <table class="loe-services-table">
+        <thead><tr><th>Service Detail</th><th>Fee</th></tr></thead>
+        <tbody>
+          <tr><td class="loe-svc-name">Annual Advisory Fee</td><td class="loe-svc-status"><strong>${FEE_PCT}% (${FEE_BPS} basis points)</strong></td></tr>
+          <tr><td class="loe-svc-name">Billing Frequency</td><td class="loe-svc-status">Monthly, in arrears</td></tr>
+          <tr><td class="loe-svc-name">Fee Basis</td><td class="loe-svc-status">Month-end AUM</td></tr>
+          <tr><td class="loe-svc-name">Custodian</td><td class="loe-svc-status">${CUSTODIAN}</td></tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  let section31_A = '';
+  if (showTP) {
+    section31_A = `
+      <p><strong>${tpLetter}. Taxes &amp; Planning &ndash; Flat Monthly Fee</strong></p>
+      <p>If elected, the Taxes &amp; Planning service includes ongoing tax preparation, strategy, and advisory services which
+      may include, as applicable, the following:</p>
+      <ul class="loe-service-list">${tpBullets}</ul>
+      <p>Taxes &amp; Planning Fee: $${tpPrice.toLocaleString()} per month, billed monthly.</p>
+      <p class="loe-checkbox-line">${tpCheck} Client elects Taxes &amp; Planning</p>
+    `;
+  }
+  let section31_B = '';
+  if (showBP) {
+    section31_B = `
+      <p><strong>${bpLetter}. Legacy BluePrint (Financial Planning &amp; Oversight) &ndash; Flat Monthly Fee</strong></p>
+      <p>If elected, the Legacy BluePrint service includes ongoing planning,
+      coordination, and oversight services which may include, as applicable, the following services:</p>
+      <ul class="loe-service-list">${bpBullets}</ul>
+      <p>Legacy BluePrint Fee: $${bpPrice.toLocaleString()} per month, billed monthly.</p>
+      <p class="loe-checkbox-line">${bpCheck} Client elects Legacy BluePrint</p>
+    `;
+  }
+  let section31_C = '';
+  if (showIM) {
+    section31_C = `
+      <p><strong>${imLetter}. Investment Management (Discretionary Portfolio Management) &ndash; AUM-Based Fee</strong></p>
+      <p>If elected, the Client will pay the Advisor an annual investment advisory fee of ${FEE_PCT}% (${FEE_BPS} basis points) per year
+      of assets under management in the Account[s].</p>
+      <p>Investment Management Fee: ${FEE_PCT}% annually, billed monthly in arrears as described below.</p>
+      <p class="loe-checkbox-line">${imCheck} Client elects Investment Management</p>
+    `;
+  }
+
+  let tpBillingPara = '';
+  if (showTP) {
+    tpBillingPara = `
+      <p><strong>Taxes &amp; Planning Fee Billing.</strong> If the Client elects the Taxes &amp; Planning service, the Client will pay the Advisor a
+      flat fee of $${tpPrice.toLocaleString()} per month. Unless otherwise agreed in writing, Taxes &amp; Planning fees may be billed (i) via
+      direct invoice/electronic payment, or (ii) via deduction from an advisory Account[s] at the Custodian if the Client
+      has elected Investment Management and the Custodian permits such deductions, as authorized below.</p>
+    `;
+  }
+  let bpBillingPara = '';
+  if (showBP) {
+    bpBillingPara = `
+      <p><strong>Legacy BluePrint Fee Billing.</strong> If the Client elects the Legacy BluePrint service, the Client will pay the Advisor a
+      flat fee of $${bpPrice.toLocaleString()} per month. Unless otherwise agreed in writing,
+      Legacy BluePrint fees may be billed (i) via direct invoice/electronic payment, or (ii) via deduction from an advisory
+      Account[s] at the Custodian if the Client has elected Investment Management and the Custodian permits such
+      deductions, as authorized below.</p>
+    `;
+  }
+
+  const liabNum = showIM ? '7' : '4';
+  const conflictsNum = showIM ? '8' : '5';
+  const nonExclusiveNum = showIM ? '9' : '6';
+  const relianceNum = showIM ? '10' : '7';
+  const terminationNum = showIM ? '11' : '8';
+  const governingNum = showIM ? '12' : '9';
+  const disclosuresNum = showIM ? '13' : '10';
+  const privacyNum = showIM ? '14' : '11';
+  const noticesNum = showIM ? '15' : '12';
+  const arbitrationNum = showIM ? '16' : '13';
+  const severabilityNum = showIM ? '17' : '14';
+  const entireAgreementNum = showIM ? '18' : '15';
+
+  return `
+    <!-- COVER PAGE -->
+    <div class="loe-section">
+      ${loeCoverHeader(eng)}
+
+      <p>This Client Services Agreement (the &ldquo;Agreement&rdquo;) confirms our understanding of the terms and objectives of our
+      engagement and the nature and limitations of the services ${ADVISOR_ENTITY} (the &ldquo;Advisor&rdquo;)
+      will provide to you (the &ldquo;Client&rdquo;).</p>
+
+      <h2 class="loe-elections-title">Service Elections Summary</h2>
+
+      ${taxPlanningSection}
+      ${blueprintSection}
+      ${investmentSection}
+
+      <div class="loe-election-box">
+        <table class="loe-election-summary">
+          <tr><td><strong>Client Election:</strong></td><td><strong>${electionText}</strong></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- AGREEMENT BODY -->
+    <div class="loe-section">
+      <h1 class="loe-agreement-title">Client Services Agreement</h1>
+
+      <p>This Investment Advisory Agreement (the &ldquo;Agreement&rdquo;), dated on this ${ordinalDate}, is between the undersigned party,</p>
+
+      <p><strong>Client Name:</strong> ${escHtml(eng.company_name || eng.client_name || '')}<br/>
+      <strong>Email Address:</strong> ${escHtml(eng.contact_email || '')}<br/>
+      <strong>Mailing Address:</strong> ${escHtml(addressFull)}</p>
+
+      <p>(herein referred to as the &ldquo;Client&rdquo;) and ${ADVISOR_ENTITY}, a registered
+      investment advisor, whose mailing address is ${escHtml(ADVISOR_ADDRESS)}
+      (herein referred to as the &ldquo;Advisor&rdquo;).</p>
+
+      <p>The Advisor shall provide the Client with investment advisory services via its brokerage account[s] established
+      at the Client&rsquo;s designated custodian[s] as referenced in Item 4 of this Agreement (the &ldquo;Account[s]&rdquo;). This
+      Agreement becomes effective on the date in which the Advisor receives the signed Agreement from the Client.
+      The terms and conditions of this Agreement are as follows:</p>
+
+      <h2>1. Advisor Authority and Responsibilities.</h2>
+      <p>The Client appoints the Advisor as their investment advisor to perform the services described herein. The
+      Advisor shall have the power and authority to supervise investments based on a discretionary basis as outlined
+      below, with respect to the investments of and for the Account[s] of the Client, including the purchase and sale of
+      any securities and instruments and any other transaction therein, unless specifically directed otherwise in
+      writing by the Client. However, the transactions in the Account[s] shall be made in accordance with the written
+      investment guidelines as they may be amended from time to time by the Client by notice to the Advisor.</p>
+
+      <p><strong>Discretionary Authority.</strong> The Client grants the Advisor ongoing and continuous discretionary authority to
+      execute its investment recommendations in accordance with the objectives of the Client as communicated to
+      the Advisor, without the Client&rsquo;s prior approval of each specific transaction. Under this authority, the Client shall
+      allow the Advisor to purchase and sell securities and instruments in the Account[s], arrange for delivery and
+      payment in connection with the foregoing, and act on behalf of the Client in all matters necessary or incidental
+      to the handling of the Account[s], including monitoring certain assets. The Client will separately execute
+      instructions regarding the Advisor&rsquo;s trading authority as required by the Custodian.</p>
+
+      <h2>2. Client Authority and Responsibilities.</h2>
+      <p>The Client represents and confirms that the Advisor&rsquo;s engagement, pursuant to this Agreement, is authorized
+      by the governing documents relating to the Client and that the terms of this Agreement do not violate any
+      obligations by which the Client is bound. The Client agrees to deliver to the Advisor all account forms and
+      corporate resolutions or similar documentation evidencing the undersigned&rsquo;s authority to execute and deliver
+      this Agreement.</p>
+
+      <p>The Client also agrees to deliver such organizational documents and other documents, including the written
+      statement of the Client investment objectives, policies and restrictions, as the Advisor shall reasonably require.
+      The Client further agrees to promptly deliver all amendments or supplements to the foregoing documents to
+      ensure that the Advisor has current and accurate information regarding the Client&rsquo;s financial condition, needs
+      and investment objectives. The Client agrees that the Advisor will not be liable for any losses, costs or claims
+      suffered or arising out of the Client&rsquo;s failure to provide the Advisor with any documents required to be furnished
+      hereunder. The Client warrants and represents that it owns all property deposited in the Account[s] and that no
+      restrictions on disposition exist as to any such property.</p>
+
+      <p>The Client shall be responsible for all decisions concerning the voting of proxies for securities held in the
+      Client&rsquo;s Account[s]. The Advisor cannot give any advice or take any action with respect to the voting of these
+      proxies.</p>
+
+      <h2>3. Expenses and Fees.</h2>
+      <p>The Client understands that the Advisor offers three separate and distinct service options. The Client may choose
+      any combination of the following, as elected below.</p>
+
+      <h3>3.1 Service Selection / Fee Election (Client Election)</h3>
+
+      ${section31_A}
+      ${section31_B}
+      ${section31_C}
+
+      <p>If a box is not checked for a service above, that service is not included under this Agreement.</p>
+
+      <h3>3.2 Billing Method and Timing</h3>
+
+      ${showIM ? `
+      <p><strong>Investment Management Fee Billing.</strong> The Client will pay the Advisor a monthly investment advisory fee billed
+      at the end of each calendar month, based on the fair market value of portfolio assets under management in the
+      Account[s] at the end of the month. The investment advisory fee in the first month of the Agreement shall be
+      prorated from the inception date to the end of the first month.</p>
+
+      <p>Investment advisory fees are calculated based on the month-end security valuations as provided by the Client&rsquo;s
+      designated Custodian (as noted in Item 4). Investment advisory fees will be calculated by the Advisor or its
+      delegate and deducted from the Client Account[s] at the Custodian. The Client will receive independent
+      statements from the Custodian no less frequently than quarterly. The Client acknowledges that it is the Client&rsquo;s
+      responsibility to verify the accuracy of the calculation of the investment advisory fees.</p>
+
+      <p>The Client acknowledges and agrees that if there is a shortfall in liquid cash or equivalents in your Account[s],
+      the Advisor will instruct the Custodian to liquidate the necessary positions in such Account[s] to cover the
+      amount of the fees under this Agreement. The Client may make additions to and withdrawals from the
+      Account[s] at any time, subject to Advisor&rsquo;s right to terminate services regarding the Account[s].</p>
+      ` : ''}
+
+      ${tpBillingPara}
+      ${bpBillingPara}
+
+      ${showIM ? `
+      <h3>3.3 Client Billing Authorization (Deduction Authorization)</h3>
+      <p>The Client hereby authorizes the Advisor to instruct the Custodian to deduct from the Client&rsquo;s Account[s] the
+      fees owed under this Agreement, to the extent permitted by the Custodian and applicable law. The Client
+      further authorizes the Advisor to instruct the Custodian to liquidate positions as necessary to pay such fees if
+      sufficient cash is not otherwise available, as described above.</p>
+
+      <h3>3.4 Adjustments; Contributions/Withdrawals</h3>
+      <p>An adjustment will be made for any contributions or withdrawals of Assets in the Account[s], which are greater
+      than or equal to $10,000 during the month. Such adjustments are reflected in the fee calculations for the next
+      monthly period.</p>
+
+      <h3>3.5 Client-Borne Expenses; No Performance Fee</h3>
+      <p>Expenses related to the ordinary servicing of the Account[s], including custody fees, security transaction fees,
+      and/or program fees shall be paid by the Client. Other non-ordinary fees or fees incurred at the direction of the
+      Client shall be paid by the Client. Operating fees of mutual funds and other investment product fees are
+      deducted from the asset value of those investments as defined in the prospectus of the sponsor for each
+      product.</p>
+
+      <p>The Advisor shall not be compensated on the basis of a share of capital gains realized upon sale of securities
+      or capital appreciation of the funds in which the Client is invested.</p>
+
+      <h2>4. Custody and Brokerage Transactions.</h2>
+      <p>The Client has appointed ${CUSTODIAN} as its broker and custodian (collectively, the &ldquo;Custodian&rdquo;) to take and have
+      possession of the assets of the Account[s]. At no time will the Advisor accept, maintain possession or have
+      custodial responsibility for the Client&rsquo;s funds or securities.</p>
+
+      <p>When the Advisor is authorized to instruct custodians to withdraw funds from clients&rsquo; accounts to pay its
+      advisory fees, the Advisor will send an invoice to the client concurrently with the fee deduction, and include the
+      formula used to calculate the fee, the amount of assets under management that the fee calculation is based on,
+      and the time period covered by the fee.</p>
+
+      <p>Per the instruction of the Client, the Advisor will direct and place all orders for the execution of transactions with
+      or through Custodian, under the Client&rsquo;s independent, exclusive agreement with Custodian. The Client shall be
+      responsible for such brokerage expenses as billed directly by Custodian. The Client acknowledges that
+      directing the brokerage activities solely to Custodian may result in the loss of best execution of orders at the
+      most favorable prices reasonably obtainable. The terms of the custody/brokerage account, which contains the
+      assets to which this Agreement pertains, shall be determined solely by and between the Client and Custodian.</p>
+
+      <p>The Advisor shall not be liable to the Client for any act, conduct or omission by Custodian acting as broker or
+      custodian. The Advisor shall not be responsible for ensuring Custodian&rsquo;s compliance with the terms of the
+      brokerage account and payment of brokerage or custodian charges and fees. Client acknowledges that
+      Custodian will provide duplicate confirmations and/or electronic access to the Advisor for all trades in the
+      brokerage account. The Advisor is authorized and empowered to issue instructions to Custodian and to request
+      information about the brokerage account from Custodian.</p>
+
+      <h2>5. Aggregation.</h2>
+      <p>Based on the account ownership structure and independent agreements between the Client and Custodian, the
+      Advisor may or may not aggregate security trades with other accounts managed by the Advisor. The Advisor is
+      authorized in its discretion to aggregate purchases and sales and other transactions made for the Account[s]
+      with purchases and sales and other transactions in the same or similar securities or instruments of the same
+      issuer or counterpart for other clients of the Advisor or with affiliates of the Advisor. When transactions are so
+      aggregated, the actual prices applicable to the aggregated transactions will be averaged, and the Account[s]
+      will be deemed to have purchased or sold its proportionate share of the instruments involved at the average
+      price obtained.</p>
+
+      <h2>6. Confirmation of Trades.</h2>
+      <p>The Client and the Advisor will direct that confirmations of any transactions effected for the Account[s] will be
+      sent, in conformity with applicable law, by the Custodian[s] to the Client with a copy to the Advisor.</p>
+      ` : ''}
+
+      <h2>${liabNum}. Liability.</h2>
+      <p>The Federal and State securities laws impose liabilities under certain circumstances on persons who act in
+      good faith. Therefore, this agreement does not constitute a waiver of any Client&rsquo;s legal rights under common
+      law or Federal and State securities laws. If the Client&rsquo;s Account[s] with the Advisor contain only a portion of the
+      Client&rsquo;s total assets, the Advisor does not assume responsibility whatsoever for: (i) any Client&rsquo;s assets or
+      accounts not covered under this Agreement; or (ii) diversification of all of the Client&rsquo;s assets.</p>
+
+      <h2>${conflictsNum}. Conflicts of Interest.</h2>
+      <p>The Client understands that the Advisor may refrain from rendering any advice or services concerning
+      securities of companies with which the Advisor has a conflict of interest, which may include companies in which
+      the Advisor&rsquo;s officers, directors, or employees serve in key positions with or have material economic interest.
+      The Advisor has disclosed any material conflicts of interest regarding the Advisor or its representatives, which
+      could be reasonably expected to impair the rendering of unbiased and objective advice to the Client. Such
+      disclosure is provided in the Advisor&rsquo;s Form ADV Part 2A (the &ldquo;Disclosure Brochure&rdquo;) and the applicable Form
+      ADV2B (&ldquo;Brochure Supplement[s]&rdquo;).</p>
+
+      <h2>${nonExclusiveNum}. Non-Exclusive Advisory Services.</h2>
+      <p>It is understood that the Advisor provides advisory services for various clients. The Client agrees that the
+      Advisor may give advice and take action with respect to any of its other clients, which may differ from advice
+      given, or the timing or nature of action taken, with respect to the Account[s], so long as it is the Advisor&rsquo;s policy,
+      to the extent practical, to allocate investment opportunities to the Account[s] over a period of time on a fair and
+      equitable basis relative to other clients. Nothing in this Agreement shall limit or restrict the Advisor or any of its
+      directors, officers, affiliates or employees from buying, selling or trading in any securities or other assets for its
+      or their own account or accounts, and the Client acknowledges that the Advisor, its directors, officers, affiliates
+      and employees, and other clients of the Advisor, may at any time acquire, increase, decrease or dispose of
+      portions of investments which are at the same time being acquired, held or disposed of for the Account[s]. The
+      Advisor will not have any obligation to initiate the purchase or sale, or to recommend for purchase or sale, for
+      the Account[s] any security or other asset which the Advisor, its directors, officers, affiliates or employees may
+      purchase, hold or sell for its or their own accounts or for the accounts of any other clients of the Advisor.</p>
+
+      <h2>${relianceNum}. Reliance of Information.</h2>
+      <p>The Client understands that the Advisor, in the performance of its obligations and duties under the Agreement,
+      is entitled to rely upon the accuracy of information furnished by the Client or on the Client&rsquo;s behalf, without
+      further investigation.</p>
+
+      <h2>${terminationNum}. Termination and Cancellation.</h2>
+      <p>Neither the Client nor the Advisor may assign, convey or otherwise transfer any of their rights, obligations or
+      interests under this Agreement without the prior written consent of the other party. This Agreement may be
+      terminated, at any time, by either party, by written notice to the other party. Clients will be responsible for
+      investment advisory fees up to and including the effective date of termination.</p>
+
+      <h2>${governingNum}. Governing Law Disputes.</h2>
+      <p>To the extent federal law does not apply to this Agreement, it shall be construed in accordance with the laws of
+      the state in which the Advisor's principal office is located.</p>
+
+      <h2>${disclosuresNum}. Disclosures.</h2>
+      <p>The Advisor represents that it is registered as an investment advisor, or exempt from such registration with the
+      necessary securities commission[s] in accordance with applicable securities law[s]. Client acknowledges receipt
+      of the Advisor&rsquo;s Form ADV 2A (&ldquo;Disclosure Brochure&rdquo;) and Form ADV2B (&ldquo;Brochure Supplement[s]&rdquo;), which
+      contain information regarding the Advisor&rsquo;s services, fees, business practices and the background of its
+      advisory person[s]. If the Disclosure Brochure and Brochure Supplement[s] were not delivered to the Client at
+      least 48 hours prior to the Client entering into this Agreement with the Advisor, then the Client has the right to
+      terminate this Agreement without penalty within five business days after entering into this Agreement. For the
+      purposes of this provision, this Agreement is considered entered into when all parties to this contract have
+      signed this Agreement.</p>
+
+      <h2>${privacyNum}. Privacy.</h2>
+      <p>The Client has received and reviewed a copy of the Advisor&rsquo;s Privacy Policy. Except as otherwise agreed in
+      writing or as required by law, the Advisor will keep confidential all information concerning the Client&rsquo;s identity,
+      financial affairs, and investments; provided, however, that Client authorizes the Advisor to contact the Client&rsquo;s
+      accountants, attorneys and other consultants as deemed necessary by the Advisor.</p>
+
+      <h2>${noticesNum}. Notices.</h2>
+      <p>Any notice given to a party in connection with this Agreement must be in writing and shall be effective upon
+      receipt by the other party, if delivered to such party at either its mailing address or through email (at the email
+      addresses provided in this Agreement or at a substitute email address provided by the respective party). By
+      signing this Agreement, the Client hereby consents to communications from the Advisor via email without also
+      receiving written copies from the Advisor. The Client may revoke this consent to email delivery at any time by
+      providing advance written notice to the Advisor.</p>
+
+      <h2>${arbitrationNum}. Arbitration Agreement.</h2>
+      <p>Any controversy or claim, including, but not limited to, errors and omissions arising out of, or relating to, this
+      Agreement or the breach thereof, shall be settled by arbitration, and judgment upon the award rendered by the
+      arbitrator(s) may be entered in any court having jurisdiction thereof. Client understands that this Agreement to
+      arbitrate does not constitute a waiver of the right to seek a judicial forum where such waiver would be void
+      under federal or state securities laws. Arbitration is final and binding on the parties. Federal and state securities
+      laws impose liabilities under certain circumstances on persons who act in good faith and, therefore, nothing
+      contained in the agreement shall constitute a waiver of any rights that a Client may have under federal and
+      state securities laws.</p>
+
+      <h2>${severabilityNum}. Severability.</h2>
+      <p>If any provision of this Agreement as applied to any party or to any circumstance shall be found by a court of
+      competent jurisdiction to be void, invalid or unenforceable, the same shall in no way affect any other provision
+      of this Agreement, the application of any such provision in any other circumstance, or the validity or
+      enforceability of this Agreement, and any provision that is found to be void, invalid or unenforceable shall be
+      curtailed and limited only to the extent necessary to bring such provision within the requirements of the law.</p>
+
+      <h2>${entireAgreementNum}. Entire Agreement and Amendment.</h2>
+      <p>This Agreement contains the entire agreement and understanding between the Client and the Advisor with
+      respect to the subject matter hereof and supersedes all prior written agreements and understandings with
+      respect hereto. This Agreement may only be amended or modified, and the terms hereof may only be waived,
+      by a writing signed by all parties hereto or in the case of a waiver, by the party entitled to the benefit of the
+      terms being waived.</p>
+
+      <!-- ACCEPTANCE -->
+      <div class="loe-acceptance-block">
+        <h2 class="loe-acceptance-title"><u>ACCEPTANCE</u></h2>
+        <p>By executing this Agreement, the parties acknowledge and accept their respective rights, duties, and
+        responsibilities, including the Service Selection / Fee Election and Billing Authorization set forth in Section 3.</p>
+
+        <p class="loe-sig-label"><strong>Advisor: ${escHtml(FIRM_NAME())}</strong></p>
+        <div class="loe-sig-block">
+          <p class="loe-sig-name-italic">${ADVISOR_NAME}</p>
+          <div class="loe-sig-line"></div>
+          <p class="loe-sig-detail">${ADVISOR_NAME}</p>
+          <p class="loe-sig-detail">${escHtml(FIRM_NAME())}</p>
+          <p class="loe-sig-detail">${today}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function generateLOEForPrint(eng) {
+  const loeHtml = eng.engagement_type === 'wealth' ? generateWealthLOE(eng) : generateTaxLOE(eng);
+  const auditHtml = generateSignatureAuditHtml(eng);
+  const clientName = eng.company_name || eng.client_name || '';
+  const contactName = eng.contact_name || '';
+  const addr1 = eng.address_line1 || '';
+  const addr2 = eng.address_line2 || '';
+  const email = eng.contact_email || '';
+
+  return `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>Engagement Letter — ${escHtml(clientName)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── Page setup ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { margin: 0.85in 0.9in; size: letter; }
+  @page { margin-top: 0.65in; }
+  /* Suppress browser print headers/footers where supported */
+  @page :first { margin-top: 0.65in; }
+  body {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-size: 10.5pt;
+    color: #1a1a2e;
+    line-height: 1.65;
+    background: white;
+  }
+
+  /* ── Cover header: logo right, client left ──────────────── */
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 18pt;
+    border-bottom: 2pt solid #462161;
+    margin-bottom: 18pt;
+  }
+  .print-header-left {
+    flex: 1;
+  }
+  .print-confidential {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-decoration: underline;
+    color: #462161;
+    margin-bottom: 8pt;
+  }
+  .print-client-name {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 3pt;
+  }
+  .print-client-details {
+    font-size: 9.5pt;
+    color: #374151;
+    line-height: 1.5;
+  }
+  .print-header-right img {
+    height: 52pt;
+    width: auto;
+    object-fit: contain;
+  }
+
+  /* ── Body typography ────────────────────────────────────── */
+  p { margin: 0 0 9pt 0; font-size: 10pt; }
+  h1 { font-size: 14pt; font-weight: 700; text-align: center; color: #462161; margin: 18pt 0 12pt; }
+  h2 {
+    font-size: 10.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #1a1a2e;
+    border-bottom: 1pt solid #e5e2eb;
+    padding-bottom: 3pt;
+    margin: 16pt 0 7pt;
+  }
+  h3 { font-size: 10pt; font-weight: 700; color: #1a1a2e; margin: 10pt 0 5pt; }
+  ul, ol { margin: 5pt 0 9pt 18pt; }
+  li { margin-bottom: 3pt; font-size: 10pt; }
+
+  /* ── Elections title ────────────────────────────────────── */
+  .loe-elections-title {
+    font-size: 12pt !important;
+    font-weight: 700 !important;
+    color: #462161 !important;
+    border-bottom: 1.5pt solid #462161 !important;
+    padding-bottom: 4pt !important;
+    margin: 16pt 0 10pt !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+  }
+  .loe-cover-heading {
+    font-size: 10.5pt !important;
+    font-weight: 700 !important;
+    color: #462161 !important;
+    margin: 12pt 0 5pt !important;
+    text-transform: none !important;
+    border-bottom: none !important;
+    letter-spacing: 0 !important;
+  }
+  .loe-fee-line { font-size: 10pt; font-weight: 600; color: #462161; margin: 4pt 0 8pt; }
+
+  /* ── Section headings (body) ─────────────────────────────── */
+  .loe-section-heading {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #462161;
+    border-bottom: 1.5pt solid #462161;
+    padding-bottom: 3pt;
+    margin: 16pt 0 7pt;
+  }
+
+  /* ── Tables ─────────────────────────────────────────────── */
+  .loe-services-table, .loe-monthly-table, .loe-backwork-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6pt 0 10pt;
+    font-size: 9.5pt;
+  }
+  .loe-services-table th, .loe-monthly-table th, .loe-backwork-table th {
+    background: #462161;
+    color: white;
+    padding: 5pt 8pt;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9pt;
+  }
+  .loe-monthly-table th:last-child, .loe-backwork-table th:last-child { text-align: right; }
+  .loe-services-table td, .loe-monthly-table td, .loe-backwork-table td {
+    padding: 4.5pt 8pt;
+    border-bottom: 0.5pt solid #e5e2eb;
+    vertical-align: top;
+  }
+  .loe-svc-name { font-weight: 500; }
+  .loe-svc-price { text-align: right; font-weight: 600; white-space: nowrap; }
+  .loe-svc-status { text-align: right; }
+  .loe-status-included { color: #059669; font-weight: 600; font-size: 9pt; }
+  .loe-total-row td {
+    font-weight: 700;
+    color: #462161;
+    border-top: 1.5pt solid #462161;
+    padding: 5pt 8pt;
+    background: #faf8ff;
+  }
+  .loe-total-row td:last-child { text-align: right; }
+  .loe-monthly-table tbody tr:nth-child(even):not(.loe-total-row) { background: #faf8ff; }
+  .loe-services-table tbody tr:nth-child(even) { background: #faf8ff; }
+  .loe-svc-name-hdr { text-align: left; }
+  .loe-svc-price-hdr { text-align: right; }
+
+  /* ── Backwork section ────────────────────────────────────── */
+  .loe-backwork-section { margin: 10pt 0 14pt; }
+  .loe-backwork-title { font-size: 10pt; font-weight: 700; text-decoration: underline; color: #1a1a2e; margin-bottom: 5pt; }
+  .loe-backwork-table th { background: #462161; }
+  .loe-backwork-table th:last-child { text-align: right; }
+  .loe-bw-total-row td { font-weight: 700; color: #462161; border-top: 1pt solid #462161; background: #faf8ff; }
+
+  /* ── Election box ────────────────────────────────────────── */
+  .loe-election-box {
+    border: 1pt solid #462161;
+    border-radius: 4pt;
+    padding: 8pt 12pt;
+    margin: 10pt 0;
+    background: #faf8ff;
+  }
+  .loe-election-summary { width: 100%; font-size: 10pt; }
+  .loe-election-summary td { padding: 2pt 0; }
+  .loe-agreement-title { text-align: center; font-size: 13pt !important; font-weight: 700 !important; color: #462161 !important; margin: 18pt 0 12pt !important; border: none !important; }
+  .loe-checkbox-line { font-size: 10pt; margin: 8pt 0 4pt; padding: 6pt 10pt; background: rgba(70,33,97,0.05); border-left: 3pt solid #462161; border-radius: 3pt; display: flex; align-items: center; font-weight: 600; }
+
+  /* ── Service lists ───────────────────────────────────────── */
+  .loe-service-list, .loe-doc-list { margin: 5pt 0 9pt 18pt; list-style-type: disc; }
+  .loe-bk-list, .loe-planning-list { margin: 5pt 0 9pt 18pt; list-style-type: decimal; }
+  .loe-service-list li, .loe-bk-list li, .loe-doc-list li, .loe-planning-list li { margin-bottom: 3pt; }
+
+  /* ── Acceptance / signature block ───────────────────────── */
+  .loe-acceptance-block { margin-top: 28pt; padding-top: 16pt; border-top: 1.5pt solid #462161; }
+  .loe-acceptance-title { text-align: center; font-size: 12pt !important; font-weight: 700 !important; color: #462161 !important; border: none !important; margin-bottom: 10pt !important; }
+  .loe-sig-label { margin-top: 16pt; font-size: 10pt; }
+  .loe-sig-block { margin: 8pt 0 16pt; }
+  .loe-sig-name-italic { font-style: italic; font-size: 14pt; font-family: Georgia, serif; color: #1a1a2e; }
+  .loe-sig-line { width: 180pt; border-bottom: 0.75pt solid #1a1a2e; margin: 3pt 0; }
+  .loe-sig-detail { font-size: 9pt; color: #6b7280; margin: 1pt 0; }
+  .loe-sig-closing { font-style: italic; margin-bottom: 14pt; font-size: 10pt; }
+  .loe-accepted-agreed { font-weight: 700; font-size: 10pt; margin-top: 20pt; margin-bottom: 10pt; text-decoration: underline; }
+  .loe-sig-lines { display: flex; gap: 30pt; align-items: flex-end; margin-top: 6pt; }
+  .loe-sig-line-group { display: flex; flex-direction: column; }
+  .loe-sig-line-long { width: 220pt; border-bottom: 0.75pt solid #1a1a2e; margin-bottom: 3pt; height: 22pt; }
+  .loe-sig-line-short { width: 120pt; border-bottom: 0.75pt solid #1a1a2e; margin-bottom: 3pt; height: 22pt; }
+  .loe-sig-line-label { font-size: 8.5pt; color: #6b7280; }
+
+  /* ── Confidential header (used in cover pages) ──────────── */
+  .loe-confidential { font-size: 9pt; font-weight: 700; letter-spacing: 1.5px; color: #462161; margin-bottom: 16pt; text-align: left; }
+  .loe-client-info { margin-bottom: 16pt; }
+  .loe-client-info p { margin: 1pt 0; font-size: 10pt; }
+  .loe-client-name { font-size: 12pt; font-weight: 700; }
+  .loe-tax-confidential { font-size: 9pt; font-weight: 700; text-decoration: underline; margin-bottom: 14pt; color: #1a1a2e; }
+
+  /* ── Consent page ────────────────────────────────────────── */
+  .loe-consent-block { margin-top: 28pt; padding-top: 14pt; border-top: 0.75pt solid #e5e2eb; }
+  .loe-consent-heading { font-size: 11pt; font-weight: 700; color: #1a1a2e; border-bottom: 0.75pt solid #e5e2eb; padding-bottom: 4pt; margin-bottom: 10pt; margin-top: 20pt; }
+  .loe-consent-options { margin: 10pt 0; }
+  .loe-consent-option { margin: 5pt 0; font-size: 10pt; }
+  .loe-consent-x { display: inline-block; border: 0.75pt solid #1a1a2e; font-weight: 700; font-size: 9pt; margin-right: 6pt; text-align: center; min-width: 18pt; padding: 0 2pt; }
+  .loe-consent-blank { display: inline-block; border: 0.75pt solid #1a1a2e; font-size: 9pt; margin-right: 6pt; min-width: 18pt; color: transparent; }
+  .loe-consent-signatures { display: flex; gap: 30pt; margin: 16pt 0; padding: 10pt 0; border-top: 0.75pt solid #e5e2eb; }
+  .loe-consent-sig-col { flex: 1; }
+  .loe-consent-sig-field { margin: 8pt 0; font-size: 9.5pt; }
+  .loe-tigta-notice { font-size: 8.5pt; color: #6b7280; margin-top: 16pt; padding-top: 8pt; border-top: 0.75pt solid #e5e2eb; font-style: italic; }
+
+  /* ── Signature audit trail (bottom of print) ─────────────── */
+  .print-audit {
+    margin-top: 32pt;
+    padding-top: 14pt;
+    border-top: 2pt solid #462161;
+    page-break-inside: avoid;
+  }
+  .print-audit-title {
+    font-size: 9.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #462161;
+    margin-bottom: 8pt;
+  }
+  .print-audit-note { font-size: 8.5pt; color: #6b7280; margin-bottom: 12pt; }
+  .print-sig-blocks { display: flex; gap: 32pt; flex-wrap: wrap; }
+  .print-sig-block { flex: 1; min-width: 180pt; }
+  .print-sig-label { font-size: 8.5pt; font-weight: 700; text-transform: uppercase; color: #6b7280; margin-bottom: 6pt; }
+  .print-sig-img { border-bottom: 1pt solid #333; padding-bottom: 4pt; margin-bottom: 6pt; min-height: 50pt; }
+  .print-sig-img img { max-height: 60pt; max-width: 200pt; object-fit: contain; }
+  .print-sig-name { font-size: 10pt; font-weight: 700; margin-bottom: 2pt; }
+  .print-sig-meta { font-size: 8.5pt; color: #6b7280; line-height: 1.4; }
+
+  /* In print, hide the inline cover header block (print-header renders it instead) */
+  .loe-body .loe-cover-header-block { display: none; }
+
+  @media print {
+    body { margin: 0; }
+    .loe-section { page-break-inside: avoid; }
+    h2, .loe-section-heading { page-break-after: avoid; }
+    .loe-services-table, .loe-monthly-table, .loe-backwork-table { page-break-inside: avoid; }
+    .print-audit { page-break-before: auto; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ── Cover header: client left, logo right ── -->
+  <div class="print-header">
+    <div class="print-header-left">
+      <div class="print-confidential">Private &amp; Confidential</div>
+      ${clientName ? `<div class="print-client-name">${escHtml(clientName)}</div>` : ''}
+      <div class="print-client-details">
+        ${contactName && contactName !== clientName ? `${escHtml(contactName)}<br>` : ''}
+        ${email ? `${escHtml(email)}<br>` : ''}
+        ${addr1 ? `${escHtml(addr1)}<br>` : ''}
+        ${addr2 ? `${escHtml(addr2)}` : ''}
+      </div>
+    </div>
+    <div class="print-header-right">
+      <img src="/lion-logo.png" alt="Your firm">
+    </div>
+  </div>
+
+  <!-- ── LOE body (skips cover PRIVATE & CONFIDENTIAL block since we render it above) ── -->
+  <div class="loe-body">
+    ${loeHtml}
+  </div>
+
+  <!-- ── Signature audit trail ── -->
+  ${auditHtml}
+
+</body></html>`;
+}
+
+function generateSignatureAuditHtml(eng) {
+  const sigs = [];
+  if (eng.signed_by_name) {
+    sigs.push({
+      label: 'Client Signature',
+      name: eng.signed_by_name,
+      at: eng.signed_at,
+      ip: eng.signer_ip,
+      data: eng.signature_data,
+    });
+  }
+  if (eng.signed2_by_name) {
+    sigs.push({
+      label: 'Second Signer Signature',
+      name: eng.signed2_by_name,
+      at: eng.signed2_at,
+      ip: eng.signer2_ip,
+      data: eng.signature2_data,
+    });
+  }
+  if (!sigs.length) return '';
+
+  return sigs.map(s => `
+    <div style="margin-top:28pt;border:2pt solid #462161;border-radius:6pt;padding:18pt 20pt;page-break-inside:avoid;">
+      <div style="font-size:9pt;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#462161;margin-bottom:14pt;">
+        Electronic Signature &mdash; ${escHtml(s.label)}
+      </div>
+      <div style="border-bottom:1.5pt solid #1a1a2e;padding-bottom:8pt;margin-bottom:12pt;min-height:55pt;">
+        ${s.data ? `<img src="${s.data}" alt="Signature" style="max-height:55pt;max-width:240pt;object-fit:contain;">` : ''}
+      </div>
+      <table style="width:100%;font-size:9.5pt;border-collapse:collapse;">
+        <tr>
+          <td style="padding:2pt 0;width:90pt;font-weight:700;color:#1a1a2e;">Signed by:</td>
+          <td style="padding:2pt 0;color:#374151;">${escHtml(s.name)}</td>
+        </tr>
+        <tr>
+          <td style="padding:2pt 0;font-weight:700;color:#1a1a2e;">Date &amp; Time:</td>
+          <td style="padding:2pt 0;color:#374151;">${s.at ? escHtml(fmtDate(s.at)) : '—'}</td>
+        </tr>
+        <tr>
+          <td style="padding:2pt 0;font-weight:700;color:#1a1a2e;">IP Address:</td>
+          <td style="padding:2pt 0;color:#374151;">${escHtml(s.ip || 'N/A')}</td>
+        </tr>
+      </table>
+    </div>`).join('');
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

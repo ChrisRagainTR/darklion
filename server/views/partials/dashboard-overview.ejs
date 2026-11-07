@@ -1,0 +1,129 @@
+    <!-- ==================== OVERVIEW ==================== -->
+    <div class="section-page active" id="sec-overview">
+    <%- include('dashboard-overview-styles') %>
+
+    <div class="dash-overview-wrap">
+
+      <!-- ══ LEFT: Intelligence ══ -->
+      <div class="dash-left-col">
+
+        <!-- Greeting + lion -->
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <img src="/lion-logo.png" alt="DarkLion" style="width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 2px 10px rgba(201,168,76,0.3));">
+          <div>
+            <div style="font-size:1.15rem;font-weight:800;" id="dash-greeting">Good morning.</div>
+            <div style="font-size:0.82rem;color:var(--muted);" id="dash-date"></div>
+          </div>
+        </div>
+
+        <!-- Stat bar -->
+        <div class="dash-stat-bar">
+          <div class="dash-stat-card" onclick="window.location='/crm/relationships'">
+            <div class="dash-stat-val" id="ds-relationships">—</div>
+            <div class="dash-stat-label">Relationships</div>
+          </div>
+          <div class="dash-stat-card" onclick="window.location='/crm/companies'">
+            <div class="dash-stat-val" id="ds-companies">—</div>
+            <div class="dash-stat-label">Companies</div>
+          </div>
+          <div class="dash-stat-card" onclick="window.location='/messages'">
+            <div class="dash-stat-val" id="ds-open-msgs">—</div>
+            <div class="dash-stat-label">Open Messages</div>
+          </div>
+          <div class="dash-stat-card" style="position:relative;">
+            <div class="dash-stat-val" id="ds-mrr">—</div>
+            <div class="dash-stat-label">Monthly Revenue</div>
+            <div id="ds-mrr-meta" style="position:absolute;top:0.5rem;right:0.5rem;display:flex;align-items:center;gap:0.4rem;">
+              <span id="ds-mrr-stamp" style="font-size:0.65rem;color:var(--muted);"></span>
+              <button id="ds-mrr-refresh" title="Refresh MRR from Stripe" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;padding:0.1rem 0.3rem;border-radius:4px;">↻</button>
+            </div>
+          </div>
+          <div class="dash-stat-card" onclick="window.location='/proposals'">
+            <div class="dash-stat-val" id="ds-proposals">—</div>
+            <div class="dash-stat-label">Open Proposals</div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="dash-charts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="dash-chart-card">
+            <div class="dash-chart-title">Proposals — Last 6 Months</div>
+            <div class="dash-chart-inner"><canvas id="chart-proposals"></canvas></div>
+          </div>
+          <div class="dash-chart-card">
+            <div class="dash-chart-title">Client Mix</div>
+            <div class="dash-chart-inner"><canvas id="chart-clients"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Intel cards: 2 col grid -->
+        <div class="dash-intel-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+
+          <!-- Unsigned tax returns -->
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title" style="cursor:pointer;" onclick="showAllUnsigned()">📄 Unsigned Returns</span>
+              <span class="dash-intel-badge red" id="badge-unsigned" style="cursor:pointer;" onclick="showAllUnsigned()">0</span>
+            </div>
+            <div id="list-unsigned"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+          <!-- Stalled messages -->
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title">💬 No Reply 48h+</span>
+              <span class="dash-intel-badge red" id="badge-stalled">0</span>
+            </div>
+            <div id="list-stalled"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+          <!-- Open proposals -->
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title">📋 Unsigned Proposals</span>
+              <span class="dash-intel-badge" id="badge-proposals">0</span>
+            </div>
+            <div id="list-proposals"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+          <!-- Birthdays this month -->
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title">🎂 Birthdays This Month</span>
+              <span class="dash-intel-badge green" id="badge-birthdays">0</span>
+            </div>
+            <div id="list-birthdays"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+          <!-- Portal inactive -->
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title">🔒 Portal Inactive 60+ Days</span>
+              <span class="dash-intel-badge" id="badge-portal">0</span>
+            </div>
+            <div id="list-portal"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+          <!-- No pipeline -->
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title">🆕 New — No Pipeline</span>
+              <span class="dash-intel-badge" id="badge-nopipeline">0</span>
+            </div>
+            <div id="list-nopipeline"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+          <div class="dash-intel-card">
+            <div class="dash-intel-header">
+              <span class="dash-intel-title" style="cursor:pointer;" onclick="window.location='/bookkeeper'">📊 Bookkeeper</span>
+              <span class="dash-intel-badge" id="badge-bookkeeper" style="cursor:pointer;" onclick="window.location='/bookkeeper'">0</span>
+            </div>
+            <div id="list-bookkeeper"><div class="dash-intel-empty">Loading…</div></div>
+          </div>
+
+        </div>
+      </div>
+
+      <%- include('dashboard-ai-chat') %>
+
+    </div><!-- /dash-overview-wrap -->

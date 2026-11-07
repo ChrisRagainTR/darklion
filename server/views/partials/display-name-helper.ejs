@@ -1,0 +1,25 @@
+<%# Client-side mirror of server/utils/displayName.js.
+     Exposes window.formatPersonDisplayName for use in browser JS. %>
+<script>
+(function() {
+  window.formatPersonDisplayName = function(person) {
+    if (!person) return '';
+    var first = String(person.first_name || person.firstName || '').trim();
+    var last  = String(person.last_name  || person.lastName  || '').trim();
+    var spouseRaw = String(person.spouse_name || person.spouseName || '').trim();
+    var personName = [first, last].filter(Boolean).join(' ');
+    if (!spouseRaw) return personName || 'Unnamed';
+    if (!personName) return spouseRaw;
+    var parts = spouseRaw.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return last ? (first + ' and ' + spouseRaw + ' ' + last) : (first + ' and ' + spouseRaw);
+    }
+    var spouseFirst = parts[0];
+    var spouseLast = parts.slice(1).join(' ');
+    if (last && spouseLast.toLowerCase() === last.toLowerCase()) {
+      return first + ' and ' + spouseFirst + ' ' + last;
+    }
+    return personName + ' and ' + spouseRaw;
+  };
+})();
+</script>

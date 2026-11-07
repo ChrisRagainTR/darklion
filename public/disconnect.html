@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <title>Disconnect QuickBooks &mdash; DarkLion</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0f1923;
+      --charcoal: #1c2b3a;
+      --card: #1e2f40;
+      --gold: #c9a84c;
+      --text: #e8edf2;
+      --muted: #8fa3b8;
+      --border: rgba(201,168,76,0.2);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 3rem;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 2rem;
+    }
+
+    .logo-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .logo-name span { color: var(--gold); }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .warning {
+      background: rgba(28,16,5,0.8);
+      border: 1px solid rgba(201,168,76,0.27);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      color: var(--gold);
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    .steps {
+      text-align: left;
+      background: rgba(15,25,35,0.6);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .steps h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .steps ol {
+      padding-left: 1.25rem;
+      color: var(--text);
+      font-size: 0.95rem;
+      line-height: 2;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #c0392b;
+      color: white;
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #e74c3c; }
+
+    .btn-secondary {
+      display: inline-block;
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-decoration: underline;
+    }
+
+    footer {
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    footer a:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <img src="/lion-logo.png" alt="DarkLion" width="36" height="36" style="display:block;flex-shrink:0;">
+      <span class="logo-name">Dark<span>Lion</span></span>
+    </div>
+
+    <h1>Disconnect QuickBooks</h1>
+    <p>You can revoke DarkLion&rsquo;s access to your QuickBooks company file at any time. Once disconnected, automated categorization will stop until you reconnect.</p>
+
+    <div class="warning">
+      &#x26A0;&#xFE0F; Disconnecting will stop all automated bookkeeping for this company file. Any rules and categorizations already applied will remain in QuickBooks.
+    </div>
+
+    <div class="steps">
+      <h3>How to disconnect</h3>
+      <ol>
+        <li>Sign in to your QuickBooks Online account</li>
+        <li>Click the <strong>Gear icon</strong> (&#x2699;&#xFE0F;) in the top right</li>
+        <li>Select <strong>Account and Settings</strong></li>
+        <li>Go to the <strong>Apps</strong> tab</li>
+        <li>Find <strong>DarkLion</strong> and click <strong>Disconnect</strong></li>
+      </ol>
+    </div>
+
+    <a href="https://app.qbo.intuit.com/app/homepage" target="_blank" class="btn">Go to QuickBooks Settings</a>
+    <br>
+    <a href="/connect.html" class="btn-secondary">Reconnect instead &rarr;</a>
+  </div>
+
+  <footer>
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp; <a href="/terms.html">Terms of Service</a>
+  </footer>
+</body>
+</html>

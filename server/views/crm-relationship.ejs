@@ -1,0 +1,1718 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  /* ── Layout ── */
+  .detail-grid { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; padding: 1.5rem; }
+  @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+
+  /* ── Tab bar ── */
+  .tab-bar { background: rgba(15,25,35,0.6); border-bottom: 1px solid var(--border); display: flex; gap: 0; padding: 0 1.5rem; overflow-x: auto; }
+  .tab-item { padding: 0.7rem 1.1rem; cursor: pointer; font-size: 0.86rem; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: all 0.15s; }
+  .tab-item:hover { color: var(--text); }
+  .tab-item.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
+  .tab-content { display: none; padding: 1.5rem; flex: 1; }
+  .tab-content.active { display: block; }
+
+  /* ── Entity header ── */
+  .entity-header { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: rgba(15,25,35,0.4); flex-wrap: wrap; position: static !important; }
+  .tab-bar { position: static !important; }
+  .entity-back { font-size: 0.82rem; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .entity-back:hover { color: var(--gold); }
+  .entity-header-content { flex: 1; min-width: 0; }
+  .entity-name { font-size: 1.5rem; font-weight: 800; color: var(--text); line-height: 1.2; }
+  .entity-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.3rem; }
+  .entity-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; padding: 0.18rem 0.6rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .badge-gold { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .badge-green { background: rgba(62,207,142,0.12); color: #3ecf8e; border: 1px solid rgba(62,207,142,0.25); }
+  .badge-red { background: rgba(245,101,101,0.12); color: #f56565; border: 1px solid rgba(245,101,101,0.25); }
+  .badge-orange { background: rgba(237,137,54,0.12); color: #ed8936; border: 1px solid rgba(237,137,54,0.25); }
+  .badge-muted { background: rgba(143,163,184,0.12); color: var(--muted); border: 1px solid rgba(143,163,184,0.2); }
+  .badge-blue { background: rgba(66,153,225,0.12); color: #63b3ed; border: 1px solid rgba(66,153,225,0.25); }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.95rem; border-radius: 6px; font-size: 0.84rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; }
+  .btn-gold { background: var(--gold); color: var(--navy); }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-ghost { background: transparent; color: var(--muted); padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+  .btn-xs { padding: 0.2rem 0.5rem; font-size: 0.72rem; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ── Info rows ── */
+  .info-row { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 0.76rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; min-width: 110px; flex-shrink: 0; }
+  .info-val { font-size: 0.88rem; color: var(--text); overflow-wrap: anywhere; word-break: normal; }
+
+  /* ── Entity rows (people/companies) ── */
+  .entity-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .entity-row:last-child { border-bottom: none; }
+  .entity-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+  .entity-row-info { flex: 1; min-width: 0; }
+  .entity-row-name { font-size: 0.88rem; font-weight: 600; }
+  .entity-row-name a { color: var(--text); text-decoration: none; }
+  .entity-row-name a:hover { color: var(--gold); }
+  .entity-row-meta { font-size: 0.74rem; color: var(--muted); }
+  .entity-row-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+  /* ── Entity mini cards (2-per-row grid) ── */
+  .entity-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.65rem; }
+  @media (max-width: 900px) { .entity-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 1100px) {
+    .entity-grid,
+    .ov-top,
+    .ov-bottom,
+    .workflow-jobs-grid { grid-template-columns: 1fr !important; }
+    #overview-dashboard [style*="grid-template-columns:1fr 1fr"],
+    #overview-dashboard [style*="grid-template-columns:1fr 1fr 320px"],
+    #tab-engagement [style*="grid-template-columns:1fr 1fr"],
+    #tab-engagement [style*="grid-template-columns:1fr 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 600px) { .entity-grid { grid-template-columns: 1fr; } }
+  .entity-mini-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 0.85rem; display: flex; flex-direction: column; gap: 0.35rem; transition: border-color 0.15s; }
+  .entity-mini-card:hover { border-color: rgba(201,168,76,0.35); }
+  .entity-mini-top { display: flex; align-items: center; gap: 0.55rem; }
+  .entity-mini-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+  .entity-mini-avatar.square { border-radius: 5px; }
+  .entity-mini-name { font-size: 0.83rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entity-mini-name a { color: var(--text); text-decoration: none; }
+  .entity-mini-name a:hover { color: var(--gold); }
+  .entity-mini-meta { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entity-mini-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.1rem; }
+  .entity-mini-badges { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+
+  /* ── Forms ── */
+  .form-group { margin-bottom: 1rem; }
+  .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-control { width: 100%; padding: 0.5rem 0.75rem; background: var(--navy); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.88rem; outline: none; transition: border-color 0.15s; }
+  .form-control:focus { border-color: var(--gold); }
+  textarea.form-control { resize: vertical; min-height: 180px; }
+  select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238fa3b8'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; padding-right: 2rem; }
+
+  /* ── Modals ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .modal h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 1.25rem; }
+  .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+  .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.88rem; border-radius: 7px; padding: 0.55rem 1rem; cursor: pointer; }
+  .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+  .btn-submit { background: var(--gold); color: #0f1117; font-weight: 700; font-size: 0.88rem; border: none; border-radius: 7px; padding: 0.55rem 1.25rem; cursor: pointer; transition: background 0.2s; }
+  .btn-submit:hover { background: var(--gold-light); }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .form-err { font-size: 0.82rem; color: #f56565; margin-bottom: 0.75rem; }
+
+  /* ── File upload drop ── */
+  .file-drop { border: 2px dashed var(--border); border-radius: 9px; padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; color: var(--muted); font-size: 0.88rem; position: relative; }
+  .file-drop:hover, .file-drop.drag-over { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+  .file-drop input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .selected-file { margin-top: 0.5rem; font-size: 0.8rem; color: var(--gold); }
+
+  /* ── Document rows ── */
+  .doc-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .doc-row:last-child { border-bottom: none; }
+  .doc-row:hover { background: rgba(255,255,255,0.02); border-radius: 6px; }
+  .doc-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .doc-info { flex: 1; min-width: 0; }
+  .doc-name { font-size: 0.88rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc-meta { font-size: 0.74rem; color: var(--muted); margin-top: 0.15rem; }
+  .btn-dl { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; border-radius: 6px; padding: 0.3rem 0.65rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; flex-shrink: 0; white-space: nowrap; }
+  .btn-dl:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── Placeholders ── */
+  .placeholder-section { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 2.5rem; text-align: center; color: var(--muted); margin-bottom: 1rem; }
+  .ph-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
+  .ph-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.4rem; opacity: 0.75; }
+  .ph-desc { font-size: 0.84rem; }
+
+  /* ── Loading ── */
+  .loading-state { padding: 3rem; text-align: center; color: var(--muted); }
+  .loading-spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(201,168,76,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 0.5rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Stats ── */
+  .stat-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+  .stat-box { flex: 1; background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.15); border-radius: 8px; padding: 0.9rem 1rem; text-align: center; }
+  .stat-num { font-size: 1.6rem; font-weight: 800; color: var(--gold); }
+  .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.15rem; }
+
+  /* ── Relationship Overview v2 (household map) ── */
+  .ov-page { padding: 0.95rem 1.1rem 1.35rem; display: flex; flex-direction: column; gap: 0.85rem; }
+  .ov2-status {
+    background: linear-gradient(180deg, rgba(201,168,76,0.08), rgba(26,37,53,0.96));
+    border: 1px solid rgba(201,168,76,0.28); border-radius: 12px; padding: 0.85rem 1rem;
+    display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr auto; gap: 0.75rem 1rem; align-items: center;
+  }
+  .ov2-status-cell { min-width: 0; padding-right: 0.75rem; border-right: 1px solid rgba(201,168,76,0.12); }
+  .ov2-status-cell:last-of-type { border-right: none; padding-right: 0; }
+  .ov2-status-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.28rem; }
+  .ov2-status-value { font-size: 0.9rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .ov2-status-sub { font-size: 0.74rem; color: var(--muted); margin-top: 0.18rem; line-height: 1.35; }
+  .ov2-status-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
+  .ov2-mrr { font-size: 1.05rem; font-weight: 800; color: var(--gold); }
+  .ov2-mrr span { font-size: 0.7rem; font-weight: 500; color: var(--muted); }
+  .ov2-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 0.85rem; align-items: start; }
+  .ov2-stack, .ov2-rail { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
+  .ov2-rail { position: sticky; top: 8px; }
+  .ov-panel { background: var(--card); border: 1px solid var(--border); border-radius: 11px; padding: 0.85rem 1rem; overflow: hidden; width: 100%; box-sizing: border-box; }
+  .ov-panel-title { font-size: 0.68rem; font-weight: 750; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .ov2-count-pill { font-size: 0.7rem; font-weight: 700; color: var(--muted); background: rgba(143,163,184,0.1); border: 1px solid rgba(143,163,184,0.18); border-radius: 999px; padding: 0.12rem 0.45rem; }
+  .ov2-container-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 340px; overflow-y: auto; padding-right: 0.15rem; }
+  .ov2-member-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 0.65rem; align-items: center;
+    background: var(--charcoal); border: 1px solid rgba(255,255,255,0.06); border-radius: 9px;
+    padding: 0.55rem 0.7rem; min-width: 0; text-decoration: none; color: inherit; transition: border-color 0.15s;
+  }
+  .ov2-member-row:hover { border-color: rgba(201,168,76,0.35); }
+  .ov2-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.72rem; background: rgba(201,168,76,0.18); color: var(--gold); flex-shrink: 0; }
+  .ov2-av.sq { border-radius: 7px; background: rgba(110,168,254,0.14); color: #6ea8fe; }
+  .ov2-member-name { font-size: 0.84rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .ov2-member-meta { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.1rem; }
+  .ov2-chip-row { display: flex; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end; max-width: 170px; }
+  .ov2-note { font-size: 0.78rem; color: var(--muted); line-height: 1.45; margin-bottom: 0.55rem; }
+  .ov2-work-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ov2-work-row:last-child { border-bottom: none; }
+  .ov2-eng-card { background: rgba(201,168,76,0.04); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 0.6rem 0.75rem; margin-bottom: 0.45rem; }
+  .ov2-eng-card:last-child { margin-bottom: 0; }
+  @media (max-width: 1200px) {
+    .ov2-status { grid-template-columns: 1fr 1fr; }
+    .ov2-status-cell { border-right: none; padding-right: 0; }
+    .ov2-status-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  }
+  @media (max-width: 1100px) {
+    .ov2-body { grid-template-columns: 1fr; }
+    .ov2-rail { position: static; }
+  }
+  @media (max-width: 600px) {
+    .ov-page { padding: 0.75rem; }
+    .ov2-status { grid-template-columns: 1fr; }
+  }
+
+  /* legacy class hooks kept for any residual CSS */
+  .ov-top, .ov-bottom { display: contents; }
+
+  /* ── Tax status rows ── */
+  .tax-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.82rem; }
+  .tax-row:last-child { border-bottom: none; }
+  .tax-year-pill { font-size: 0.68rem; font-weight: 700; background: rgba(255,255,255,0.06); border-radius: 4px; padding: 0.1rem 0.4rem; color: var(--muted); flex-shrink: 0; }
+  .tax-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .tax-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Activity feed rows ── */
+  .act-row { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.28rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .act-row:last-child { border-bottom: none; }
+  .act-icon { font-size: 0.85rem; flex-shrink: 0; margin-top: 0.05rem; }
+  .act-body { flex: 1; min-width: 0; }
+  .act-title { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .act-meta { font-size: 0.7rem; color: var(--muted); }
+
+  /* ── Team member chips ── */
+  /* entity rows used by people/companies in sidebar */
+  .team-member { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .team-member:last-child { border-bottom: none; }
+  .team-avatar { width: 26px; height: 26px; border-radius: 50%; background: rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--gold); flex-shrink: 0; overflow: hidden; }
+  .team-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .team-name { flex: 1; font-size: 0.8rem; font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team-role { font-size: 0.68rem; color: var(--muted); }
+  .team-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.8rem; padding: 0.1rem 0.3rem; border-radius: 3px; flex-shrink: 0; }
+  .team-remove:hover { color: #f56565; }
+  /* 2-per-row team grid */
+  .team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .team-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.7rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.3rem; position: relative; }
+  .team-card-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 700; color: var(--gold); overflow: hidden; flex-shrink: 0; }
+  .team-card-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .team-card-name { font-size: 0.78rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+  .team-card-title { font-size: 0.68rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+  .team-card-remove { position: absolute; top: 0.25rem; right: 0.3rem; background: none; border: none; color: transparent; cursor: pointer; font-size: 0.72rem; padding: 0; line-height: 1; border-radius: 3px; }
+  .team-card:hover .team-card-remove { color: var(--muted); }
+  .team-card-remove:hover { color: #f56565 !important; }
+  .team-card.pending { opacity: 0.6; }
+  /* add row */
+  .team-add-row { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+  .team-add-select { flex: 1; min-width: 0; padding: 0.3rem 0.5rem; background: var(--navy); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.78rem; outline: none; }
+  .team-add-select:focus { border-color: var(--gold); }
+  .team-add-btn { background: var(--gold); color: var(--navy); border: none; border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .team-add-btn:hover { background: var(--gold-light); }
+
+  /* ── Stacked thread rows ── */
+  .thread-row { display: flex; align-items: flex-start; gap: 0.7rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-decoration: none; transition: background 0.12s; border-radius: 6px; }
+  .thread-row:last-child { border-bottom: none; }
+  .thread-row:hover { background: rgba(255,255,255,0.025); }
+  .thread-row.has-unread { border-left: 2px solid var(--gold); padding-left: 0.5rem; }
+  .thread-row-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; color: var(--gold); flex-shrink: 0; margin-top: 0.1rem; }
+  .thread-row-body { flex: 1; min-width: 0; }
+  .thread-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.15rem; }
+  .thread-row-name { font-size: 0.75rem; font-weight: 700; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread-row-time { font-size: 0.67rem; color: var(--muted); flex-shrink: 0; }
+  .thread-row-subject { font-size: 0.8rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.15rem; }
+  .thread-row-preview { font-size: 0.73rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread-unread-badge { display: inline-block; background: var(--gold); color: var(--navy); font-size: 0.6rem; font-weight: 800; border-radius: 8px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; vertical-align: middle; }
+
+  /* ── Save indicator ── */
+  .save-indicator { font-size: 0.78rem; color: #3ecf8e; margin-top: 0.35rem; min-height: 1.1em; }
+
+  /* ── Workflow ── */
+  .workflow-entity-group { margin-bottom: 1.5rem; }
+  .workflow-entity-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0.4rem 0; border-bottom: 1px solid var(--border); margin-bottom: 0.65rem; }
+  .workflow-jobs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; }
+  @media (max-width: 900px) { .workflow-jobs-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .workflow-jobs-grid { grid-template-columns: 1fr; } }
+  .workflow-job-row { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
+  @media (max-width: 768px) {
+    .form-row { grid-template-columns: 1fr; }
+    .stat-row { flex-direction: column; }
+  }
+</style>
+
+<!-- Entity Header -->
+<div class="entity-header">
+  <a href="/crm/relationships" class="entity-back">← Relationships</a>
+  <div class="entity-header-content">
+    <div class="entity-name" id="entity-name">Loading…</div>
+    <div class="entity-badges" id="entity-badges"></div>
+  </div>
+  <div class="entity-actions">
+    <button class="btn btn-outline btn-sm" onclick="openEditModal()">✏️ Edit</button>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <div class="tab-item active" onclick="switchTab('overview', this)">Overview</div>
+  <div class="tab-item" onclick="switchTab('engagement', this)">Engagement</div>
+  <div class="tab-item" onclick="switchTab('workflow', this)">Workflow</div>
+  <div class="tab-item" onclick="switchTab('notes', this)">Notes</div>
+  <div class="tab-item" onclick="switchTab('billing', this)">Billing</div>
+</div>
+
+<!-- Tab: Overview -->
+<div id="tab-overview" class="tab-content active">
+  <div class="ov-grid" id="overview-dashboard">
+    <div class="loading-state" style="grid-column:1/-1"><div class="loading-spinner"></div><div>Loading…</div></div>
+  </div>
+</div>
+
+<!-- Tab: Engagement -->
+<div id="tab-engagement" class="tab-content">
+  <!-- Summary bar -->
+  <div id="engagement-summary-bar" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;">
+      <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">Contracted MRR</div>
+      <div id="eng-contracted-mrr" style="font-size:1.4rem;font-weight:800;color:var(--gold);">—</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;">
+      <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">Billed MRR (Stripe)</div>
+      <div id="eng-billed-mrr" style="font-size:1.4rem;font-weight:800;color:var(--text);">—</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;">
+      <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">Stripe Status</div>
+      <div id="eng-stripe-status" style="font-size:0.9rem;font-weight:700;margin-top:0.2rem;">—</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;">
+      <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;">Active Letters</div>
+      <div id="eng-active-count" style="font-size:1.4rem;font-weight:800;color:var(--text);">—</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+    <div style="font-size:0.82rem;color:var(--muted);">Signed engagement letters for this relationship</div>
+    <button class="btn btn-gold btn-sm" onclick="openEngagementUpload()">↑ Upload Letter</button>
+  </div>
+  <div id="engagement-list"><div class="loading-state"><div class="loading-spinner"></div><div>Loading…</div></div></div>
+</div>
+
+<!-- Tab: Workflow -->
+<div id="tab-workflow" class="tab-content">
+  <div id="workflow-content">
+    <div class="loading-state"><div class="loading-spinner"></div><div>Loading pipelines…</div></div>
+  </div>
+  <div style="max-width:860px;padding:0 1.5rem 1.5rem;">
+    <div style="font-size:1.05rem;font-weight:700;margin:2rem 0 1rem;">📋 Pipeline History</div>
+    <div id="pipeline-history-loading" style="color:var(--muted);font-size:0.85rem;">Loading…</div>
+    <div id="pipeline-history-list" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Tab: Notes -->
+<div id="tab-notes" class="tab-content">
+  <div class="card" style="max-width:800px;">
+    <div class="card-title">Internal Notes</div>
+    <textarea class="form-control" id="notes-ta" rows="12" placeholder="Internal staff notes…" onblur="autoSaveNotes(this.value)"></textarea>
+    <div style="display:flex;align-items:center;gap:1rem;margin-top:0.75rem;">
+      <button class="btn btn-gold btn-sm" onclick="autoSaveNotes(document.getElementById('notes-ta').value, true)">Save Notes</button>
+      <div class="save-indicator" id="notes-saved"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Billing -->
+<div id="tab-billing" class="tab-content">
+  <div id="billing-content">
+    <div class="loading-state"><div class="loading-spinner"></div><div>Loading…</div></div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Edit Relationship</h2>
+    <div class="form-err" id="edit-error" style="display:none;"></div>
+    <div class="form-group">
+      <label class="form-label">Name *</label>
+      <input type="text" class="form-control" id="ef-name" placeholder="e.g. The Smith Family">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Service Tier</label>
+      <select class="form-control" id="ef-tier">
+        <option value="">— None —</option>
+        <option value="standard">Standard</option>
+        <option value="legacy_blueprint">Legacy Blueprint</option>
+        <option value="tax_only">Tax Only</option>
+        <option value="full_service">Full Service</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Billing Status</label>
+      <select class="form-control" id="ef-billing">
+        <option value="active">Active</option>
+        <option value="past_due">Past Due</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-submit" id="ef-submit" onclick="submitEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Engagement Upload Modal -->
+<div class="modal-overlay hidden" id="engagement-upload-modal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Upload Engagement Letter</h2>
+    <div class="form-group">
+      <label class="form-label">File (PDF)</label>
+      <div class="file-drop" id="eng-file-drop">
+        <input type="file" id="eng-file-input" accept=".pdf,application/pdf">
+        <span>Click to select or drag a PDF here</span>
+        <div class="selected-file" id="eng-selected-name"></div>
+      </div>
+    </div>
+    <div class="form-err" id="eng-error" style="display:none;"></div>
+    <div id="eng-msg" style="font-size:0.8rem;color:#3ecf8e;margin-top:0.35rem;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEngagementModal()">Cancel</button>
+      <button class="btn-submit" id="eng-submit" disabled onclick="submitEngagementUpload()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+  const relId = location.pathname.split('/').pop();
+  const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  if (!token) window.location.href = '/login';
+
+  let relData = null;
+
+  // ── Helpers ──────────────────────────────────────────────────────
+  function tierBadge(tier) {
+    const labels = { standard:'Standard', legacy_blueprint:'Legacy Blueprint', tax_only:'Tax Only', full_service:'Full Service' };
+    const cls = { standard:'badge-muted', legacy_blueprint:'badge-gold', tax_only:'badge-blue', full_service:'badge-green' };
+    if (!tier) return '';
+    return `<span class="badge ${cls[tier]||'badge-muted'}">${labels[tier]||esc(tier)}</span>`;
+  }
+  function billingBadge(status) {
+    const cls = { active:'badge-green', past_due:'badge-orange', cancelled:'badge-red', inactive:'badge-muted' };
+    const lbl = { active:'Active', past_due:'Past Due', cancelled:'Cancelled', inactive:'Inactive' };
+    if (!status) return '';
+    return `<span class="badge ${cls[status]||'badge-muted'}">${lbl[status]||esc(status)}</span>`;
+  }
+  function filingLabel(s) {
+    return { single:'Single', mfj:'MFJ', mfs:'MFS', hoh:'HOH', qw:'QW', married_joint:'MFJ', married_separate:'MFS', head_household:'HOH', widow:'QW' }[s] || (s||'');
+  }
+  function fmtPhone(p) {
+    if (!p) return '';
+    const d = p.replace(/\D/g,'');
+    if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+    if (d.length === 11 && d[0]==='1') return `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+    return p;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'notes' && relData) document.getElementById('notes-ta').value = relData.notes || '';
+    if (name === 'engagement') loadEngagement();
+    if (name === 'workflow') loadWorkflow();
+    if (name === 'billing') renderBilling();
+  }
+
+  // ── Load relationship ─────────────────────────────────────────────
+  async function loadRelationship() {
+    try {
+      const res = await apiFetch(`/api/relationships/${relId}`);
+      if (!res.ok) { document.getElementById('entity-name').textContent = 'Not Found'; return; }
+      relData = await res.json();
+      renderHeader(relData);
+      renderOverview(relData);
+    } catch(e) {
+      document.getElementById('entity-name').textContent = 'Error loading';
+      console.error(e);
+    }
+  }
+
+  // ── Header ────────────────────────────────────────────────────────
+  function renderHeader(r, snap) {
+    document.title = `${r.name || 'Relationship'} — DarkLion CRM`;
+    document.getElementById('entity-name').textContent = r.name || 'Unnamed Relationship';
+    if (window.addRecentClient) window.addRecentClient({ _type:'relationship', id: r.id, _label: r.name || 'Unnamed Relationship', _sub: 'Relationship' });
+    let html = '';
+    // Service pills from active engagement letter
+    const activeLetter = snap && snap.active_engagements && snap.active_engagements[0];
+    const svcs = activeLetter && activeLetter.extracted_data && activeLetter.extracted_data.services;
+    if (svcs) {
+      if (svcs.tax) html += `<span class="badge" style="background:rgba(99,179,237,0.18);color:#63b3ed;border:1px solid rgba(99,179,237,0.35);">Tax</span> `;
+      if (svcs.bookkeeping) html += `<span class="badge" style="background:rgba(167,139,250,0.18);color:#a78bfa;border:1px solid rgba(167,139,250,0.35);">Bookkeeping</span> `;
+      if (svcs.financial_planning) html += `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">Financial Planning</span> `;
+    } else {
+      if (r.service_tier) html += tierBadge(r.service_tier) + ' ';
+    }
+    // MRR from Stripe billing sync (not engagement letter amount)
+    const stripeMrr = r && r.mrr != null ? Number(r.mrr) : 0;
+    if (Number.isFinite(stripeMrr) && stripeMrr > 0) {
+      html += `<span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.35);">$${stripeMrr.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}/mo</span> `;
+    }
+    if (r.billing_status) {
+      const bc = {active:'rgba(62,207,142,0.15)',past_due:'rgba(237,137,54,0.15)',cancelled:'rgba(245,101,101,0.15)',inactive:'rgba(143,163,184,0.12)'};
+      const bt = {active:'#3ecf8e',past_due:'#ed8936',cancelled:'#f56565',inactive:'var(--muted)'};
+      const bl = {active:'Active',past_due:'Past Due',cancelled:'Cancelled',inactive:'Inactive'};
+      const s = r.billing_status;
+      html += `<span class="badge" style="background:${bc[s]||bc.inactive};color:${bt[s]||bt.inactive};border:1px solid ${bt[s]||bt.inactive}40;">${bl[s]||s}</span> `;
+    }
+    if (r.created_at) html += `<span class="badge" style="background:rgba(148,163,184,0.1);color:var(--muted);border:1px solid rgba(148,163,184,0.2);">Since ${fmtDate(r.created_at)}</span>`;
+    document.getElementById('entity-badges').innerHTML = html;
+  }
+
+  // ── Overview ──────────────────────────────────────────────────────
+  function renderOverview(r) {
+    renderDashboard(r, null);
+    loadSnapshot(r);
+  }
+
+  async function loadSnapshot(r) {
+    try {
+      const res = await apiFetch(`/api/relationships/${relId}/snapshot`);
+      if (!res.ok) throw new Error('snapshot failed');
+      const snap = await res.json();
+      renderHeader(r, snap);
+      renderDashboard(r, snap);
+    } catch(e) {
+      renderDashboard(r, { tax_deliveries: [], threads: [], activity: [], error: true });
+    }
+  }
+
+  function renderDashboard(r, snap) {
+    const people = r.people || [];
+    const companies = r.companies || [];
+    const entityTypeLabels = { llc:'LLC', s_corp:'S-Corp', c_corp:'C-Corp', partnership:'Partnership', sole_prop:'Sole Prop', trust:'Trust', nonprofit:'Non-Profit', other:'Other' };
+
+    const portalActive = people.filter(p => p.portal_enabled).length;
+    const qboConnected = companies.filter(co => {
+      if (typeof co.qbo_connected === 'boolean') return co.qbo_connected;
+      const rid = co.realm_id || '';
+      return rid && !String(rid).startsWith('import-') && !String(rid).startsWith('unconnected-');
+    }).length;
+
+    // Engagement rollup (relationship-level)
+    let engCount = 0;
+    let engSvcBits = [];
+    if (snap && snap.active_engagements && snap.active_engagements.length) {
+      const seen = new Set();
+      const uniq = snap.active_engagements.filter(l => { if (seen.has(l.id)) return false; seen.add(l.id); return true; });
+      engCount = uniq.length;
+      const svc = { tax: false, bookkeeping: false, financial_planning: false };
+      uniq.forEach(l => {
+        const d = l.extracted_data;
+        if (d && d.services) {
+          if (d.services.tax) svc.tax = true;
+          if (d.services.bookkeeping) svc.bookkeeping = true;
+          if (d.services.financial_planning) svc.financial_planning = true;
+        }
+      });
+      if (svc.tax) engSvcBits.push('Tax');
+      if (svc.bookkeeping) engSvcBits.push('Books');
+      if (svc.financial_planning) engSvcBits.push('FP');
+    }
+
+    // Stripe MRR from relationship when available; billing panel refines
+    const stripeMrr = r && r.mrr != null ? Number(r.mrr) : null;
+    const mrrDisplay = (Number.isFinite(stripeMrr) && stripeMrr > 0)
+      ? `$${stripeMrr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+      : '—';
+
+    // ── Status strip (relationship-level only — no pipeline next step) ──
+    const statusStrip = `
+      <section class="ov2-status">
+        <div class="ov2-status-cell">
+          <div class="ov2-status-label">Billing</div>
+          <div class="ov2-status-value"><span class="ov2-mrr" id="ov2-status-mrr">${mrrDisplay}<span>${mrrDisplay === '—' ? '' : '/mo'}</span></span></div>
+          <div class="ov2-status-sub" id="ov2-status-billing-sub">${snap ? 'Loading Stripe…' : 'Loading…'}</div>
+        </div>
+        <div class="ov2-status-cell">
+          <div class="ov2-status-label">Engagement</div>
+          <div class="ov2-status-value">${
+            !snap ? '…'
+            : engCount
+              ? `<span class="badge badge-green">${engCount} active</span>`
+              : `<span style="color:var(--muted);font-weight:600;">None active</span>`
+          }</div>
+          <div class="ov2-status-sub">${engSvcBits.length ? esc(engSvcBits.join(' · ')) : (snap ? 'No LOE on file' : 'Loading…')}</div>
+        </div>
+        <div class="ov2-status-cell">
+          <div class="ov2-status-label">People</div>
+          <div class="ov2-status-value">${people.length}</div>
+          <div class="ov2-status-sub">${portalActive} portal active</div>
+        </div>
+        <div class="ov2-status-cell">
+          <div class="ov2-status-label">Companies</div>
+          <div class="ov2-status-value">${companies.length}</div>
+          <div class="ov2-status-sub">${qboConnected} QBO connected</div>
+        </div>
+        <div class="ov2-status-actions">
+          <button class="btn btn-gold btn-sm" onclick="switchTab('billing', document.querySelectorAll('.tab-item')[4])">View billing</button>
+          <button class="btn btn-outline btn-sm" onclick="switchTab('engagement', document.querySelectorAll('.tab-item')[1])">Engagement</button>
+        </div>
+      </section>`;
+
+    // ── People container ──
+    let peopleRows = '';
+    if (!people.length) {
+      peopleRows = `<div style="color:var(--muted);font-size:0.82rem;padding:0.25rem 0;">No people yet. <a href="/crm/people?add=1" style="color:var(--gold);">+ Add</a></div>`;
+    } else {
+      people.forEach(p => {
+        const initials = ((p.first_name||'').charAt(0)+(p.last_name||'').charAt(0)).toUpperCase() || '?';
+        const chips = [];
+        if (p.portal_enabled) chips.push(`<span class="badge badge-green" style="font-size:0.62rem;">Portal</span>`);
+        else if (p.portal_invite_token) chips.push(`<span class="badge badge-orange" style="font-size:0.62rem;">Invite sent</span>`);
+        if (p.filing_status) chips.push(`<span class="badge badge-blue" style="font-size:0.62rem;">${esc(filingLabel(p.filing_status))}</span>`);
+        const metaBits = [p.email, fmtPhone(p.phone) || p.phone].filter(Boolean).map(esc);
+        peopleRows += `<a class="ov2-member-row" href="/crm/person/${p.id}">
+          <div class="ov2-av">${initials}</div>
+          <div style="min-width:0;">
+            <div class="ov2-member-name">${esc(formatPersonDisplayName(p))}</div>
+            <div class="ov2-member-meta">${metaBits.join(' · ') || '—'}</div>
+          </div>
+          <div class="ov2-chip-row">${chips.join('') || '<span class="badge badge-muted" style="font-size:0.62rem;">Person</span>'}</div>
+        </a>`;
+      });
+    }
+
+    // ── Companies container ──
+    let companyRows = '';
+    if (!companies.length) {
+      companyRows = `<div style="color:var(--muted);font-size:0.82rem;padding:0.25rem 0;">No companies yet. <a href="/crm/companies?add=1" style="color:var(--gold);">+ Add</a></div>`;
+    } else {
+      companies.forEach(co => {
+        const name = co.company_name || co.name || 'Unknown';
+        const initial = name.charAt(0).toUpperCase();
+        const entityLabel = co.entity_type ? (entityTypeLabels[co.entity_type] || co.entity_type) : '';
+        const rid = co.realm_id || '';
+        const isImport = String(rid).startsWith('import-') || String(rid).startsWith('unconnected-');
+        let qboChip = '';
+        if (co.qbo_connected) qboChip = `<span class="badge badge-green" style="font-size:0.62rem;">QBO</span>`;
+        else if (rid && !isImport) qboChip = `<span class="badge" style="font-size:0.62rem;background:rgba(229,62,62,0.12);color:var(--red);border:1px solid rgba(229,62,62,0.28);">Reconnect</span>`;
+        else qboChip = `<span class="badge badge-muted" style="font-size:0.62rem;">No QBO</span>`;
+        const entityChip = co.entity_type
+          ? `<span class="badge badge-blue" style="font-size:0.62rem;">${esc(entityTypeLabels[co.entity_type] || co.entity_type)}</span>`
+          : '';
+        const svc = co.bookkeeping_service
+          ? ({ bank_feed:'Bank Feed', accrual:'Accrual', client_prepared:'Client prepared', none:'None' })[co.bookkeeping_service] || co.bookkeeping_service
+          : '';
+        companyRows += `<a class="ov2-member-row" href="/crm/company/${co.id}">
+          <div class="ov2-av sq">${esc(initial)}</div>
+          <div style="min-width:0;">
+            <div class="ov2-member-name">${esc(name)}</div>
+            <div class="ov2-member-meta">${[entityLabel, svc].filter(Boolean).map(esc).join(' · ') || 'Company'}</div>
+          </div>
+          <div class="ov2-chip-row">${entityChip}${qboChip}</div>
+        </a>`;
+      });
+    }
+
+    // ── Light household activity (not pipeline hero) ──
+    let activityBody = '';
+    if (!snap) {
+      activityBody = `<div style="color:var(--muted);font-size:0.78rem;">Loading…</div>`;
+    } else if (!snap.activity || !snap.activity.length) {
+      // Fall back to recent threads if no activity feed
+      if (snap.threads && snap.threads.length) {
+        activityBody = snap.threads.slice(0, 5).map(t => {
+          const when = t.last_message_at ? timeAgo(t.last_message_at) : '';
+          return `<div class="ov2-work-row">
+            <span style="font-size:0.85rem;">💬</span>
+            <span style="flex:1;font-size:0.82rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <a href="/messages?thread=${t.id}" style="color:var(--text);text-decoration:none;">${esc(t.person_name || 'Client')} · ${esc(t.subject || '(no subject)')}</a>
+            </span>
+            <span style="font-size:0.72rem;color:var(--muted);flex-shrink:0;">${when}</span>
+          </div>`;
+        }).join('');
+      } else {
+        activityBody = `<div style="color:var(--muted);font-size:0.82rem;">No recent household activity.</div>`;
+      }
+    } else {
+      activityBody = snap.activity.slice(0, 6).map(a => {
+        const when = a.event_at ? timeAgo(a.event_at) : '';
+        return `<div class="ov2-work-row">
+          <span style="font-size:0.85rem;">${a.icon || '•'}</span>
+          <span style="flex:1;font-size:0.82rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.title || '')}">${esc(a.title || '')}${a.entity_name ? ' · ' + esc(a.entity_name) : ''}</span>
+          <span style="font-size:0.72rem;color:var(--muted);flex-shrink:0;">${when}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Engagement rail ──
+    let engHtml = '';
+    if (!snap) {
+      engHtml = `<div style="color:var(--muted);font-size:0.78rem;">Loading…</div>`;
+    } else if (!snap.active_engagements || !snap.active_engagements.length) {
+      engHtml = `<div style="color:var(--muted);font-size:0.78rem;">No active engagement letters.</div>`;
+    } else {
+      const seen = new Set();
+      snap.active_engagements.filter(l => { if (seen.has(l.id)) return false; seen.add(l.id); return true; }).forEach(l => {
+        const d = l.extracted_data;
+        const svcPills = d && d.services ? [
+          d.services.tax ? `<span class="badge badge-blue" style="font-size:0.62rem;">Tax</span>` : '',
+          d.services.bookkeeping ? `<span class="badge badge-green" style="font-size:0.62rem;">Books</span>` : '',
+          d.services.financial_planning ? `<span class="badge badge-gold" style="font-size:0.62rem;">FP</span>` : '',
+        ].filter(Boolean).join(' ') : '<span style="font-size:0.72rem;color:var(--muted);">Extracting…</span>';
+        const price = d && d.total_monthly
+          ? `<div class="ov2-mrr" style="font-size:0.95rem;margin-top:0.25rem;">$${Number(d.total_monthly).toFixed(0)}<span>/mo</span></div>`
+          : '';
+        engHtml += `<div class="ov2-eng-card">
+          <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(l.display_name || 'Engagement')}</div>
+          <div style="display:flex;gap:0.25rem;flex-wrap:wrap;">${svcPills}</div>
+          ${price}
+        </div>`;
+      });
+    }
+
+    document.getElementById('overview-dashboard').innerHTML = `
+      <div class="ov-page">
+        ${statusStrip}
+        <div class="ov2-body">
+          <div class="ov2-stack">
+            <div class="ov-panel">
+              <div class="ov-panel-title">
+                <span>People</span>
+                <span style="display:flex;align-items:center;gap:0.45rem;">
+                  <span class="ov2-count-pill">${people.length}</span>
+                  <a href="/crm/people?add=1" class="btn btn-ghost btn-xs">+ Add</a>
+                </span>
+              </div>
+              <div class="ov2-note">Each person is a container — tax, organizer, pipeline, and portal live on the person page. Overview shows membership and light status only.</div>
+              <div class="ov2-container-list">${peopleRows}</div>
+            </div>
+            <div class="ov-panel">
+              <div class="ov-panel-title">
+                <span>Companies</span>
+                <span style="display:flex;align-items:center;gap:0.45rem;">
+                  <span class="ov2-count-pill">${companies.length}</span>
+                  <a href="/crm/companies?add=1" class="btn btn-ghost btn-xs">+ Add</a>
+                </span>
+              </div>
+              <div class="ov2-note">Each company is a container — QBO, bookkeeping, business tax, and pipelines live on the company page.</div>
+              <div class="ov2-container-list">${companyRows}</div>
+            </div>
+            <div class="ov-panel">
+              <div class="ov-panel-title">
+                <span>Recent household activity</span>
+                <a href="#" onclick="switchTab('workflow', document.querySelectorAll('.tab-item')[2]);return false;" class="btn btn-ghost btn-xs">Workflow →</a>
+              </div>
+              <div class="ov2-note">Light feed only. Active pipeline cards stay on person/company pages and the Workflow tab.</div>
+              ${activityBody}
+            </div>
+          </div>
+          <aside class="ov2-rail">
+            <div class="ov-panel" id="ov-billing-panel">
+              <div class="ov-panel-title">
+                <span>Billing</span>
+                <a href="#" onclick="switchTab('billing', document.querySelectorAll('.tab-item')[4]);return false;" class="btn btn-ghost btn-xs">View →</a>
+              </div>
+              <div id="ov-billing-content"><div style="color:var(--muted);font-size:0.78rem;">${snap ? 'Loading billing…' : 'Loading…'}</div></div>
+            </div>
+            <div class="ov-panel">
+              <div class="ov-panel-title">
+                <span>Active engagement</span>
+                <a href="#" onclick="switchTab('engagement', document.querySelectorAll('.tab-item')[1]);return false;" class="btn btn-ghost btn-xs">View all →</a>
+              </div>
+              ${engHtml}
+            </div>
+            <div class="ov-panel" id="team-panel">
+              <div class="ov-panel-title">
+                <span>Account team</span>
+                <button class="btn btn-ghost btn-xs" onclick="document.getElementById('team-add-row').style.display='flex';document.getElementById('team-add-select').focus()">+ Team</button>
+              </div>
+              <div id="team-members-list"><div style="color:var(--muted);font-size:0.78rem;">Loading…</div></div>
+              <div class="team-add-row" id="team-add-row" style="display:none;">
+                <select class="team-add-select" id="team-add-select"><option value="">Select member…</option></select>
+                <button class="team-add-btn" onclick="addTeamMember()">Add</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>`;
+
+    loadTeamPanel();
+    loadOvBilling();
+  }
+
+  async function loadOvBilling() {
+    const el = document.getElementById('ov-billing-content');
+    if (!el) return;
+    try {
+      const res = await apiFetch(`/api/billing/${relId}/summary`);
+      if (!res.ok) throw new Error('billing failed');
+      const data = await res.json();
+      const statusMrr = document.getElementById('ov2-status-mrr');
+      const statusSub = document.getElementById('ov2-status-billing-sub');
+      if (!data.configured || !data.accounts || !data.total_mrr) {
+        el.innerHTML = `<div style="color:var(--muted);font-size:0.78rem;">Not configured — <a href="#" onclick="switchTab('billing',document.querySelectorAll('.tab-item')[4]);return false;" style="color:var(--gold);">Set up →</a></div>`;
+        if (statusSub) statusSub.textContent = 'Not configured';
+        return;
+      }
+      if (statusMrr) statusMrr.innerHTML = `$${Number(data.total_mrr).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}<span>/mo</span>`;
+      if (statusSub) statusSub.textContent = data.has_past_due ? 'Stripe · Past due' : 'Stripe active · no past due';
+      const pastDue = data.has_past_due ? `<span style="margin-left:0.4rem;padding:0.08rem 0.4rem;border-radius:20px;font-size:0.65rem;font-weight:700;background:rgba(237,137,54,0.15);color:#ed8936;">⚠️ Past Due</span>` : '';
+      let html = `<div style="margin-bottom:0.65rem;">
+        <div style="font-size:1.25rem;font-weight:800;color:var(--gold);">$${data.total_mrr.toFixed(2)}<span style="font-size:0.72rem;font-weight:500;color:var(--muted);">/mo MRR</span>${pastDue}</div>
+      </div>`;
+      data.accounts.forEach(acc => {
+        if (!acc.customers || !acc.customers.length) return;
+        acc.customers.filter(c => c.subscriptions && c.subscriptions.length).forEach(cust => {
+          cust.subscriptions.forEach(sub => {
+            const dot = ({active:'#3ecf8e',past_due:'#ed8936',canceled:'#f56565'})[sub.status]||'#8fa3b8';
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="display:flex;align-items:center;gap:0.4rem;min-width:0;">
+                <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;"></div>
+                <span style="font-size:0.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(cust.name)}</span>
+              </div>
+              <span style="font-size:0.78rem;font-weight:700;flex-shrink:0;margin-left:0.5rem;">$${sub.total_monthly.toFixed(0)}/mo</span>
+            </div>`;
+          });
+        });
+      });
+      el.innerHTML = html;
+    } catch(e) {
+      if (document.getElementById('ov-billing-content')) {
+        document.getElementById('ov-billing-content').innerHTML = `<div style="color:var(--muted);font-size:0.78rem;">Could not load billing.</div>`;
+      }
+    }
+  }
+
+
+
+    function timeAgo(dateStr) {
+    const d = new Date(dateStr);
+    const diff = Math.floor((Date.now() - d) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    if (diff < 604800) return Math.floor(diff/86400) + 'd ago';
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  }
+
+  // ── Team panel ────────────────────────────────────────────────────
+  let _allStaff = [];
+  let _assignedTeam = [];
+
+  async function loadTeamPanel() {
+    try {
+      // Fetch all staff + assigned team in parallel
+      const [staffRes, teamRes] = await Promise.all([
+        fetch('/firms/team', { headers: { 'Authorization': 'Bearer ' + token } }),
+        apiFetch(`/api/relationships/${relId}/team`),
+      ]);
+      _allStaff = staffRes.ok ? await staffRes.json() : [];
+      _assignedTeam = teamRes.ok ? await teamRes.json() : [];
+      renderTeamPanel();
+    } catch(e) {
+      const el = document.getElementById('team-members-list');
+      if (el) el.innerHTML = '<div style="color:var(--muted);font-size:0.78rem;">Failed to load team.</div>';
+    }
+  }
+
+  function renderTeamPanel() {
+    const listEl = document.getElementById('team-members-list');
+    const addRow = document.getElementById('team-add-row');
+    const addSelect = document.getElementById('team-add-select');
+    if (!listEl) return;
+
+    const assignedIds = new Set(_assignedTeam.map(m => m.id));
+
+    // Render 2-per-row card grid
+    if (!_assignedTeam.length) {
+      listEl.innerHTML = `<div style="color:var(--muted);font-size:0.78rem;margin-bottom:0.3rem;">No team assigned yet.</div>`;
+    } else {
+      listEl.innerHTML = `<div class="team-grid">` + _assignedTeam.map(m => {
+        const initials = m.name ? m.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?';
+        const title = m.credentials ? esc(m.credentials) : (m.role === 'owner' ? 'Owner' : m.role === 'admin' ? 'Admin' : 'Staff');
+        const pendingClass = m.pending ? ' pending' : '';
+        return `<div class="team-card${pendingClass}" id="tm-${m.id}">
+          <button class="team-card-remove" onclick="removeTeamMember(${m.id})" title="Remove">✕</button>
+          <div class="team-card-avatar" id="tca-${m.id}">${initials}</div>
+          <div class="team-card-name">${esc(m.name||m.email)}</div>
+          <div class="team-card-title">${title}${m.pending ? ' · Pending' : ''}</div>
+        </div>`;
+      }).join('') + `</div>`;
+      // Async-load signed avatar URLs
+      _assignedTeam.forEach(m => {
+        if (!m.avatar_url) return; // no avatar key, keep initials
+        apiFetch(`/firms/team/${m.id}/avatar`).then(r => r.json()).then(d => {
+          if (!d.url) return;
+          const el = document.getElementById(`tca-${m.id}`);
+          if (!el) return;
+          const img = document.createElement('img');
+          img.src = d.url;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+          img.onerror = () => img.remove();
+          img.onload = () => { el.textContent = ''; el.appendChild(img); };
+        }).catch(() => {});
+      });
+    }
+
+    // Populate dropdown — include pending staff
+    if (addSelect) {
+      const unassigned = _allStaff.filter(s => !assignedIds.has(s.id));
+      addSelect.innerHTML = `<option value="">Select member…</option>` +
+        unassigned.map(s => {
+          const label = (s.display_name||s.name||s.email) + (s.pending ? ' (pending)' : '');
+          return `<option value="${s.id}">${esc(label)}</option>`;
+        }).join('');
+      // Only auto-hide if no unassigned remain and row is not already visible
+      if (!unassigned.length && addRow && addRow.style.display !== 'flex') {
+        addRow.style.display = 'none';
+      }
+    }
+  }
+
+  async function addTeamMember() {
+    const sel = document.getElementById('team-add-select');
+    const userId = sel ? parseInt(sel.value) : 0;
+    if (!userId) return;
+    try {
+      const res = await apiFetch(`/api/relationships/${relId}/team`, {
+        method: 'POST',
+        body: JSON.stringify({ firm_user_id: userId }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+      await loadTeamPanel();
+    } catch(e) {
+      toast('Failed to add: ' + e.message, 'error');
+    }
+  }
+
+  async function removeTeamMember(userId) {
+    try {
+      const res = await apiFetch(`/api/relationships/${relId}/team/${userId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed');
+      _assignedTeam = _assignedTeam.filter(m => m.id !== userId);
+      renderTeamPanel();
+    } catch(e) {
+      toast('Failed to remove', 'error');
+    }
+  }
+
+  // ── Engagement tab ────────────────────────────────────────────────
+  let engDocs = [];
+  // ── Engagement tab ──────────────────────────────────────────────
+  let engLetters = [];
+
+  async function loadEngagement() {
+    const el = document.getElementById('engagement-list');
+    if (el.dataset.loaded) return;
+    el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div>Loading…</div></div>';
+    try {
+      const res = await apiFetch(`/api/engagement/${relId}`);
+      engLetters = res.ok ? await res.json() : [];
+      renderEngagementList();
+      el.dataset.loaded = '1';
+      updateEngagementSummary();
+    } catch(e) {
+      el.innerHTML = '<div style="color:var(--muted);padding:1rem;">Failed to load engagement letters.</div>';
+    }
+  }
+
+  async function updateEngagementSummary() {
+    // Contracted MRR from active engagement letters
+    const active = engLetters.filter(l => l.status === 'active' && l.extracted_data && l.extracted_data.total_monthly);
+    const contractedMRR = active.reduce((s, l) => s + Number(l.extracted_data.total_monthly), 0);
+    const countEl = document.getElementById('eng-active-count');
+    const contractedEl = document.getElementById('eng-contracted-mrr');
+    if (countEl) countEl.textContent = engLetters.filter(l => l.status === 'active').length;
+    if (contractedEl) contractedEl.textContent = contractedMRR > 0 ? `$${contractedMRR.toFixed(0)}/mo` : '—';
+
+    // Billed MRR + status from Stripe
+    try {
+      const res = await apiFetch(`/api/billing/${relId}/summary`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const billedEl = document.getElementById('eng-billed-mrr');
+      const statusEl = document.getElementById('eng-stripe-status');
+      if (!data.configured || !data.total_mrr) {
+        if (billedEl) billedEl.textContent = 'Not configured';
+        if (statusEl) { statusEl.textContent = '—'; }
+        return;
+      }
+      if (billedEl) { billedEl.textContent = `$${data.total_mrr.toFixed(0)}/mo`; billedEl.style.color = '#3ecf8e'; }
+      if (statusEl) {
+        if (data.has_past_due) {
+          statusEl.innerHTML = '<span style="color:#ed8936;">⚠️ Past Due</span>';
+        } else {
+          statusEl.innerHTML = '<span style="color:#3ecf8e;">✓ Current</span>';
+        }
+      }
+    } catch(e) { /* billing not configured */ }
+  }
+
+  function renderEngagementList() {
+    const el = document.getElementById('engagement-list');
+    if (!engLetters.length) {
+      el.innerHTML = `<div class="placeholder-section">
+        <div class="ph-icon">📄</div>
+        <div class="ph-title">No Engagement Letters</div>
+        <div class="ph-desc">Upload a signed engagement letter to get started.</div>
+      </div>`;
+      return;
+    }
+    const active = engLetters.filter(l => l.status === 'active');
+    const retired = engLetters.filter(l => l.status === 'retired');
+    let html = '';
+
+    if (active.length) {
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem;">`;
+      active.forEach(l => { html += renderEngLetterCard(l, false); });
+      html += `</div>`;
+    }
+    if (retired.length) {
+      html += `<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin:1.25rem 0 0.6rem;padding-top:0.75rem;border-top:1px solid var(--border);">Retired (${retired.length})</div>`;
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem;">`;
+      retired.forEach(l => { html += renderEngLetterCard(l, true); });
+      html += `</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function renderEngLetterCard(l, isRetired) {
+    const d = l.extracted_data;
+    const isExtracting = !d && !isRetired;
+    const servicePills = d && d.services ? [
+      d.services.tax ? `<span style="padding:0.1rem 0.45rem;border-radius:20px;font-size:0.65rem;font-weight:700;background:rgba(99,179,237,0.15);color:#63b3ed;border:1px solid rgba(99,179,237,0.25);">Tax</span>` : '',
+      d.services.bookkeeping ? `<span style="padding:0.1rem 0.45rem;border-radius:20px;font-size:0.65rem;font-weight:700;background:rgba(62,207,142,0.12);color:#3ecf8e;border:1px solid rgba(62,207,142,0.25);">Bookkeeping</span>` : '',
+      d.services.financial_planning ? `<span style="padding:0.1rem 0.45rem;border-radius:20px;font-size:0.65rem;font-weight:700;background:rgba(201,168,76,0.15);color:var(--gold);border:1px solid rgba(201,168,76,0.25);">Financial Planning</span>` : '',
+    ].filter(Boolean).join(' ') : '';
+
+    const retiredBadge = isRetired ? `<span style="padding:0.1rem 0.5rem;border-radius:20px;font-size:0.65rem;font-weight:700;background:rgba(143,163,184,0.12);color:var(--muted);border:1px solid rgba(143,163,184,0.2);">Retired ${l.retired_at ? fmtDate(l.retired_at) : ''}</span>` : '';
+
+    let feeHtml = '';
+    if (d && d.monthly_line_items && d.monthly_line_items.length) {
+      feeHtml = `<div style="margin-top:0.75rem;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">Fee Schedule</div>
+        <table style="width:100%;border-collapse:collapse;">`;
+      d.monthly_line_items.forEach(item => {
+        feeHtml += `<tr><td style="font-size:0.82rem;padding:0.2rem 0;">${esc(item.description)}</td><td style="font-size:0.82rem;text-align:right;padding:0.2rem 0;font-variant-numeric:tabular-nums;">$${Number(item.amount).toFixed(2)}/mo</td></tr>`;
+      });
+      if (d.total_monthly) {
+        feeHtml += `<tr style="border-top:1px solid var(--border);"><td style="font-size:0.85rem;font-weight:700;padding:0.3rem 0;">Total Monthly</td><td style="font-size:0.85rem;font-weight:700;text-align:right;color:var(--gold);padding:0.3rem 0;">$${Number(d.total_monthly).toFixed(2)}/mo</td></tr>`;
+      }
+      if (d.one_time_fees && d.one_time_fees.length) {
+        feeHtml += `<tr><td colspan="2" style="padding-top:0.4rem;font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">One-Time Fees</td></tr>`;
+        d.one_time_fees.forEach(item => {
+          feeHtml += `<tr><td style="font-size:0.82rem;padding:0.15rem 0;">${esc(item.description)}</td><td style="font-size:0.82rem;text-align:right;padding:0.15rem 0;">$${Number(item.amount).toFixed(2)}</td></tr>`;
+        });
+      }
+      feeHtml += `</table></div>`;
+    }
+
+    const summaryHtml = d && d.ai_summary ? `<div style="font-size:0.8rem;color:var(--muted);margin-top:0.6rem;line-height:1.5;border-left:2px solid var(--border);padding-left:0.6rem;">${esc(d.ai_summary)}</div>` : '';
+
+    const extractingHtml = isExtracting ? `<div style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem;display:flex;align-items:center;gap:0.5rem;"><div class="loading-spinner" style="width:14px;height:14px;border-width:2px;"></div> Extracting data with AI…</div>` : '';
+
+    const termHtml = d && d.term_end_date ? `<span style="font-size:0.72rem;color:var(--muted);">Term ends ${fmtDate(d.term_end_date)}</span>` : '';
+
+    const actions = isRetired
+      ? `<button class="btn btn-ghost btn-xs" onclick="engReactivate(${l.id})">Reactivate</button>`
+      : `<button class="btn btn-outline btn-xs" onclick="engDownload(${l.id}, this)">⬇ View</button>
+         <button class="btn btn-ghost btn-xs" onclick="engReExtract(${l.id})" title="Re-run AI extraction">🔄</button>
+         <button class="btn btn-ghost btn-xs" style="color:var(--muted);" onclick="engRetire(${l.id})">Retire</button>`;
+
+    const cardOpacity = isRetired ? 'opacity:0.65;' : '';
+    const goldBorder = !isRetired ? 'border-color:rgba(201,168,76,0.3);' : '';
+
+    return `<div style="background:var(--card);border:1px solid var(--border);${goldBorder}${cardOpacity}border-radius:10px;padding:1rem 1.1rem;margin-bottom:0.85rem;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;margin-bottom:0.35rem;">
+        <div style="min-width:0;">
+          <div style="font-weight:700;font-size:0.92rem;margin-bottom:0.25rem;">${esc(l.display_name || 'Engagement Letter')}</div>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">${servicePills}${retiredBadge}${termHtml}</div>
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-shrink:0;">${actions}</div>
+      </div>
+      ${feeHtml}${summaryHtml}${extractingHtml}
+    </div>`;
+  }
+
+  async function engDownload(id, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const res = await apiFetch(`/api/engagement/${relId}/${id}/url`);
+      const data = await res.json();
+      if (data.url) window.open(data.url, '_blank');
+    } catch(e) { toast('Failed to get link', 'error'); }
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ View'; }
+  }
+
+  async function engRetire(id) {
+    if (!await window.dlConfirm('Retire this engagement letter? It will remain in history but marked inactive.', { title:'Retire Letter', confirmLabel:'Retire', icon:'📁' })) return;
+    try {
+      const res = await apiFetch(`/api/engagement/${relId}/${id}/retire`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast('Engagement letter retired');
+      const el = document.getElementById('engagement-list');
+      delete el.dataset.loaded;
+      await loadEngagement();
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  async function engReExtract(id) {
+    toast('Re-extracting with AI…');
+    try {
+      const res = await apiFetch(`/api/engagement/${relId}/${id}/re-extract`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const listEl = document.getElementById('engagement-list');
+      delete listEl.dataset.loaded;
+      await loadEngagement();
+      if (id) pollExtraction(id);
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  async function engReactivate(id) {
+    try {
+      const res = await apiFetch(`/api/engagement/${relId}/${id}/reactivate`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast('Engagement letter reactivated');
+      const el = document.getElementById('engagement-list');
+      delete el.dataset.loaded;
+      await loadEngagement();
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  // Poll for extraction completion after upload
+  function pollExtraction(letterId, maxAttempts = 12) {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await apiFetch(`/api/engagement/${relId}/${letterId}/extracted`);
+        const data = await res.json();
+        if (data.extracted_at) {
+          clearInterval(interval);
+          // Refresh the list
+          const listEl = document.getElementById('engagement-list');
+          delete listEl.dataset.loaded;
+          await loadEngagement();
+          toast('AI extraction complete');
+        }
+        if (attempts >= maxAttempts) clearInterval(interval);
+      } catch(e) { clearInterval(interval); }
+    }, 5000);
+  }
+
+  // ── Engagement upload modal ──────────────────────────────────────
+  let _engFile = null;
+  function openEngagementUpload() {
+    _engFile = null;
+    document.getElementById('eng-selected-name').textContent = '';
+    document.getElementById('eng-submit').disabled = true;
+    document.getElementById('eng-error').style.display = 'none';
+    document.getElementById('eng-msg').style.display = 'none';
+    document.getElementById('engagement-upload-modal').classList.remove('hidden');
+  }
+  function closeEngagementModal() {
+    document.getElementById('engagement-upload-modal').classList.add('hidden');
+  }
+
+  (function() {
+    const fileDrop = document.getElementById('eng-file-drop');
+    const fileInput = document.getElementById('eng-file-input');
+    const submitBtn = document.getElementById('eng-submit');
+
+    function setEngFile(f) {
+      _engFile = f;
+      document.getElementById('eng-selected-name').textContent = f.name;
+      submitBtn.disabled = false;
+    }
+
+    fileDrop.addEventListener('click', () => fileInput.click());
+    fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('drag-over'); });
+    fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('drag-over'));
+    fileDrop.addEventListener('drop', e => {
+      e.preventDefault(); fileDrop.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) setEngFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setEngFile(fileInput.files[0]); });
+    document.getElementById('engagement-upload-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('engagement-upload-modal')) closeEngagementModal();
+    });
+  })();
+
+  async function submitEngagementUpload() {
+    if (!_engFile) return;
+    const submitBtn = document.getElementById('eng-submit');
+    const errEl = document.getElementById('eng-error');
+    const msgEl = document.getElementById('eng-msg');
+    submitBtn.disabled = true; submitBtn.textContent = 'Uploading…';
+    errEl.style.display = 'none'; msgEl.style.display = 'none';
+    try {
+      const fd = new FormData();
+      fd.append('file', _engFile);
+      const res = await fetch(`/api/engagement/${relId}/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      submitBtn.textContent = '✓ Uploaded';
+      // Reload list immediately (shows "extracting" state)
+      const listEl = document.getElementById('engagement-list');
+      delete listEl.dataset.loaded;
+      await loadEngagement();
+      // Poll for extraction
+      if (data.id) pollExtraction(data.id);
+      setTimeout(() => { closeEngagementModal(); toast('Uploaded — AI extraction in progress…'); }, 700);
+    } catch(e) {
+      errEl.textContent = e.message; errEl.style.display = '';
+      submitBtn.disabled = false; submitBtn.textContent = 'Upload';
+    }
+  }
+
+  // ── Workflow tab ──────────────────────────────────────────────────
+  async function loadWorkflow() {
+    const el = document.getElementById('workflow-content');
+    if (el.dataset.loaded) return;
+    el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div>Loading pipelines…</div></div>';
+
+    if (!relData) { el.innerHTML = '<div style="color:var(--muted);padding:1rem;">Relationship not loaded.</div>'; return; }
+
+    const people = relData.people || [];
+    const companies = relData.companies || [];
+
+    try {
+      // Fetch jobs for all entities in parallel
+      const allFetches = [
+        ...people.map(p => apiFetch(`/api/pipelines/entity-jobs?entity_type=person&entity_id=${p.id}`)
+          .then(r => r.json())
+          .then(jobs => ({ entityName: formatPersonDisplayName(p) || 'Person', entityType: 'person', jobs }))
+          .catch(() => null)),
+        ...companies.map(c => apiFetch(`/api/pipelines/entity-jobs?entity_type=company&entity_id=${c.id}`)
+          .then(r => r.json())
+          .then(jobs => ({ entityName: c.company_name || c.name || 'Company', entityType: 'company', jobs }))
+          .catch(() => null)),
+      ];
+
+      const results = (await Promise.all(allFetches)).filter(Boolean);
+      const withJobs = results.filter(r => r.jobs && r.jobs.length > 0);
+
+      if (!withJobs.length) {
+        el.innerHTML = `<div class="placeholder-section">
+          <div class="ph-icon">📋</div>
+          <div class="ph-title">No Active Pipelines</div>
+          <div class="ph-desc">None of the people or companies in this relationship have active pipeline jobs.</div>
+        </div>`;
+        el.dataset.loaded = '1';
+        return;
+      }
+
+      let html = '';
+      withJobs.forEach(({ entityName, entityType, jobs }) => {
+        html += `<div class="workflow-entity-group">
+          <div class="workflow-entity-label">${entityType === 'person' ? '👤' : '🏢'} ${esc(entityName)}</div>
+          <div class="workflow-jobs-grid">`;
+        jobs.forEach(j => {
+          const stageColor = j.stage_color || 'var(--gold)';
+          const yearBadge = j.tax_year ? `<span style="font-size:0.7rem;background:rgba(255,255,255,0.06);border-radius:4px;padding:0.1rem 0.4rem;margin-left:0.35rem;color:var(--muted);">${j.tax_year}</span>` : '';
+          const statusColor = j.job_status === 'blocked' ? '#f56565' : (['waiting_client','missing_info'].includes(j.job_status)) ? '#ed8936' : '#3ecf8e';
+          const statusLabel = { active:'Active', waiting_client:'Waiting on Client', missing_info:'Missing Info', blocked:'Blocked', under_extension:'Under Extension', on_hold:'On Hold' }[j.job_status] || 'Active';
+          html += `<div class="workflow-job-row">
+            <div style="font-weight:700;font-size:0.87rem;">${esc(j.pipeline_name)}${yearBadge}</div>
+            <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+              <div>
+                <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.1rem;">Stage</div>
+                <div style="font-weight:700;color:${stageColor};font-size:0.82rem;">${esc(j.stage_name)}</div>
+              </div>
+              <div>
+                <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.1rem;">Status</div>
+                <div style="font-weight:600;font-size:0.8rem;color:${statusColor};">${statusLabel}</div>
+              </div>
+              ${j.assigned_name ? `<div><div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.1rem;">Assigned</div><div style="font-size:0.8rem;">${esc(j.assigned_name)}</div></div>` : ''}
+            </div>
+          </div>`;
+        });
+        html += `</div></div>`;
+      });
+
+      el.innerHTML = html;
+      el.dataset.loaded = '1';
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--muted);padding:1rem;">Failed to load workflow data: ${esc(e.message)}</div>`;
+    }
+
+    // Load pipeline history
+    loadPipelineHistory();
+  }
+
+  async function loadPipelineHistory() {
+    const loading = document.getElementById('pipeline-history-loading');
+    const list = document.getElementById('pipeline-history-list');
+    if (!loading || !list) return;
+    loading.style.display = ''; list.style.display = 'none';
+    try {
+      const res = await apiFetch(`/api/pipelines/completions?relationship_id=${relId}`);
+      const data = await res.json();
+      loading.style.display = 'none'; list.style.display = '';
+      const completions = data.completions || [];
+      const activeJobs = data.active_jobs || [];
+      if (!completions.length && !activeJobs.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">No pipeline history yet.</div>';
+        return;
+      }
+      const rows = [];
+      completions.forEach(c => {
+        const yr = c.tax_year ? ` ${c.tax_year}` : '';
+        const date = new Date(c.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        rows.push(`<div style="display:flex;align-items:center;gap:0.75rem;padding:0.55rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span style="font-size:1rem;">✅</span>
+          <span style="flex:1;font-size:0.88rem;font-weight:600;">${esc(c.pipeline_name)}${yr}</span>
+          <span style="font-size:0.78rem;color:var(--muted);">completed ${date}</span>
+        </div>`);
+      });
+      activeJobs.forEach(j => {
+        const yr = j.tax_year ? ` ${j.tax_year}` : '';
+        const stage = j.current_stage_name ? ` → ${j.current_stage_name}` : '';
+        rows.push(`<div style="display:flex;align-items:center;gap:0.75rem;padding:0.55rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span style="font-size:1rem;">🔄</span>
+          <span style="flex:1;font-size:0.88rem;font-weight:600;">${esc(j.pipeline_name)}${yr}</span>
+          <span style="font-size:0.78rem;color:var(--muted);">in progress${esc(stage)}</span>
+        </div>`);
+      });
+      list.innerHTML = rows.join('') || '<div style="color:var(--muted);font-size:0.85rem;">No pipeline history yet.</div>';
+    } catch(e) { loading.textContent = 'Failed to load pipeline history.'; }
+  }
+
+  // ── Notes ─────────────────────────────────────────────────────────
+  async function autoSaveNotes(val, force) {
+    try {
+      await apiFetch(`/api/relationships/${relId}`, { method: 'PUT', body: JSON.stringify({ notes: val }) });
+      if (relData) relData.notes = val;
+      const ind = document.getElementById('notes-saved');
+      if (ind) { ind.textContent = '✓ Saved'; setTimeout(() => { ind.textContent = ''; }, 2000); }
+      if (force) toast('Notes saved');
+    } catch(e) { toast('Failed to save notes', 'error'); }
+  }
+
+  // ── Billing tab ───────────────────────────────────────────────────
+  // ── Billing tab ──────────────────────────────────────────────────
+  let billingConfig = null;
+
+  async function renderBilling() {
+    const el = document.getElementById('billing-content');
+    el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div>Loading billing config…</div></div>';
+
+    // Load config
+    try {
+      const res = await apiFetch(`/api/billing/${relId}/config`);
+      billingConfig = res.ok ? await res.json() : { billing_accounts: [], billing_emails: [] };
+    } catch(e) { billingConfig = { billing_accounts: [], billing_emails: [] }; }
+
+    renderBillingConfig(el);
+
+    // If configured, load live Stripe data
+    if ((billingConfig.billing_accounts.length && billingConfig.billing_emails.length) || billingConfig.aum_billing_enabled) {
+      loadBillingSummary(el);
+    }
+  }
+
+  function renderBillingConfig(el) {
+    const cfg = billingConfig || {};
+    const accounts = cfg.billing_accounts || [];
+    const emails = cfg.billing_emails || [];
+    const aumPeople = cfg.aum_people || [];
+    const aum = cfg.aum_summary || {};
+    const money = n => '$' + Number(n || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    let aumLines = Array.isArray(cfg.aum_lines) ? cfg.aum_lines.slice() : [];
+    if (!aumLines.length && cfg.aum_billing_enabled) {
+      aumLines = [{
+        person_id: cfg.aum_person_id || '',
+        label: '',
+        enabled: true,
+        annual_rate: cfg.aum_annual_rate ?? '',
+        min_monthly_fee: cfg.aum_min_monthly_fee ?? '',
+        override_monthly_fee: cfg.aum_override_monthly_fee ?? '',
+      }];
+    }
+    const personOptionsFor = selectedId => ['<option value="">Select Blueleaf household…</option>'].concat(aumPeople.map(p => {
+      const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email || ('Person ' + p.id);
+      const disabled = !p.blueleaf_household_id ? ' disabled' : '';
+      const selected = String(selectedId || '') === String(p.id) ? ' selected' : '';
+      const suffix = p.blueleaf_household_id ? ' — BL ' + p.blueleaf_household_id : ' — no Blueleaf';
+      return `<option value="${p.id}"${selected}${disabled}>${esc(name + suffix)}</option>`;
+    })).join('');
+    const aumLineRows = aumLines.map((line, i) => `<div class="aum-line-row" data-idx="${i}" style="border:1px solid var(--border);border-radius:8px;padding:0.65rem;margin-bottom:0.6rem;background:rgba(255,255,255,0.025);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.5rem;">
+        <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.78rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="aum-line-enabled" ${line.enabled === false ? '' : 'checked'} onchange="saveBillingConfig()"> Active</label>
+        <button class="btn btn-ghost btn-xs" onclick="removeAumLine(${i})" style="color:var(--muted);">Remove</button>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(220px,1.4fr) minmax(140px,1fr) minmax(90px,0.55fr) minmax(120px,0.65fr);gap:0.45rem;">
+        <select class="form-control aum-line-person" onchange="saveBillingConfig()">${personOptionsFor(line.person_id)}</select>
+        <input class="form-control aum-line-label" value="${esc(line.label || '')}" placeholder="Label / family" onblur="saveBillingConfig()">
+        <input type="number" step="0.01" min="0" max="10" class="form-control aum-line-rate" value="${line.annual_rate ?? ''}" placeholder="Rate %" onblur="saveBillingConfig()">
+        <input type="number" step="0.01" min="0" class="form-control aum-line-override" value="${line.override_monthly_fee ?? ''}" placeholder="Override/mo" onblur="saveBillingConfig()">
+      </div>
+    </div>`).join('');
+
+    let html = `<div style="display:grid;grid-template-columns:minmax(260px,320px) minmax(520px,1fr);gap:1rem;align-items:flex-start;margin-bottom:1.5rem;">
+      <div class="card" style="min-width:280px;flex:0 0 auto;">
+        <div class="card-title">Stripe Configuration</div>
+        <div style="margin-bottom:0.75rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Accounts</div>
+          ${(cfg.available_accounts||[]).map(a=>`<label style="display:flex;gap:.5rem;margin-bottom:.35rem;"><input type="checkbox" class="billing-account" value="${esc(a.name)}" ${accounts.includes(a.name)?'checked':''} onchange="saveBillingConfig()">${esc(a.label)}</label>`).join('') || '<a href="/workspace-setup">Connect your Stripe account</a>'}
+        </div>
+        <div style="margin-bottom:0.75rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Lookup Emails</div>
+          <div id="billing-emails-list">`;
+    emails.forEach((e, i) => {
+      html += `<div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.3rem;">
+        <span style="flex:1;font-size:0.84rem;">${esc(e)}</span>
+        <button class="btn btn-ghost btn-xs" onclick="removeBillingEmail(${i})" style="color:var(--muted);">✕</button>
+      </div>`;
+    });
+    html += `</div>
+          <div style="display:flex;gap:0.4rem;margin-top:0.5rem;">
+            <input type="email" class="form-control" id="billing-email-input" placeholder="Add email…" style="flex:1;">
+            <button class="btn btn-outline btn-sm" onclick="addBillingEmail()">Add</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="card" style="min-width:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.75rem;">
+          <div class="card-title" style="margin:0;">IAS / AUM Billing</div>
+          <button class="btn btn-outline btn-xs" onclick="addAumLine()">+ Add household</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.84rem;margin-bottom:0.75rem;cursor:pointer;">
+          <input type="checkbox" id="aum-enabled" ${cfg.aum_billing_enabled || aumLines.length ? 'checked' : ''} onchange="saveBillingConfig()">
+          Bill from Blueleaf AUM
+        </label>
+        <div id="aum-lines-list">${aumLineRows || '<div style="font-size:0.82rem;color:var(--muted);padding:0.5rem 0;">No IAS/AUM billing households yet. Add one to calculate monthly billing from Blueleaf.</div>'}</div>
+        ${aum.enabled ? (aum.configured ? `<div style="font-size:0.8rem;line-height:1.5;color:var(--muted);border-top:1px solid var(--border);padding-top:0.65rem;">
+          <div><strong style="color:var(--text);">${money(aum.monthly_fee)}/mo total</strong> from ${money(aum.billable_aum)} billable AUM across ${esc(aum.line_count || 0)} household(s)</div>
+        </div>` : `<div style="font-size:0.8rem;color:#ed8936;border-top:1px solid var(--border);padding-top:0.65rem;">${esc(aum.reason || 'IAS billing needs at least one configured Blueleaf household line.')}</div>`) : ''}
+      </div>
+      <div id="billing-summary" style="grid-column:1 / -1;min-width:0;">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+          <button class="btn btn-ghost btn-xs" onclick="loadBillingSummary(document.getElementById('billing-content'))">↻ Refresh</button>
+        </div>`;
+
+    if (!accounts.length || !emails.length) {
+      html += `<div class="placeholder-section"><div class="ph-icon">💳</div>
+        <div class="ph-title">Not Configured</div>
+        <div class="ph-desc">Select at least one Stripe account and add a lookup email to see billing data.</div>
+      </div>`;
+    } else {
+      html += `<div class="loading-state"><div class="loading-spinner"></div><div>Fetching from Stripe…</div></div>`;
+    }
+
+    html += `</div></div>`;
+    el.innerHTML = html;
+
+    // Wire Enter key on email input
+    const inp = document.getElementById('billing-email-input');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') addBillingEmail(); });
+  }
+
+  function addBillingEmail() {
+    const inp = document.getElementById('billing-email-input');
+    const val = inp.value.trim();
+    if (!val || !val.includes('@')) { toast('Enter a valid email', 'error'); return; }
+    if (!billingConfig.billing_emails) billingConfig.billing_emails = [];
+    if (billingConfig.billing_emails.includes(val)) { toast('Already added', 'error'); return; }
+    billingConfig.billing_emails.push(val);
+    inp.value = '';
+    saveBillingConfig();
+  }
+
+  function removeBillingEmail(idx) {
+    billingConfig.billing_emails.splice(idx, 1);
+    saveBillingConfig();
+  }
+
+
+  function addAumLine() {
+    if (!billingConfig.aum_lines) billingConfig.aum_lines = [];
+    billingConfig.aum_lines.push({ enabled:true, person_id:'', label:'', annual_rate:'1.00', min_monthly_fee:null, override_monthly_fee:null });
+    billingConfig.aum_billing_enabled = true;
+    renderBillingConfig(document.getElementById('billing-content'));
+  }
+
+  function removeAumLine(idx) {
+    if (!billingConfig.aum_lines) billingConfig.aum_lines = [];
+    billingConfig.aum_lines.splice(idx, 1);
+    renderBillingConfig(document.getElementById('billing-content'));
+    saveBillingConfig();
+  }
+
+  async function saveBillingConfig() {
+    const accounts=Array.from(document.querySelectorAll('.billing-account:checked')).map(el=>el.value);
+    billingConfig.billing_accounts = accounts;
+    billingConfig.aum_billing_enabled = !!document.getElementById('aum-enabled')?.checked;
+    const aumLines = Array.from(document.querySelectorAll('.aum-line-row')).map(row => ({
+      enabled: !!row.querySelector('.aum-line-enabled')?.checked,
+      person_id: row.querySelector('.aum-line-person')?.value || null,
+      label: row.querySelector('.aum-line-label')?.value || '',
+      annual_rate: row.querySelector('.aum-line-rate')?.value || null,
+      min_monthly_fee: null,
+      override_monthly_fee: row.querySelector('.aum-line-override')?.value || null,
+    }));
+    billingConfig.aum_lines = aumLines;
+    try {
+      const res = await apiFetch(`/api/billing/${relId}/config`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          billing_accounts: accounts,
+          billing_emails: billingConfig.billing_emails || [],
+          aum_billing_enabled: billingConfig.aum_billing_enabled,
+          aum_lines: billingConfig.aum_lines || [],
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      billingConfig = await res.json();
+      // Re-render config panel and fetch Stripe data if configured
+      renderBillingConfig(document.getElementById('billing-content'));
+      if ((billingConfig.billing_accounts.length && billingConfig.billing_emails.length) || billingConfig.aum_billing_enabled) {
+        loadBillingSummary(document.getElementById('billing-content'));
+      }
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  async function loadBillingSummary(containerEl) {
+    // billing-summary div is injected by renderBillingConfig — wait a tick for DOM
+    await new Promise(r => setTimeout(r, 50));
+    const summaryEl = document.getElementById('billing-summary');
+    if (!summaryEl) {
+      console.warn('[billing] billing-summary not in DOM');
+      return;
+    }
+    summaryEl.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div>Fetching from Stripe…</div></div>';
+    try {
+      const res = await apiFetch(`/api/billing/${relId}/summary`);
+      const raw = await res.json();
+      if (!res.ok) throw new Error(raw.error || 'Stripe request failed');
+      if (!raw.configured) {
+        summaryEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:0.5rem 0;">No Stripe data found for these emails.</div>';
+        return;
+      }
+      renderBillingSummary(summaryEl, raw);
+    } catch(e) {
+      console.error('[billing] loadBillingSummary error:', e);
+      summaryEl.innerHTML = `<div style="color:#f56565;font-size:0.84rem;padding:0.5rem 0;">⚠️ ${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderBillingSummary(el, data) {
+    const statusColor = { active:'#3ecf8e', past_due:'#ed8936', canceled:'#f56565', trialing:'#63b3ed', unpaid:'#f56565', incomplete:'#8fa3b8' };
+    const statusLabel = { active:'Active', past_due:'Past Due', canceled:'Canceled', trialing:'Trial', unpaid:'Unpaid', incomplete:'Incomplete' };
+
+    let html = '';
+
+    const aum = data.aum_summary || {};
+    // MRR header
+    if (data.total_mrr > 0) {
+      const pastDueBadge = data.has_past_due ? `<span style="margin-left:0.75rem;padding:0.15rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;background:rgba(237,137,54,0.15);color:#ed8936;border:1px solid rgba(237,137,54,0.3);">⚠️ Past Due</span>` : '';
+      html += `<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:10px;padding:0.85rem 1.1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;max-width:320px;">
+        <div>
+          <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.1rem;">Total MRR</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--gold);">$${data.total_mrr.toFixed(2)}<span style="font-size:0.75rem;font-weight:500;color:var(--muted);">/mo</span></div>
+        </div>
+        <div>${pastDueBadge}</div>
+      </div>`;
+    }
+
+    if (aum.enabled) {
+      if (aum.configured) {
+        const lineCards = (aum.lines || []).filter(l => l.configured).map(line => `<div class="card" style="margin-bottom:0;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.6rem;">
+            <div>
+              <div style="font-weight:800;font-size:0.9rem;">${esc(line.label || line.person_name || 'Blueleaf household')}</div>
+              <div style="font-size:0.72rem;color:var(--muted);">Snapshot ${line.snapshot_date ? fmtDate(line.snapshot_date) : '—'} · ${line.included_account_count || 0} included account(s)</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:1rem;font-weight:900;color:var(--gold);">$${Number(line.monthly_fee || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span style="font-size:0.65rem;font-weight:500;color:var(--muted);">/mo</span></div>
+              <div style="font-size:0.72rem;color:var(--muted);">${Number(line.annual_rate || 0).toFixed(2)}% annually</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;font-size:0.76rem;">
+            <div><div style="color:var(--muted);">Billable AUM</div><strong>$${Number(line.billable_aum || 0).toLocaleString()}</strong></div>
+            <div><div style="color:var(--muted);">Annual Fee</div><strong>$${Number(line.annual_fee || 0).toLocaleString()}</strong></div>
+            <div><div style="color:var(--muted);">Hidden</div><strong>${line.hidden_account_count || 0}</strong></div>
+          </div>
+        </div>`).join('');
+        html += `<div style="margin-bottom:0.6rem;font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">IAS / AUM Billing</div>
+          <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:10px;padding:0.85rem 1.1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;max-width:320px;">
+            <div><div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">IAS / AUM Total</div><div style="font-size:1.35rem;font-weight:900;color:var(--gold);">$${Number(aum.monthly_fee || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span style="font-size:0.72rem;font-weight:500;color:var(--muted);">/mo</span></div></div>
+            <div style="font-size:0.8rem;color:var(--muted);text-align:right;">$${Number(aum.billable_aum || 0).toLocaleString()} billable AUM<br>${aum.line_count || 0} household(s)</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,320px));gap:0.85rem;margin-bottom:1rem;justify-content:start;">${lineCards}</div>`;
+      } else {
+        html += `<div style="color:#ed8936;font-size:0.84rem;margin-bottom:1rem;">⚠️ IAS / AUM billing: ${esc(aum.reason || 'Not configured')}</div>`;
+      }
+    }
+
+    data.accounts.forEach(account => {
+      if (account.error) {
+        html += `<div style="color:#f56565;font-size:0.84rem;margin-bottom:0.75rem;">⚠️ ${esc(account.label)}: ${esc(account.error)}</div>`;
+        return;
+      }
+      // Filter out customers with no subscriptions and no invoices
+      const validCustomers = (account.customers || []).filter(c => !c.error && (c.subscriptions?.length || c.invoices?.length));
+      if (!validCustomers.length) return; // skip entire account section if nothing to show
+
+      html += `<div style="margin-bottom:0.6rem;font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">${esc(account.label)}</div>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0.85rem;margin-bottom:1rem;">`;
+
+      validCustomers.forEach(cust => {
+        html += `<div class="card" style="margin-bottom:0;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.65rem;gap:0.5rem;">
+            <div style="min-width:0;">
+              <div style="font-weight:700;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(cust.name)}</div>
+              <div style="font-size:0.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(cust.email)}</div>
+            </div>
+            ${cust.total_monthly > 0 ? `<div style="font-size:1rem;font-weight:800;color:var(--gold);flex-shrink:0;">$${cust.total_monthly.toFixed(0)}<span style="font-size:0.65rem;font-weight:500;color:var(--muted);">/mo</span></div>` : ''}
+          </div>`;
+
+        if (cust.subscriptions.length) {
+          cust.subscriptions.forEach(sub => {
+            const dot = statusColor[sub.status] || '#8fa3b8';
+            const lbl = statusLabel[sub.status] || sub.status;
+            const nextDate = sub.current_period_end ? new Date(sub.current_period_end * 1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+            html += `<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:7px;padding:0.5rem 0.7rem;margin-bottom:0.4rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;">
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;"></div>
+                  <span style="font-size:0.75rem;font-weight:700;color:${dot};">${lbl}</span>
+                </div>
+                ${nextDate ? `<span style="font-size:0.68rem;color:var(--muted);">↻ ${nextDate}</span>` : ''}
+              </div>`;
+            sub.items.forEach(item => {
+              html += `<div style="display:flex;justify-content:space-between;font-size:0.78rem;padding:0.1rem 0;">
+                <span style="color:var(--muted);">${esc(item.description)}</span>
+                <span style="font-variant-numeric:tabular-nums;">$${item.amount.toFixed(2)}/${item.interval}</span>
+              </div>`;
+            });
+            html += `</div>`;
+          });
+        }
+
+        if (cust.invoices.length) {
+          html += `<div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin:0.4rem 0 0.25rem;">Invoices</div>`;
+          html += `<table style="width:100%;border-collapse:collapse;">`;
+          cust.invoices.forEach(inv => {
+            const invDate = new Date(inv.created * 1000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            const paidBadge = inv.paid
+              ? `<span style="font-size:0.62rem;font-weight:700;color:#3ecf8e;">✓</span>`
+              : `<span style="font-size:0.62rem;font-weight:700;color:#ed8936;">!</span>`;
+            html += `<tr style="border-top:1px solid rgba(255,255,255,0.04);">
+              <td style="font-size:0.75rem;padding:0.2rem 0;color:var(--muted);">${invDate}</td>
+              <td style="font-size:0.75rem;padding:0.2rem 0;text-align:right;font-variant-numeric:tabular-nums;">$${inv.amount_due.toFixed(2)}</td>
+              <td style="padding:0.2rem 0 0.2rem 0.4rem;text-align:right;">${paidBadge}</td>
+            </tr>`;
+          });
+          html += `</table>`;
+        }
+
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    el.innerHTML = html;
+  }
+
+  // ── Edit Modal ────────────────────────────────────────────────────
+  function openEditModal() {
+    if (!relData) return;
+    document.getElementById('ef-name').value = relData.name || '';
+    document.getElementById('ef-tier').value = relData.service_tier || '';
+    document.getElementById('ef-billing').value = relData.billing_status || 'active';
+    document.getElementById('edit-error').style.display = 'none';
+    document.getElementById('edit-modal').classList.remove('hidden');
+  }
+  function closeModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+  document.getElementById('edit-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('edit-modal')) closeModal();
+  });
+
+  async function submitEdit() {
+    const name = document.getElementById('ef-name').value.trim();
+    if (!name) {
+      const errEl = document.getElementById('edit-error');
+      errEl.textContent = 'Name is required.'; errEl.style.display = '';
+      return;
+    }
+    const body = {
+      name,
+      service_tier: document.getElementById('ef-tier').value || null,
+      billing_status: document.getElementById('ef-billing').value || null,
+    };
+    const btn = document.getElementById('ef-submit');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res = await apiFetch(`/api/relationships/${relId}`, { method: 'PUT', body: JSON.stringify(body) });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+      const updated = await res.json();
+      relData = { ...relData, ...updated };
+      btn.textContent = '✓ Saved';
+      setTimeout(() => { closeModal(); window.location.reload(); }, 600);
+      // Re-render billing if active
+      if (document.getElementById('tab-billing').classList.contains('active')) renderBilling();
+    } catch(e) {
+      const errEl = document.getElementById('edit-error');
+      errEl.textContent = e.message; errEl.style.display = '';
+      btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────
+  loadRelationship();
+</script>
+
+<%- include('partials/shell-close') %>

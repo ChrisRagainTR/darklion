@@ -1,0 +1,58 @@
+{
+  "name": "darklion-desktop",
+  "version": "1.0.3",
+  "description": "DarkLion Desktop - native shell for the DarkLion advisor workstation",
+  "author": "DarkLion AI",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "ai.darklion.desktop",
+    "productName": "DarkLion Desktop",
+    "copyright": "Copyright 2026 DarkLion AI",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DarkLion Desktop"
+    },
+    "artifactName": "DarkLionDesktop_Setup_${version}.${ext}",
+    "icon": "assets/icon.png"
+  }
+}

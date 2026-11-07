@@ -1,0 +1,72 @@
+name: E2E Tests
+
+on:
+  # Remote tests can write records and send notifications. Do not run them on
+  # PRs or shared development data. Local release checks run automatically.
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Full commit SHA deployed to the isolated E2E environment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: darklion-e2e
+    env:
+      BASE_URL: ${{ vars.E2E_BASE_URL }}
+      EXPECTED_ENVIRONMENT: ${{ vars.E2E_ENVIRONMENT }}
+      EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+      E2E_FIRM_ID: ${{ vars.E2E_FIRM_ID }}
+      E2E_ISOLATION_VERIFIED: ${{ vars.E2E_ISOLATION_VERIFIED }}
+      CI: 'true'
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_commit }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Require an isolated environment and an exact deployed revision
+        run: |
+          node -e "if (process.env.E2E_ISOLATION_VERIFIED !== 'true' || process.env.EXPECTED_ENVIRONMENT !== 'staging') { console.error('Complete the isolation and synthetic-account gates in docs/public-release-foundation.md first.'); process.exit(1); }"
+          node scripts/verify-release.js
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install chromium --with-deps
+      - name: Run browser tests with isolated test credentials
+        run: |
+          node -e "for (const name of ['E2E_STAGING_ACCESS_KEY', 'E2E_FIRM_ID', 'TEST_EMAIL', 'TEST_PASSWORD']) { if (!process.env[name]) { console.error(name + ' must be configured for the isolated test environment.'); process.exit(1); } }"
+          npx playwright test
+        env:
+          E2E_STAGING_ACCESS_KEY: ${{ secrets.E2E_STAGING_ACCESS_KEY }}
+          TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+      - name: Confirm the deployment did not change during testing
+        run: node scripts/verify-release.js
+        env:
+          RELEASE_TIMEOUT_MS: '5000'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: tests/report/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failure-artifacts
+          path: tests/results/
+          retention-days: 14

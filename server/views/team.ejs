@@ -1,0 +1,449 @@
+<%- include('partials/shell-top', {title: 'Team', activeNav: ''}) %>
+
+<style>
+  /* ===== TEAM TABLE ===== */
+  .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
+  .page-header h1 { font-size: 1.4rem; font-weight: 800; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+
+  .badge-ok { background: rgba(62,207,142,0.15); color: var(--green); }
+
+  .team-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .team-table { width: 100%; border-collapse: collapse; }
+  .team-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+  .team-table td { padding: 0.75rem 1rem; font-size: 0.83rem; border-bottom: 1px solid rgba(201,168,76,0.07); }
+  .team-table tr:last-child td { border-bottom: none; }
+  .team-table tr:hover td { background: rgba(201,168,76,0.03); }
+  .team-status-active { color: var(--green); font-weight: 600; font-size: 0.75rem; }
+  .team-status-pending { color: var(--orange); font-weight: 600; font-size: 0.75rem; }
+
+  .company-access-row { background: rgba(201,168,76,0.04); border-top: 1px solid var(--border); padding: 1rem; }
+  .company-access-row label { display: block; margin-bottom: 0.3rem; font-size: 0.82rem; cursor: pointer; }
+
+  #status-msg { text-align: center; padding: 3rem; color: var(--muted); }
+</style>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1>Team Members</h1>
+      <div class="subtitle">Manage who has access to your firm</div>
+    </div>
+    <button class="btn btn-gold" onclick="openInviteModal()">+ Invite User</button>
+  </div>
+
+  <div id="status-msg">Loading team…</div>
+
+  <div id="team-wrap" style="display:none;">
+    <div class="team-table-wrap">
+      <table class="team-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th style="text-align:center;">Role</th>
+            <th style="text-align:center;">Companies</th>
+            <th style="text-align:center;">Status</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="team-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Invite Modal -->
+<div class="modal-overlay" id="invite-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">Invite Team Member</div>
+      <button class="modal-close" onclick="closeInviteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" id="invite-name" class="form-control" placeholder="Full name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="invite-email" class="form-control" placeholder="email@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select id="invite-role" class="form-control">
+          <option value="admin">Admin</option>
+          <option value="owner">Owner</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeInviteModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="submitInvite()">Send Invite</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Team Member</div>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-user-id" />
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" id="edit-name" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="edit-email" class="form-control" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="submitEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Set Password Modal -->
+<div class="modal-overlay" id="set-password-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title" id="sp-modal-title">Set Password</div>
+      <button class="modal-close" onclick="closeSetPasswordModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.83rem;color:var(--muted);margin-bottom:1rem;">Set a password directly for this team member. They can change it after logging in.</p>
+      <input type="hidden" id="sp-user-id" />
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" id="sp-password" class="form-control" placeholder="Minimum 8 characters" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input type="password" id="sp-confirm" class="form-control" placeholder="Repeat password" autocomplete="new-password" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeSetPasswordModal()">Cancel</button>
+      <button class="btn btn-gold" id="sp-submit-btn" onclick="submitSetPassword()">Set Password</button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+  let currentUserId = null, currentRole = 'admin';
+  try {
+    const p = JSON.parse(atob((window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')).split('.')[1]));
+    currentUserId = p.userId;
+  } catch(e) {}
+
+  function timeAgo(ts) {
+    const diff = Date.now() - new Date(ts).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h / 24) + 'd ago';
+  }
+
+  const toast = (msg, type = 'ok') => {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `position:fixed;bottom:1.5rem;right:1.5rem;background:${type==='err'?'#f56565':'#3ecf8e'};color:#0f1923;padding:0.75rem 1.25rem;border-radius:8px;font-weight:600;font-size:0.88rem;z-index:9999;`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  };
+
+  // ===== TEAM DATA =====
+  let teamData = [];
+  let firmCompanies = [];
+
+  async function loadTeam() {
+    document.getElementById('status-msg').textContent = 'Loading team…';
+    document.getElementById('status-msg').style.display = '';
+    document.getElementById('team-wrap').style.display = 'none';
+    try {
+      const [teamRes, companiesRes] = await Promise.all([
+        apiFetch('/firms/team'),
+        apiFetch('/api/companies'),
+      ]);
+      const rawTeam = await teamRes.json();
+      const rawCompanies = await companiesRes.json();
+      teamData = Array.isArray(rawTeam) ? rawTeam : [];
+      firmCompanies = Array.isArray(rawCompanies) ? rawCompanies : [];
+      const selfEntry = teamData.find(u => u.id === currentUserId);
+      if (selfEntry) currentRole = selfEntry.role || 'admin';
+      renderTeam();
+      document.getElementById('status-msg').style.display = 'none';
+      document.getElementById('team-wrap').style.display = '';
+      loadTeamAvatars();
+    } catch(e) {
+      document.getElementById('status-msg').textContent = 'Error loading team: ' + e.message;
+    }
+  }
+
+  function renderTeam() {
+    const tbody = document.getElementById('team-tbody');
+    if (!teamData.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted);">No team members yet.</td></tr>';
+      return;
+    }
+    const isOwner = currentRole === 'owner';
+    tbody.innerHTML = teamData.map(u => {
+      const statusHtml = u.pending
+        ? '<span class="team-status-pending">Pending</span>'
+        : (u.accepted_at ? '<span class="team-status-active">Active</span>' : '<span class="team-status-pending">Inactive</span>');
+      const lastLogin = u.last_login_at ? timeAgo(u.last_login_at) : 'Never';
+      const companiesDisplay = u.allowed_realm_ids && u.allowed_realm_ids.length === 0
+        ? '<span style="color:var(--muted);font-size:0.75rem;">All</span>'
+        : (u.allowed_realm_ids ? u.allowed_realm_ids.length + ' assigned' : 'All');
+      const isSelf = u.id === currentUserId;
+      const roleCell = isOwner && !isSelf
+        ? `<select style="background:var(--charcoal);border:1px solid var(--border);color:var(--text);padding:0.2rem 0.4rem;border-radius:4px;font-size:0.78rem;cursor:pointer;" onchange="changeUserRole(${u.id}, this.value)">
+             <option value="admin"${u.role==='admin'?' selected':''}>Admin</option>
+             <option value="owner"${u.role==='owner'?' selected':''}>Owner</option>
+           </select>`
+        : `<span class="badge badge-ok" style="font-size:0.72rem;">${esc(u.role)}</span>`;
+      const actions = !isSelf
+        ? `<div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;">
+             ${isOwner ? `<button class="btn btn-outline btn-sm" onclick="openEditModal(${u.id},'${esc(u.name||'')}','${esc(u.email)}')">Edit</button>` : ''}
+             ${isOwner ? `<button class="btn btn-outline btn-sm" onclick="openSetPasswordModal(${u.id},'${esc(u.email)}')" title="Set password">🔑 Password</button>` : ''}
+             <button class="btn btn-outline btn-sm" onclick="toggleCompanyAccess(${u.id})">Companies</button>
+             ${isOwner && u.pending ? `<button class="btn btn-outline btn-sm" style="color:var(--gold);border-color:var(--gold);" onclick="copyInviteLink(${u.id})">📋 Invite Link</button>` : ''}
+             ${isOwner ? `<button style="background:transparent;border:1px solid var(--red);color:var(--red);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.68rem;cursor:pointer;font-weight:600;" onclick="archiveTeamMember(${u.id},'${esc(u.email)}')">Archive</button>` : ''}
+           </div>`
+        : '<span style="color:var(--muted);font-size:0.72rem;">You</span>';
+      const initials = (u.name || u.email || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      const avatarHtml = u.avatar_url
+        ? `<img id="avatar-img-${u.id}" data-user-id="${u.id}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;vertical-align:middle;display:none;" alt="${esc(initials)}">
+           <div id="avatar-init-${u.id}" style="width:44px;height:44px;border-radius:50%;background:rgba(201,168,76,0.15);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.88rem;flex-shrink:0;">${esc(initials)}</div>`
+        : `<div style="width:44px;height:44px;border-radius:50%;background:rgba(201,168,76,0.15);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.88rem;flex-shrink:0;">${esc(initials)}</div>`;
+      const uploadBtn = `<label style="cursor:pointer;font-size:0.72rem;color:var(--gold);white-space:nowrap;"><input type="file" accept="image/*" style="display:none;" onchange="uploadAvatar(${u.id},this)"> 📷 Photo</label>`;
+      const displayNameInput = `<input type="text" value="${esc(u.display_name||'')}" placeholder="Display name (portal)"
+        style="background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text);font-size:0.82rem;font-weight:600;width:180px;outline:none;"
+        onblur="saveDisplayName(${u.id},this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Shown as their name on the client portal">`;
+      const credInput = `<input type="text" value="${esc(u.credentials||'')}" placeholder="Certifications (e.g. CPA/PFS)"
+        style="background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--muted);font-size:0.72rem;width:180px;outline:none;margin-top:0.15rem;"
+        onblur="saveCredentials(${u.id},this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Shown under their name on the client portal">`;
+      return `<tr id="team-row-${u.id}">
+        <td>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div style="flex-shrink:0;">${avatarHtml}</div>
+            <div style="display:flex;flex-direction:column;gap:0.1rem;">
+              <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.1rem;">${esc(u.name||'—')}</div>
+              ${displayNameInput}
+              ${credInput}
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--muted);">${esc(u.email)}</td>
+        <td style="text-align:center;">${roleCell}</td>
+        <td style="text-align:center;">${companiesDisplay}</td>
+        <td style="text-align:center;">${statusHtml}</td>
+        <td style="color:var(--muted);font-size:0.78rem;">${lastLogin}</td>
+        <td><div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">${actions}${uploadBtn}</div></td>
+      </tr>
+      <tr id="team-access-${u.id}" style="display:none;">
+        <td colspan="7">${renderCompanyAccessRow(u)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderCompanyAccessRow(u) {
+    const allChecked = !u.allowed_realm_ids || u.allowed_realm_ids.length === 0;
+    let html = '<div class="company-access-row">';
+    html += `<strong style="font-size:0.78rem;display:block;margin-bottom:0.5rem;">Company Access for ${esc(u.name || u.email)}</strong>`;
+    html += `<label><input type="checkbox" id="acc-all-${u.id}" ${allChecked ? 'checked' : ''} onchange="toggleAllCompanies(${u.id},this.checked)"> All companies (unrestricted)</label>`;
+    html += `<div style="margin-top:0.5rem;padding-left:1.5rem;${allChecked ? 'display:none;' : ''}" id="acc-list-${u.id}">`;
+    for (const c of firmCompanies) {
+      const isAllowed = u.allowed_realm_ids && u.allowed_realm_ids.includes(c.realm_id);
+      html += `<label><input type="checkbox" class="acc-realm-${u.id}" value="${esc(c.realm_id)}" ${isAllowed ? 'checked' : ''}> ${esc(c.company_name || c.realm_id)}</label>`;
+    }
+    html += '</div>';
+    html += `<button class="btn btn-gold btn-sm" style="margin-top:0.75rem;" onclick="saveCompanyAccess(${u.id})">Save Access</button>`;
+    html += '</div>';
+    return html;
+  }
+
+  async function loadTeamAvatars() {
+    const withAvatars = teamData.filter(u => u.avatar_url);
+    await Promise.all(withAvatars.map(async u => {
+      try {
+        const res = await apiFetch(`/firms/team/${u.id}/avatar`);
+        if (!res.ok) return;
+        const { url } = await res.json();
+        if (!url) return;
+        const img = document.getElementById(`avatar-img-${u.id}`);
+        const init = document.getElementById(`avatar-init-${u.id}`);
+        if (img) { img.src = url; img.style.display = ''; img.onload = () => { if (init) init.style.display = 'none'; }; }
+      } catch(e) {}
+    }));
+  }
+
+  function toggleCompanyAccess(userId) {
+    const row = document.getElementById(`team-access-${userId}`);
+    if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+  }
+
+  function toggleAllCompanies(userId, checked) {
+    const list = document.getElementById(`acc-list-${userId}`);
+    if (list) list.style.display = checked ? 'none' : '';
+  }
+
+  async function saveCompanyAccess(userId) {
+    const allCheckbox = document.getElementById(`acc-all-${userId}`);
+    let realmIds = [];
+    if (!allCheckbox.checked) {
+      realmIds = [...document.querySelectorAll(`.acc-realm-${userId}:checked`)].map(cb => cb.value);
+    }
+    try {
+      const res = await apiFetch(`/firms/team/${userId}/companies`, {
+        method: 'PUT',
+        body: JSON.stringify({ realm_ids: realmIds }),
+      });
+      if (res.ok) { toast('Access saved'); await loadTeam(); }
+      else { const d = await res.json(); toast(d.error || 'Save failed', 'err'); }
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  async function changeUserRole(userId, role) {
+    try {
+      const res = await apiFetch(`/firms/team/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role }) });
+      if (res.ok) toast('Role updated');
+      else { const d = await res.json(); toast(d.error || 'Failed', 'err'); }
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  async function saveDisplayName(userId, value) {
+    try { await apiFetch(`/firms/team/${userId}/display-name`, { method: 'PUT', body: JSON.stringify({ display_name: value }) }); } catch(e) {}
+  }
+
+  async function saveCredentials(userId, value) {
+    try { await apiFetch(`/firms/team/${userId}/credentials`, { method: 'PUT', body: JSON.stringify({ credentials: value }) }); } catch(e) {}
+  }
+
+  async function copyInviteLink(userId) {
+    try {
+      const res = await apiFetch(`/firms/team/${userId}/invite-link`);
+      const d = await res.json();
+      if (!res.ok) return toast(d.error || 'Failed', 'err');
+      const fullUrl = window.location.origin + d.inviteUrl;
+      await navigator.clipboard.writeText(fullUrl);
+      toast('Invite link copied!');
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  async function archiveTeamMember(userId, email) {
+    if (!await dlConfirm(`Archive ${email}? They will lose access but their data will be preserved.`, { confirmLabel: 'Archive', danger: true })) return;
+    try {
+      const res = await apiFetch(`/firms/team/${userId}`, { method: 'DELETE' });
+      if (res.ok) { toast('Archived — access revoked'); await loadTeam(); }
+      else { const d = await res.json(); toast(d.error || 'Failed', 'err'); }
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  async function uploadAvatar(userId, input) {
+    const file = input.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('avatar', file);
+    try {
+      const res = await apiFetch(`/firms/team/${userId}/avatar`, { method: 'POST', body: formData });
+      if (res.ok) { toast('Photo updated'); await loadTeam(); }
+      else { const d = await res.json(); toast(d.error || 'Upload failed', 'err'); }
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  // ===== INVITE MODAL =====
+  function openInviteModal() { document.getElementById('invite-modal').classList.add('open'); }
+  function closeInviteModal() {
+    document.getElementById('invite-modal').classList.remove('open');
+    document.getElementById('invite-name').value = '';
+    document.getElementById('invite-email').value = '';
+  }
+
+  async function submitInvite() {
+    const name = document.getElementById('invite-name').value.trim();
+    const email = document.getElementById('invite-email').value.trim();
+    const role = document.getElementById('invite-role').value;
+    if (!email) return toast('Email is required', 'err');
+    try {
+      const res = await apiFetch('/firms/invite', { method: 'POST', body: JSON.stringify({ name, email, role }) });
+      const d = await res.json();
+      if (res.ok) {
+        const link = window.location.origin + d.inviteUrl;
+        closeInviteModal();
+        toast('Invite sent!');
+        prompt('Copy invite link:', link);
+        await loadTeam();
+      } else {
+        toast(d.error || 'Invite failed', 'err');
+      }
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  // ===== EDIT MODAL =====
+  function openEditModal(userId, name, email) {
+    document.getElementById('edit-user-id').value = userId;
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-email').value = email;
+    document.getElementById('edit-modal').classList.add('open');
+  }
+  function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
+
+  async function submitEdit() {
+    const userId = document.getElementById('edit-user-id').value;
+    const name = document.getElementById('edit-name').value.trim();
+    const email = document.getElementById('edit-email').value.trim();
+    if (!email) return toast('Email is required', 'err');
+    try {
+      const res = await apiFetch(`/firms/team/${userId}`, { method: 'PUT', body: JSON.stringify({ name, email }) });
+      const d = await res.json();
+      if (res.ok) { closeEditModal(); toast('Updated'); await loadTeam(); }
+      else toast(d.error || 'Failed', 'err');
+    } catch(e) { toast(e.message, 'err'); }
+  }
+
+  // ===== SET PASSWORD =====
+  function openSetPasswordModal(userId, email) {
+    document.getElementById('sp-user-id').value = userId;
+    document.getElementById('sp-password').value = '';
+    document.getElementById('sp-confirm').value = '';
+    document.getElementById('sp-modal-title').textContent = `Set Password — ${email}`;
+    document.getElementById('set-password-modal').classList.add('open');
+    document.getElementById('sp-submit-btn').disabled = false;
+    document.getElementById('sp-submit-btn').textContent = 'Set Password';
+  }
+  function closeSetPasswordModal() { document.getElementById('set-password-modal').classList.remove('open'); }
+
+  async function submitSetPassword() {
+    const userId = document.getElementById('sp-user-id').value;
+    const password = document.getElementById('sp-password').value;
+    const confirm = document.getElementById('sp-confirm').value;
+    if (password.length < 8) return toast('Password must be at least 8 characters', 'err');
+    if (password !== confirm) return toast('Passwords do not match', 'err');
+    const btn = document.getElementById('sp-submit-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res = await apiFetch(`/firms/team/${userId}/set-password`, { method: 'POST', body: JSON.stringify({ password }) });
+      const d = await res.json();
+      if (res.ok) { closeSetPasswordModal(); toast('Password set — they can log in now'); }
+      else { toast(d.error || 'Failed', 'err'); btn.disabled = false; btn.textContent = 'Set Password'; }
+    } catch(e) { toast(e.message, 'err'); btn.disabled = false; btn.textContent = 'Set Password'; }
+  }
+
+  // ===== INIT =====
+  loadTeam();
+</script>
+
+<%- include('partials/shell-close') %>

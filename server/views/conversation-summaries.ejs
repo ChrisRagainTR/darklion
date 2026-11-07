@@ -1,0 +1,595 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  /* ── Layout ── */
+  .cs-wrap { display: flex; height: 100%; overflow: hidden; }
+  .cs-cal  { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 1.25rem; overflow-y: auto; }
+  .cs-detail { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+  /* ── Calendar nav ── */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .cal-nav-btn { background: none; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.15s; }
+  .cal-nav-btn:hover { color: var(--gold); }
+  .cal-month-label { font-weight: 700; font-size: 0.92rem; color: var(--text); }
+
+  /* ── Calendar grid (5 weekday columns) ── */
+  .cal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .cal-day-header { text-align: center; font-size: 0.65rem; font-weight: 700; color: var(--muted); padding: 0.25rem 0; }
+  .cal-day {
+    position: relative; aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 0.8rem; cursor: default;
+    color: var(--muted);
+  }
+  .cal-day.has-activity {
+    cursor: pointer; color: var(--text);
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .cal-day.has-activity:hover { border-color: var(--gold); }
+  .cal-day.unreviewed {
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.4);
+    color: var(--gold); font-weight: 700;
+  }
+  .cal-day.viewed {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--muted);
+  }
+  .cal-day.viewed::after {
+    content: '✓'; position: absolute; top: 2px; right: 3px;
+    font-size: 0.55rem; color: var(--green);
+  }
+  .cal-day.today { outline: 2px solid rgba(255,255,255,0.3); outline-offset: 1px; }
+  .cal-day.selected { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+  /* ── Detail panel ── */
+  .cs-date-heading {
+    font-size: 1.1rem; font-weight: 800; margin-bottom: 1.25rem;
+    color: var(--text); display: flex; align-items: center; gap: 0.75rem;
+  }
+  .cs-generate-btn {
+    margin-left: auto; font-size: 0.72rem; padding: 0.25rem 0.65rem;
+    border-radius: 5px; border: 1px solid var(--border); background: none;
+    color: var(--muted); cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  }
+  .cs-generate-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  .cs-empty-hint {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 60%;
+    color: var(--muted); text-align: center; gap: 0.5rem;
+  }
+  .cs-empty-hint .cs-big-arrow { font-size: 2rem; }
+  .cs-empty-hint p { font-size: 0.9rem; }
+
+  /* ── Staff sections ── */
+  .staff-section { margin-bottom: 1.75rem; }
+  .staff-section-header {
+    font-size: 0.8rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem; margin-bottom: 0.75rem;
+  }
+  .thread-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+  }
+  .thread-summary-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.85rem 1rem;
+  }
+  .thread-client-name { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.4rem; }
+  .thread-bullets {
+    font-size: 0.84rem; color: var(--muted);
+    line-height: 1.6; white-space: pre-line; margin-bottom: 0.5rem;
+  }
+  .thread-view-link {
+    font-size: 0.78rem; color: var(--gold); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .thread-view-link:hover { opacity: 0.8; }
+  .team-chat-section { margin-bottom: 1.75rem; }
+  .team-chat-card {
+    background: rgba(99,179,237,0.06); border: 1px solid rgba(99,179,237,0.18);
+    border-radius: 8px; padding: 0.85rem 1rem;
+  }
+  .team-chat-name { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.25rem; }
+  .team-chat-members { font-size: 0.74rem; color: var(--muted); margin-bottom: 0.45rem; }
+
+  /* ── Thread modal ── */
+  .thread-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 800;
+    align-items: center; justify-content: center;
+  }
+  .thread-modal-overlay.open { display: flex; }
+  .thread-modal {
+    background: var(--charcoal); border: 1px solid var(--border);
+    border-radius: 12px; width: 600px;
+    max-width: calc(100vw - 2rem); max-height: 80vh;
+    display: flex; flex-direction: column;
+  }
+  .thread-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .thread-modal-title { font-weight: 700; font-size: 0.95rem; }
+  .thread-modal-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+  .thread-modal-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 1.2rem; cursor: pointer; padding: 0.2rem 0.4rem;
+    border-radius: 4px; transition: color 0.15s;
+  }
+  .thread-modal-close:hover { color: var(--text); }
+  .thread-modal-msgs {
+    flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .tm-bubble {
+    max-width: 75%; padding: 0.5rem 0.75rem;
+    border-radius: 10px; font-size: 0.84rem; line-height: 1.5;
+  }
+  .tm-bubble.staff {
+    background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.2);
+    align-self: flex-start;
+  }
+  .tm-bubble.client {
+    background: var(--card); border: 1px solid var(--border);
+    align-self: flex-end;
+  }
+  .tm-sender { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem; }
+  .tm-time { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; text-align: right; }
+  .thread-modal-note {
+    padding: 0.75rem 1.25rem; border-top: 1px solid var(--border);
+    display: flex; gap: 0.5rem; flex-shrink: 0;
+  }
+  .thread-modal-note textarea {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px;
+    padding: 0.5rem 0.75rem; font-size: 0.84rem;
+    resize: none; min-height: 60px; outline: none;
+    transition: border-color 0.15s;
+  }
+  .thread-modal-note textarea:focus { border-color: var(--gold); }
+  .thread-modal-note textarea::placeholder { color: var(--muted); }
+</style>
+
+<main class="main">
+  <div class="cs-wrap">
+
+    <!-- LEFT: Calendar -->
+    <div class="cs-cal">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" id="cal-prev">◀</button>
+        <span class="cal-month-label" id="cal-month-label">—</span>
+        <button class="cal-nav-btn" id="cal-next">▶</button>
+      </div>
+      <div class="cal-grid" id="cal-grid">
+        <!-- headers -->
+        <div class="cal-day-header">M</div>
+        <div class="cal-day-header">T</div>
+        <div class="cal-day-header">W</div>
+        <div class="cal-day-header">T</div>
+        <div class="cal-day-header">F</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Summary detail -->
+    <div class="cs-detail" id="cs-detail">
+      <div class="cs-empty-hint" id="cs-empty-hint">
+        <div class="cs-big-arrow">←</div>
+        <p>Select a day from the calendar</p>
+        <p style="font-size:0.78rem;margin-top:0.25rem;">Days with activity are highlighted in gold</p>
+      </div>
+      <div id="cs-summary-content" style="display:none;"></div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Thread viewer modal -->
+<div class="thread-modal-overlay" id="thread-modal-overlay">
+  <div class="thread-modal">
+    <div class="thread-modal-header">
+      <div>
+        <div class="thread-modal-title" id="tm-title">Thread</div>
+        <div class="thread-modal-meta" id="tm-meta"></div>
+      </div>
+      <button class="thread-modal-close" id="tm-close">✕</button>
+    </div>
+    <div class="thread-modal-msgs" id="tm-msgs"></div>
+    <div class="thread-modal-note">
+      <textarea id="tm-note-input" placeholder="Add an internal note…" rows="2"></textarea>
+      <button class="btn btn-outline btn-sm" id="tm-note-btn" style="align-self:flex-end;">Add Note</button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+(function() {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  if (!token) { window.location.replace('/login'); return; }
+
+  let currentUserId = null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    currentUserId = payload.userId || payload.sub || null;
+    // Normalize to number if string
+    if (currentUserId) currentUserId = parseInt(currentUserId, 10);
+  } catch(e) { /* ignore */ }
+
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let currentMonth = new Date();
+  currentMonth.setDate(1);
+  let calendarData = {}; // { 'YYYY-MM-DD': { viewed, thread_count } }
+  let selectedDate = null;
+  let activeThreadId = null;
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function fmtMonthLabel(d) {
+    return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  }
+
+  function fmtDayHeading(dateStr) {
+    const [y, m, day] = dateStr.split('-').map(Number);
+    const d = new Date(y, m - 1, day);
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function fmtTime(iso) {
+    return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function todayStr() {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+  }
+
+  function monthStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  // ── Calendar data fetch ───────────────────────────────────────────────────
+  async function loadCalendar(month) {
+    const ms = monthStr(month);
+    try {
+      const res = await fetch(`/api/summaries?month=${ms}`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const rows = await res.json();
+      // Reset for this month
+      for (const k of Object.keys(calendarData)) {
+        if (k.startsWith(ms)) delete calendarData[k];
+      }
+      for (const row of rows) {
+        calendarData[row.date] = {
+          viewed: row.viewed === true || row.viewed === 'true',
+          thread_count: parseInt(row.thread_count) || 0,
+        };
+      }
+    } catch(e) { console.error('[calendar] fetch error:', e); }
+  }
+
+  // ── Calendar render ───────────────────────────────────────────────────────
+  function renderCalendar() {
+    const grid = document.getElementById('cal-grid');
+    document.getElementById('cal-month-label').textContent = fmtMonthLabel(currentMonth);
+
+    // Remove all day cells (keep the 5 headers)
+    const headers = Array.from(grid.querySelectorAll('.cal-day-header'));
+    grid.innerHTML = '';
+    headers.forEach(h => grid.appendChild(h));
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const today = todayStr();
+    const ms = monthStr(currentMonth);
+
+    // First day of month
+    const firstDay = new Date(year, month, 1);
+    // Compute leading blanks so first *weekday* (Mon-Fri) lands under correct header column
+    // (headers occupy first row; data starts in row 2)
+    let blanks = 0;
+    const daysInMonthTmp = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonthTmp; d++) {
+      const dow = new Date(year, month, d).getDay(); // 0=Sun ... 6=Sat
+      if (dow !== 0 && dow !== 6) {
+        blanks = (dow === 0 ? 6 : dow - 1); // 0=Mon ... 4=Fri
+        break;
+      }
+    }
+
+    // Add blank cells for days before the 1st
+    for (let i = 0; i < blanks; i++) {
+      const blank = document.createElement('div');
+      blank.className = 'cal-day';
+      grid.appendChild(blank);
+    }
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let gridCol = blanks; // track column position (0=Mon … 4=Fri)
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(year, month, d).getDay(); // 0=Sun, 6=Sat
+      if (dow === 0 || dow === 6) continue; // skip weekends
+
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const info = calendarData[dateStr];
+
+      const cell = document.createElement('div');
+      cell.className = 'cal-day';
+      cell.textContent = d;
+      cell.dataset.date = dateStr;
+
+      if (dateStr === today) cell.classList.add('today');
+      if (dateStr === selectedDate) cell.classList.add('selected');
+
+      if (info && info.thread_count > 0) {
+        cell.classList.add('has-activity');
+        if (info.viewed) {
+          cell.classList.add('viewed');
+        } else {
+          cell.classList.add('unreviewed');
+        }
+        cell.addEventListener('click', () => selectDay(dateStr));
+      }
+
+      grid.appendChild(cell);
+
+      // Track column; after Fri (col 4) we'd naturally wrap
+      const monBased = (dow === 0 ? 6 : dow - 1);
+      gridCol = monBased;
+    }
+  }
+
+  // ── Select day ────────────────────────────────────────────────────────────
+  async function selectDay(dateStr) {
+    selectedDate = dateStr;
+    renderCalendar(); // re-render to update .selected
+
+    const hint = document.getElementById('cs-empty-hint');
+    const content = document.getElementById('cs-summary-content');
+    hint.style.display = 'none';
+    content.style.display = 'block';
+    content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><span>Loading summary…</span></div>';
+
+    try {
+      const res = await fetch(`/api/summaries/${dateStr}`, { headers: authHeaders() });
+
+      if (res.status === 404) {
+        content.innerHTML = `
+          <div class="cs-date-heading">
+            ${fmtDayHeading(dateStr)}
+            <button class="cs-generate-btn" onclick="generateSummary('${dateStr}')">⚡ Generate</button>
+          </div>
+          <div class="empty-state" style="padding:2rem 0;">
+            <p style="color:var(--muted);">No activity recorded for this day.</p>
+          </div>`;
+        return;
+      }
+
+      if (!res.ok) throw new Error('Failed to load');
+      const row = await res.json();
+      const summary = row.summary_json || {};
+
+      // Mark calendar cell as viewed
+      if (calendarData[dateStr]) calendarData[dateStr].viewed = true;
+      renderCalendar();
+
+      renderSummary(dateStr, summary);
+    } catch(e) {
+      content.innerHTML = `<div class="empty-state"><p style="color:var(--red);">Error loading summary.</p></div>`;
+    }
+  }
+
+  // ── Render summary detail ─────────────────────────────────────────────────
+  function renderSummary(dateStr, summary) {
+    const content = document.getElementById('cs-summary-content');
+    const byStaff = summary.by_staff || [];
+    const teamChats = summary.team_chats || [];
+
+    let html = `<div class="cs-date-heading">
+      ${fmtDayHeading(dateStr)}
+      <button class="cs-generate-btn" onclick="generateSummary('${dateStr}')">⚡ Regenerate</button>
+    </div>`;
+
+    if (!byStaff.length && !teamChats.length) {
+      html += `<div class="empty-state" style="padding:2rem 0;">
+        <p style="color:var(--muted);">No activity from other team members on this day.</p>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem;">Your own inbox threads and Team Chat conversations are in <a href="/messages" style="color:var(--gold);">My Inbox</a> and <a href="/team-chat" style="color:var(--gold);">Team Chat</a>.</p>
+      </div>`;
+    } else {
+      for (const staff of byStaff) {
+        html += `<div class="staff-section">
+          <div class="staff-section-header">${escHtml(staff.staff_name)}</div>
+          <div class="thread-cards-grid">`;
+        for (const thread of (staff.threads || [])) {
+          html += `<div class="thread-summary-card">
+            <div class="thread-client-name">${escHtml(thread.client_name)}${thread.subject ? ' <span style="font-weight:400;color:var(--muted);">— ' + escHtml(thread.subject) + '</span>' : ''}</div>
+            <div class="thread-bullets">${escHtml(thread.bullets)}</div>
+            <span class="thread-view-link" onclick="openThreadModal(${thread.thread_id}, '${escHtml(thread.client_name)}', '${escHtml(staff.staff_name)}', '${escHtml(thread.subject || '')}')">View Thread →</span>
+          </div>`;
+        }
+        html += `</div></div>`;
+      }
+      if (teamChats.length) {
+        html += `<div class="team-chat-section">
+          <div class="staff-section-header">Team Chats You Were Not In</div>
+          <div class="thread-cards-grid">`;
+        for (const chat of teamChats) {
+          const memberNames = Array.isArray(chat.member_names) ? chat.member_names.filter(Boolean).join(', ') : '';
+          html += `<div class="team-chat-card">
+            <div class="team-chat-name">${escHtml(chat.title || 'Team conversation')}</div>
+            ${memberNames ? `<div class="team-chat-members">${escHtml(memberNames)}</div>` : ''}
+            <div class="thread-bullets">${escHtml(chat.bullets || '')}</div>
+            <a class="thread-view-link" href="/team-chat">Open Team Chat →</a>
+          </div>`;
+        }
+        html += `</div></div>`;
+      }
+    }
+
+    content.innerHTML = html;
+  }
+
+  // ── Generate summary (owner only, graceful for others) ────────────────────
+  window.generateSummary = async function(dateStr) {
+    const btn = document.querySelector('.cs-generate-btn');
+    if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
+    try {
+      const res = await fetch('/api/summaries/generate', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ date: dateStr }),
+      });
+      if (res.status === 403) {
+        showToast('Only firm owners can generate summaries', true);
+        return;
+      }
+      if (!res.ok) throw new Error('Failed');
+      const queued=await res.json();
+      if(queued.job){
+        showToast('Summary queued. You can leave this page while it runs.');
+        let completed=false;
+        for(let attempt=0;attempt<24;attempt++){
+          await new Promise(resolve=>setTimeout(resolve,5000));
+          const check=await fetch('/api/summaries/jobs/'+queued.job.id,{headers:authHeaders()});
+          if(!check.ok)throw Error('Job status unavailable');
+          const job=await check.json();
+          if(job.status==='failed')throw Error('Summary generation failed');
+          if(job.status==='completed'){completed=true;break;}
+        }
+        if(!completed){showToast('Still generating. Return to this date shortly.');return;}
+      }
+      showToast('Summary generated!');
+      await loadCalendar(currentMonth);
+      await selectDay(dateStr);
+    } catch(e) {
+      showToast('Error generating summary', true);
+    } finally {
+      if (btn) { btn.textContent = '⚡ Regenerate'; btn.disabled = false; }
+    }
+  };
+
+  // ── Thread modal ──────────────────────────────────────────────────────────
+  window.openThreadModal = async function(threadId, clientName, staffName, subject) {
+    activeThreadId = threadId;
+    document.getElementById('tm-title').textContent = subject || clientName;
+    document.getElementById('tm-meta').textContent = `${clientName} · ${staffName}`;
+    document.getElementById('tm-msgs').innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
+    document.getElementById('tm-note-input').value = '';
+    document.getElementById('thread-modal-overlay').classList.add('open');
+
+    try {
+      const res = await fetch(`/api/messages/${threadId}`, { headers: authHeaders() });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      const msgs = (data.messages || []).filter(m => !m.is_internal);
+      renderThreadMessages(msgs, clientName, staffName);
+    } catch(e) {
+      document.getElementById('tm-msgs').innerHTML = `<p style="color:var(--red);font-size:0.85rem;">Error loading messages.</p>`;
+    }
+  };
+
+  function renderThreadMessages(msgs, clientName, staffName) {
+    const container = document.getElementById('tm-msgs');
+    if (!msgs.length) {
+      container.innerHTML = `<p style="color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem;">No messages yet.</p>`;
+      return;
+    }
+    container.innerHTML = msgs.map(m => {
+      const isClient = m.sender_type === 'client';
+      const senderLabel = isClient ? clientName : (m.sender_name || staffName);
+      return `<div>
+        <div class="tm-sender">${escHtml(senderLabel)}</div>
+        <div class="tm-bubble ${isClient ? 'client' : 'staff'}">${escHtml(m.body)}</div>
+        <div class="tm-time" style="text-align:${isClient ? 'right' : 'left'}">${fmtTime(m.created_at)}</div>
+      </div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  }
+
+  document.getElementById('tm-close').addEventListener('click', () => {
+    document.getElementById('thread-modal-overlay').classList.remove('open');
+    activeThreadId = null;
+  });
+  document.getElementById('thread-modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('thread-modal-overlay')) {
+      document.getElementById('thread-modal-overlay').classList.remove('open');
+      activeThreadId = null;
+    }
+  });
+
+  document.getElementById('tm-note-btn').addEventListener('click', async () => {
+    if (!activeThreadId) return;
+    const text = document.getElementById('tm-note-input').value.trim();
+    if (!text) return;
+    const btn = document.getElementById('tm-note-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res = await fetch(`/api/messages/${activeThreadId}/reply`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ body: text, is_internal: true }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      document.getElementById('tm-note-input').value = '';
+      showToast('Note added');
+    } catch(e) {
+      showToast('Error adding note', true);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Add Note';
+    }
+  });
+
+  // ── Month navigation ──────────────────────────────────────────────────────
+  document.getElementById('cal-prev').addEventListener('click', async () => {
+    currentMonth.setMonth(currentMonth.getMonth() - 1);
+    await loadCalendar(currentMonth);
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', async () => {
+    currentMonth.setMonth(currentMonth.getMonth() + 1);
+    await loadCalendar(currentMonth);
+    renderCalendar();
+  });
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function showToast(msg, isError) {
+    let t = document.querySelector('.toast');
+    if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.classList.add('show');
+    clearTimeout(t._to);
+    t._to = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ── HTML escape ───────────────────────────────────────────────────────────
+  function escHtml(s) {
+    if (!s) return '';
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  async function init() {
+    await loadCalendar(currentMonth);
+    renderCalendar();
+  }
+
+  init();
+})();
+</script>
+
+<%- include('partials/shell-close') %>

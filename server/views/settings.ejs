@@ -1,0 +1,1111 @@
+<%- include('partials/shell-top', { title: 'Settings', activeNav: 'settings' }) %>
+<%- include('partials/shell-globals') %>
+
+<style>
+  .settings-wrap { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .settings-section { margin-bottom: 2.5rem; }
+  .settings-section h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--text); }
+  .settings-section p { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+  .domain-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1rem; background: var(--charcoal); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.5rem; }
+  .domain-row .domain-name { font-size: 0.88rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .domain-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .dns-info { background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.2); border-radius: 6px; padding: 0.6rem 0.85rem; font-size: 0.78rem; color: var(--muted); margin-top: 0.35rem; margin-bottom: 0.25rem; font-family: monospace; word-break: break-all; }
+  .add-domain-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .add-domain-row .form-control { flex: 1; }
+  .instructions { background: var(--charcoal); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+  .instructions ol { padding-left: 1.25rem; }
+  .instructions li { margin-bottom: 0.35rem; }
+  .instructions code { background: rgba(255,255,255,0.07); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; color: var(--text); }
+  /* Settings tabs */
+  .settings-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+  .settings-tab-btn { background: none; border: none; border-bottom: 2px solid transparent; padding: 0.6rem 1rem; font-size: 0.88rem; font-weight: 600; color: var(--muted); cursor: pointer; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+  .settings-tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .settings-tab-btn:hover:not(.active) { color: var(--text); }
+  .settings-tab-panel { display: none; }
+  .settings-tab-panel.active { display: block; }
+  .archive-overview { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(240px,0.65fr); gap:1px; border:1px solid var(--border); background:var(--border); border-radius:8px; overflow:hidden; margin-bottom:2rem; }
+  .archive-overview-main, .archive-overview-status { background:var(--charcoal); padding:1.25rem; }
+  .archive-overview-main { display:flex; align-items:center; justify-content:space-between; gap:1.5rem; }
+  .archive-overview-main h2 { margin:0 0 0.35rem; font-size:1rem; }
+  .archive-overview-main p { margin:0; max-width:620px; line-height:1.55; }
+  .archive-open-btn { flex-shrink:0; display:inline-flex; align-items:center; gap:0.45rem; text-decoration:none; }
+  .archive-health-label { color:var(--muted); font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; }
+  .archive-health-value { color:var(--text); font-size:1.35rem; font-weight:800; margin-top:0.3rem; }
+  .archive-health-note { color:var(--muted); font-size:0.75rem; margin-top:0.2rem; }
+  .archive-company-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border); }
+  @media (max-width: 760px) {
+    .archive-overview { grid-template-columns:1fr; }
+    .archive-overview-main { align-items:flex-start; flex-direction:column; }
+  }
+  /* API token table */
+  .token-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 1rem; }
+  .token-table th { text-align: left; padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .token-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); vertical-align: middle; }
+  .token-table td:first-child { font-weight: 600; }
+  .token-copy-box { background: var(--charcoal); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.85rem; font-family: monospace; font-size: 0.78rem; color: var(--gold); word-break: break-all; margin: 0.75rem 0; }
+  .mcp-endpoint-card { background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; }
+  .mcp-endpoint-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.65rem; }
+  .mcp-endpoint-url { flex: 1; min-width: 0; background: var(--charcoal); border: 1px solid var(--border); border-radius: 6px; padding: 0.65rem 0.85rem; font-family: monospace; font-size: 0.82rem; color: var(--gold); word-break: break-all; }
+  @media (max-width: 560px) { .mcp-endpoint-row { align-items: stretch; flex-direction: column; } }
+  .token-warning { background: rgba(245,101,101,0.08); border: 1px solid rgba(245,101,101,0.25); border-radius: 6px; padding: 0.5rem 0.85rem; font-size: 0.8rem; color: #f56565; margin-bottom: 0.75rem; }
+  .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; max-width: 760px; }
+  .agent-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .agent-form-grid .full { grid-column: 1 / -1; }
+  .agent-status-pill { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem 0.6rem; font-size: 0.78rem; font-weight: 700; color: var(--muted); background: rgba(255,255,255,0.03); }
+  .agent-status-pill.connected { border-color: rgba(72,187,120,0.35); color: var(--green); background: rgba(72,187,120,0.08); }
+  .agent-status-pill.paused { border-color: rgba(201,168,76,0.35); color: var(--gold); background: rgba(201,168,76,0.08); }
+  .agent-status-pill.error, .agent-status-pill.disabled { border-color: rgba(245,101,101,0.35); color: var(--red); background: rgba(245,101,101,0.08); }
+  .agent-callback-token { background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 0.75rem; font-family: monospace; font-size: 0.78rem; color: var(--gold); word-break: break-all; margin-top: 0.75rem; }
+  @media (max-width: 720px) { .agent-form-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="settings-wrap">
+  <h1 style="font-size:1.35rem;font-weight:800;margin-bottom:1.5rem;">⚙️ Settings</h1>
+
+  <div class="settings-tabs">
+    <button class="settings-tab-btn active" onclick="switchTab('branding')">🎨 Firm Branding</button>
+    <button class="settings-tab-btn" onclick="switchTab('domains')">🌐 Custom Domains</button>
+    <button class="settings-tab-btn" onclick="switchTab('api-keys')">🔑 API Keys</button>
+    <button class="settings-tab-btn" onclick="switchTab('downloads')">⬇️ Downloads</button>
+    <button class="settings-tab-btn" onclick="switchTab('tax-season')">🗓 Tax Season</button>
+    <button class="settings-tab-btn" onclick="switchTab('document-notifications')">📄 Upload Routing</button>
+    <button class="settings-tab-btn" onclick="switchTab('integrations')">🔗 Integrations</button>
+    <button class="settings-tab-btn" onclick="switchTab('archives')">🗄️ Archives</button>
+  </div>
+
+  <!-- ============ FIRM BRANDING ============ -->
+  <div class="settings-tab-panel active" id="tab-branding">
+    <div class="settings-section">
+      <h2>🎨 Firm Branding</h2>
+      <p>Customize how your firm appears in the client portal, proposals, and emails.</p>
+
+      <div class="form-group">
+        <label for="client-login-url">Your branded client login link</label>
+        <input id="client-login-url" type="url" readonly style="width:100%" onclick="this.select()" />
+        <p>Share this link with clients. They sign in with their email and password.</p>
+      </div>
+
+      <!-- Logo -->
+      <div style="margin-bottom:2rem;">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">Firm Logo</div>
+        <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+          <div id="logo-preview" style="width:120px;height:60px;background:var(--charcoal);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+            <span style="color:var(--muted);font-size:0.75rem;">No logo</span>
+          </div>
+          <div>
+            <label class="btn btn-outline" style="cursor:pointer;display:inline-block;">
+              📁 Choose Logo
+              <input type="file" id="logo-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="uploadLogo(this)">
+            </label>
+            <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">PNG, JPG or WebP. Recommended: 400×200px or wider, transparent background.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:2rem;">
+        <label class="form-label" for="portal-icon-input">Portal Icon / Large Favicon</label>
+        <p>Upload a square brand mark for the login page and browser icon. Recommended: 512×512px, with a transparent background.</p>
+        <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+          <div id="portal-icon-preview" style="width:104px;height:104px;display:flex;align-items:center;justify-content:center;background:var(--charcoal);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+            <span style="color:var(--muted);font-size:0.75rem;">No icon</span>
+          </div>
+          <label class="btn btn-outline" style="cursor:pointer;">
+            Choose Portal Icon
+            <input type="file" id="portal-icon-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="uploadLogo(this, 'icon')">
+          </label>
+        </div>
+        <label class="form-label" for="b-portal-logo-style" style="display:block;margin-top:1rem;">Login Page Image</label>
+        <select id="b-portal-logo-style" class="form-control">
+          <option value="icon">Large portal icon above firm name</option>
+          <option value="logo">Wide firm logo above firm name</option>
+        </select>
+        <p>Keep the full firm logo for proposals and emails. The portal icon also appears in the client portal's browser tab.</p>
+      </div>
+
+      <!-- Firm info form -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+        <div>
+          <label class="form-label">Display Name</label>
+          <input type="text" class="form-control" id="b-display-name" placeholder="Smith & Co. CPAs">
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;">Shown in portal and proposals instead of your account name.</div>
+        </div>
+        <div>
+          <label class="form-label">Tagline</label>
+          <input type="text" class="form-control" id="b-tagline" placeholder="Retirement planning for life's next chapter">
+        </div>
+        <div>
+          <label class="form-label">Contact Email</label>
+          <input type="email" class="form-control" id="b-contact-email" placeholder="hello@yourfirm.com">
+        </div>
+        <div>
+          <label class="form-label">Phone</label>
+          <input type="tel" class="form-control" id="b-phone" placeholder="(239) 555-0100">
+        </div>
+        <div>
+          <label class="form-label">Website</label>
+          <input type="url" class="form-control" id="b-website" placeholder="https://yourfirm.com">
+        </div>
+        <div>
+          <label class="form-label">Brand Color</label>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="color" id="b-color-picker" value="#C9A84C" style="width:42px;height:38px;padding:2px;background:var(--charcoal);border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="text" class="form-control" id="b-primary-color" placeholder="#C9A84C" maxlength="7" style="flex:1;" oninput="syncColorPicker(this.value)">
+          </div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;">Used for portal buttons and accents.</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.5rem;">
+        <label class="form-label">Address</label>
+        <textarea class="form-control" id="b-address" rows="5" style="resize:vertical;min-height:100px;" placeholder="123 Main Street, Suite 200&#10;Springfield, IL 62701"></textarea>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;">Shown on proposals and tax letters.</div>
+      </div>
+
+      <button class="btn btn-gold" onclick="saveBranding()">Save Branding</button>
+    </div>
+  </div><!-- end tab-branding -->
+
+  <!-- ============ CUSTOM DOMAINS ============ -->
+  <div class="settings-tab-panel" id="tab-domains">
+    <div class="settings-section">
+    <h2>🌐 Custom Domains</h2>
+    <p>Let clients access proposals and the portal via your own domain (e.g. <code>my.yourfirm.com</code>) instead of the main app address.</p>
+
+    <div id="domains-list">
+      <div class="loading-state"><div class="loading-spinner"></div></div>
+    </div>
+
+    <div class="add-domain-row">
+      <input type="text" class="form-control" id="new-domain-input" placeholder="e.g. my.yourfirm.com" autocomplete="off">
+      <button class="btn btn-gold" onclick="addDomain()">+ Add Domain</button>
+    </div>
+
+    <div style="margin-top:1.5rem;">
+      <div class="card-title" style="margin-bottom:0.5rem;">📋 Setup Instructions</div>
+      <div class="instructions">
+        <ol>
+          <li><strong>Enter your domain below</strong> (e.g. <code>my.yourdomain.com</code>) — you'll get a TXT verification token and CNAME target.</li>
+          <li><strong>Log in to your DNS provider</strong> (GoDaddy, Cloudflare, Namecheap, etc.) and add both records shown — the TXT record to verify ownership, and the CNAME record to point traffic to DarkLion.</li>
+          <li><strong>In your Railway dashboard</strong>, go to your DarkLion service → Settings → Networking → Add Custom Domain → enter your domain. Railway will handle the SSL certificate automatically.</li>
+          <li><strong>Click "Check Verification"</strong> once your DNS records have propagated. Usually under 30 minutes.</li>
+          <li>Once verified, all proposal links for your firm will automatically use your custom domain. ✅</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  </div><!-- end tab-domains -->
+
+  <!-- ============ API KEYS ============ -->
+  <div class="settings-tab-panel" id="tab-api-keys">
+    <div class="settings-section">
+      <h2>🔑 API Keys</h2>
+      <p>API keys allow external agents and services to access DarkLion APIs. For Agent Work features like Inbox drafts and Team Chat replies, assign the key to the staff/agent identity it should act as. Store keys securely — they are shown only once.</p>
+
+      <div class="mcp-endpoint-card">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--text);">DarkLion MCP URL</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.25rem;line-height:1.45;">Use this URL when connecting DarkLion to an MCP client. The client will guide you through secure OAuth authorization.</div>
+        <div class="mcp-endpoint-row">
+          <code class="mcp-endpoint-url" id="mcp-endpoint-url"></code>
+          <script>document.getElementById('mcp-endpoint-url').textContent = location.origin + '/mcp';</script>
+          <button type="button" class="btn btn-outline" onclick="copyMcpEndpoint(this)">📋 Copy URL</button>
+        </div>
+      </div>
+
+      <button class="btn btn-gold" onclick="openNewTokenModal()" style="margin-bottom:1rem;">+ Generate New Key</button>
+
+      <div id="api-tokens-list">
+        <div class="loading-state"><div class="loading-spinner"></div></div>
+      </div>
+    </div>
+  </div><!-- end tab-api-keys -->
+
+  <!-- ============ DOWNLOADS ============ -->
+  <div class="settings-tab-panel" id="tab-downloads">
+    <div class="settings-section">
+      <h2>Desktop Apps</h2>
+      <p>Install desktop tools for your firm's staff.</p>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;display:flex;align-items:center;gap:1.5rem;">
+        <div style="font-size:2.5rem;line-height:1;">🦁</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:0.25rem;">DarkLion Drive</div>
+          <div style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Mount your DarkLion documents as a folder on your Windows desktop. Drag and drop files directly into client folders.</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.75rem;">Windows 10/11 only &nbsp;·&nbsp; WinFsp installed automatically.</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.75rem;background:rgba(255,255,255,0.04);border-radius:6px;padding:0.5rem 0.75rem;line-height:1.6;">
+            <strong style="color:var(--text);">Setup notes:</strong><br>
+            1. Install WinFsp <strong>before</strong> running the installer. If you see a WinFsp error, download it first: <a href="https://winfsp.dev/rel" target="_blank" style="color:var(--gold);">winfsp.dev/rel</a><br>
+            2. After connecting, look for the <strong>DarkLion Drive</strong> shortcut on your Desktop. On OneDrive-synced PCs it may appear in your user folder (<code style="color:var(--muted);">C:\Users\you\DarkLion Drive</code>) — drag it to your Desktop.
+          </div>
+          <a href="/downloads/darklion-drive/windows"
+             class="btn btn-gold"
+             style="display:inline-block;text-decoration:none;font-size:0.85rem;padding:0.5rem 1.25rem;">
+            ⬇️ Download DarkLion Drive v1.0.2
+          </a>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;display:flex;align-items:center;gap:1.5rem;margin-top:1rem;">
+        <div style="font-size:2.5rem;line-height:1;">💻</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:0.25rem;">DarkLion Desktop</div>
+          <div style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Run DarkLion as a full desktop workstation app with native notifications, taskbar unread badges, Team Chat alerts, deep links, and faster access to daily advisor workflows.</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.75rem;">Windows 10/11 &nbsp;·&nbsp; Native notifications &nbsp;·&nbsp; Taskbar unread badge &nbsp;·&nbsp; Team Chat + Messages alerts</div>
+          <a href="/downloads/darklion-desktop/windows"
+             class="btn btn-gold"
+             style="display:inline-block;text-decoration:none;font-size:0.85rem;padding:0.5rem 1.25rem;">
+            ⬇️ Download DarkLion Desktop v1.0.3
+          </a>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;display:flex;align-items:center;gap:1.5rem;margin-top:1rem;">
+        <div style="font-size:2.5rem;line-height:1;">🖨️</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:0.25rem;">DarkLion Print Agent</div>
+          <div style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Print and upload tax documents directly from Drake Software to DarkLion. Batch print jobs with automatic client matching.</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.75rem;">Windows only &nbsp;·&nbsp; Requires Drake Tax Software</div>
+          <a href="https://github.com/ChrisRagainTR/darklion/releases/download/printv1.0.1/DarkLionPrintAgent_Setup_1.0.1.exe"
+             class="btn btn-gold"
+             style="display:inline-block;text-decoration:none;font-size:0.85rem;padding:0.5rem 1.25rem;">
+            ⬇️ Download Print Agent v1.0.1
+          </a>
+        </div>
+      </div>
+    </div>
+  </div><!-- end tab-downloads -->
+
+  <!-- ============ TAX SEASON ============ -->
+  <div class="settings-tab-panel" id="tab-tax-season">
+    <div class="settings-section" style="max-width:560px;">
+      <h2>🗓 Tax Season</h2>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:1.5rem;">Set the active tax year for client organizers. When you flip this, the client portal immediately shows the new year's organizer. No deploy needed.</p>
+
+      <label class="form-label" style="display:block;margin-bottom:0.5rem;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">Active Tax Year</label>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <select id="active-tax-year-select" class="form-control" style="width:120px;">
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+        </select>
+        <button class="btn btn-gold btn-sm" onclick="saveTaxYear()">Save</button>
+        <span id="tax-year-save-msg" style="font-size:0.82rem;color:var(--green);display:none;">✓ Saved</span>
+        <span id="tax-year-err-msg" style="font-size:0.82rem;color:var(--red);display:none;"></span>
+      </div>
+
+      <div style="margin-top:1.25rem;padding:1rem 1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-size:0.82rem;color:var(--muted);line-height:1.8;">
+        <div style="font-weight:600;color:var(--text);margin-bottom:0.4rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">What this controls</div>
+        <div>→ Client portal Organizers tab shows the active year</div>
+        <div>→ New Drake organizer uploads default to this year</div>
+        <div>→ Prior years move to the "Prior Years" section on the client portal</div>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <a href="/tax-season" class="btn btn-gold" style="display:inline-flex;align-items:center;gap:0.5rem;">📋 Manage Client Organizer Visibility</a>
+      </div>
+    </div>
+  </div><!-- end tab-tax-season -->
+
+  <!-- ============ DOCUMENT UPLOAD NOTIFICATIONS ============ -->
+  <div class="settings-tab-panel" id="tab-document-notifications">
+    <div class="settings-section" style="max-width:760px;">
+      <h2>📄 Client Document Upload Routing</h2>
+      <p>Choose which staff members receive Inbox alerts for each client-uploaded folder. Organizer uploads follow Tax routing. Secure-message attachments remain regular Messages.</p>
+      <div style="display:grid;gap:1rem;margin:1.25rem 0;">
+        <div data-route-category="tax" style="padding:1rem;border:1px solid var(--border);border-radius:8px;"><strong>Tax</strong><span data-route-warning role="status" style="display:block;color:#f59e0b;font-size:0.76rem;margin-top:0.35rem;">⚠ No recipients configured — Tax uploads will not create alerts.</span><div class="route-staff-options" style="display:grid;gap:0.45rem;margin-top:0.65rem;"></div></div>
+        <div data-route-category="bookkeeping" style="padding:1rem;border:1px solid var(--border);border-radius:8px;"><strong>Bookkeeping</strong><span data-route-warning role="status" style="display:block;color:#f59e0b;font-size:0.76rem;margin-top:0.35rem;">⚠ No recipients configured — Bookkeeping uploads will not create alerts.</span><div class="route-staff-options" style="display:grid;gap:0.45rem;margin-top:0.65rem;"></div></div>
+        <div data-route-category="other" style="padding:1rem;border:1px solid var(--border);border-radius:8px;"><strong>Other</strong><span data-route-warning role="status" style="display:block;color:#f59e0b;font-size:0.76rem;margin-top:0.35rem;">⚠ No recipients configured — Other uploads will not create alerts.</span><div class="route-staff-options" style="display:grid;gap:0.45rem;margin-top:0.65rem;"></div></div>
+      </div>
+      <button class="btn btn-gold" onclick="saveDocumentNotificationRoutes()">Save Upload Routing</button>
+    </div>
+  </div><!-- end tab-document-notifications -->
+
+  <!-- ============ ARCHIVES ============ -->
+  <div class="settings-tab-panel" id="tab-archives">
+    <div class="settings-section">
+      <div class="archive-overview">
+        <div class="archive-overview-main">
+          <div>
+            <h2>Communications archive</h2>
+            <p>Generate a retained, checksum-verified export of client and internal communications for any date range.</p>
+          </div>
+          <a class="btn btn-gold archive-open-btn" href="/communication-exports">Open communications archive <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="archive-overview-status">
+          <div class="archive-health-label">Archive status</div>
+          <div class="archive-health-value" id="archive-health-value">Checking…</div>
+          <div class="archive-health-note" id="archive-health-note">Loading retained record count</div>
+        </div>
+      </div>
+
+      <div class="archive-company-heading">
+        <div>
+          <h2>Archived companies</h2>
+          <p style="margin:0;">Hidden company records can be restored at any time.</p>
+        </div>
+      </div>
+      <div id="archived-companies-wrap">
+        <div style="color:var(--muted);font-size:0.85rem;">Loading…</div>
+      </div>
+    </div>
+  </div><!-- end tab-archives -->
+
+  <!-- ============ INTEGRATIONS ============ -->
+  <div class="settings-tab-panel" id="tab-integrations">
+    <div class="settings-section" style="max-width:560px;">
+      <h2>🔗 Integrations</h2>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:1.5rem;">Connect third-party services to this firm.</p>
+
+      <div style="margin-bottom:1.5rem;">
+        <label class="form-label" style="display:block;margin-bottom:0.5rem;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">Blueleaf API Token</label>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:0.75rem;">Used for financial planning data sync. Leave blank to disable Blueleaf integration.</p>
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <input type="password" id="blueleaf-token-input" class="form-control" style="width:280px;" placeholder="Paste token to update…">
+          <button class="btn btn-gold btn-sm" onclick="saveBlueleafToken()">Save</button>
+          <button class="btn btn-sm" style="background:var(--charcoal);border:1px solid var(--border);color:var(--muted);" onclick="clearBlueleafToken()">Clear</button>
+        </div>
+        <div id="blueleaf-token-current" style="margin-top:0.5rem;font-size:0.8rem;color:var(--muted);"></div>
+        <span id="blueleaf-token-save-msg" style="font-size:0.82rem;color:var(--green);display:none;">✓ Saved</span>
+        <span id="blueleaf-token-err-msg" style="font-size:0.82rem;color:var(--red);display:none;"></span>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:1.25rem;margin-top:1.25rem;">
+        <label class="form-label" style="display:block;margin-bottom:0.5rem;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">LedgerHQ</label>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:0.75rem;">Connect LedgerHQ once for the firm, then map any DarkLion company to any LedgerHQ company from the Company → Bookkeeping tab.</p>
+        <div id="ledgerhq-status" style="font-size:0.84rem;color:var(--muted);margin-bottom:0.75rem;">Checking LedgerHQ…</div>
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-gold btn-sm" onclick="connectLedgerHq()" id="ledgerhq-connect-btn">Connect LedgerHQ</button>
+          <button class="btn btn-outline btn-sm" onclick="refreshLedgerHqCompanies()" id="ledgerhq-refresh-btn">Refresh Companies</button>
+          <button class="btn btn-sm" style="background:var(--charcoal);border:1px solid var(--border);color:var(--muted);" onclick="disconnectLedgerHq()" id="ledgerhq-disconnect-btn">Disconnect</button>
+        </div>
+        <div id="ledgerhq-company-count" style="margin-top:0.6rem;font-size:0.8rem;color:var(--muted);"></div>
+      </div>
+    </div>
+  </div><!-- end tab-integrations -->
+
+</div><!-- end settings-wrap -->
+
+<!-- New Token Modal -->
+<div class="modal-overlay" id="new-token-modal" style="display:none;" onclick="if(event.target===this)closeNewTokenModal()">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Generate API Key</div>
+      <button class="modal-close" onclick="closeNewTokenModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="new-token-form-area">
+        <label class="form-label">Key Name <span style="color:var(--muted);font-weight:400;">(e.g. Argus, Odin, Helly)</span></label>
+        <input type="text" class="form-control" id="new-token-name" placeholder="Argus" maxlength="60" autocomplete="off">
+        <label class="form-label" style="margin-top:0.9rem;">Staff / Agent Identity</label>
+        <select class="form-control" id="new-token-staff-user-id">
+          <option value="">Unassigned — not usable for Agent Work</option>
+        </select>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.35rem;line-height:1.45;">Agent Work uses this staff identity for Inbox visibility and Team Chat replies.</div>
+        <div style="margin-top:1rem;display:flex;gap:0.5rem;justify-content:flex-end;">
+          <button class="btn btn-outline" onclick="closeNewTokenModal()">Cancel</button>
+          <button class="btn btn-gold" onclick="submitNewToken()">Generate</button>
+        </div>
+      </div>
+      <div id="new-token-reveal-area" style="display:none;">
+        <div class="token-warning">⚠️ This token will not be shown again. Copy it now and store it somewhere safe.</div>
+        <div class="token-copy-box" id="new-token-value"></div>
+        <button class="btn btn-outline" style="width:100%;margin-bottom:0.75rem;" onclick="copyNewToken()">📋 Copy Token</button>
+        <button class="btn btn-gold" style="width:100%;" onclick="closeNewTokenModal()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/firms';
+let token = null;
+let staffUsers = [];
+
+async function apiFetch(path, opts = {}) {
+  if (!token) {
+    token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+    if (!token) { window.location = '/login'; return null; }
+  }
+  const url = path.startsWith('/api/') ? path : API + path;
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+  if (res.status === 401) { localStorage.removeItem('dl_token'); window.location = '/login'; return null; }
+  return res;
+}
+
+function toast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => el.className = 'toast', 3500);
+}
+
+async function loadDomains() {
+  const el = document.getElementById('domains-list');
+  if (el) el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
+  try {
+    const res = await apiFetch('/domains');
+    if (!res) return;
+    if (!res.ok) throw new Error('Failed to load custom domains');
+    const domains = await res.json();
+    renderDomains(Array.isArray(domains) ? domains : []);
+  } catch (err) {
+    if (el) el.innerHTML = `<div class="empty-state" style="padding:1.5rem 0;text-align:left;color:var(--red,#e05c5c);font-size:0.85rem;">❌ ${err.message || 'Failed to load custom domains'}</div>`;
+  }
+}
+
+function renderDomains(domains) {
+  const el = document.getElementById('domains-list');
+  if (!domains.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:1.5rem 0;text-align:left;color:var(--muted);font-size:0.85rem;">No custom domains yet. Add one below.</div>';
+    return;
+  }
+  el.innerHTML = domains.map(d => {
+    const verified = !!d.verified_at;
+    const badge = verified
+      ? '<span class="badge badge-green">✓ Verified</span>'
+      : '<span class="badge badge-orange">⏳ Pending</span>';
+    // Extract subdomain part for DNS name field (e.g. "my.yourfirm.com" -> "my")
+    const domainParts = d.domain.split('.');
+    const subName = domainParts.length > 2 ? domainParts[0] : '@';
+    // TXT record uses darklion name to avoid conflicting with the CNAME on same name
+    const txtName = subName === '@' ? 'darklion' : 'darklion';
+    const dnsBlock = !verified ? `
+      <div class="dns-info" style="margin-top:0.75rem;">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Step 1 — Add this DNS TXT record to verify ownership:</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem;">The TXT record uses a <code>darklion</code> prefix so it doesn't conflict with the CNAME record in Step 2.</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-bottom:0.75rem;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.04);">
+              <th style="text-align:left;padding:5px 10px;border:1px solid var(--border);color:var(--muted);font-weight:600;width:20%;">Type</th>
+              <th style="text-align:left;padding:5px 10px;border:1px solid var(--border);color:var(--muted);font-weight:600;width:20%;">Name</th>
+              <th style="text-align:left;padding:5px 10px;border:1px solid var(--border);color:var(--muted);font-weight:600;">Value</th>
+              <th style="width:40px;border:1px solid var(--border);"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 10px;border:1px solid var(--border);font-family:monospace;">TXT</td>
+              <td style="padding:6px 10px;border:1px solid var(--border);font-family:monospace;">${txtName}</td>
+              <td style="padding:6px 10px;border:1px solid var(--border);font-family:monospace;word-break:break-all;">${d.verification_token}</td>
+              <td style="padding:6px 10px;border:1px solid var(--border);text-align:center;">
+                <button class="btn btn-outline btn-xs" onclick="copyToken('${d.verification_token}', this)" title="Copy value">📋</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;font-weight:700;">Step 2 — Add this CNAME record to point your domain at DarkLion:</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-bottom:0.75rem;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.04);">
+              <th style="text-align:left;padding:5px 10px;border:1px solid var(--border);color:var(--muted);font-weight:600;width:20%;">Type</th>
+              <th style="text-align:left;padding:5px 10px;border:1px solid var(--border);color:var(--muted);font-weight:600;width:20%;">Name</th>
+              <th style="text-align:left;padding:5px 10px;border:1px solid var(--border);color:var(--muted);font-weight:600;">Value (points to)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 10px;border:1px solid var(--border);font-family:monospace;">CNAME</td>
+              <td style="padding:6px 10px;border:1px solid var(--border);font-family:monospace;">${subName}</td>
+              <td style="padding:6px 10px;border:1px solid var(--border);font-family:monospace;">${location.hostname}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem;">⚠️ DNS changes can take up to 24 hours to propagate, though usually under 30 minutes. After adding both records, click "Check Verification" below.</div>
+      </div>
+      <button class="btn btn-outline btn-xs" onclick="verifyDomain(${d.id}, this)">🔍 Check Verification</button>
+    ` : '';
+    return `
+      <div class="domain-row" id="domain-row-${d.id}">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="domain-name">${d.domain}</span>
+            ${badge}
+          </div>
+          ${dnsBlock}
+        </div>
+        <div class="domain-actions">
+          <button class="btn btn-danger btn-xs" onclick="deleteDomain(${d.id}, '${d.domain}')">🗑 Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function addDomain() {
+  const input = document.getElementById('new-domain-input');
+  const domain = input.value.trim();
+  if (!domain) return toast('Enter a domain name', true);
+  const res = await apiFetch('/domains', { method: 'POST', body: JSON.stringify({ domain }) });
+  if (!res) return;
+  if (res.ok) {
+    input.value = '';
+    toast('Domain added — add the DNS TXT record to verify');
+    loadDomains();
+  } else {
+    const err = await res.json();
+    toast(err.error || 'Failed to add domain', true);
+  }
+}
+
+function copyToken(token, btn) {
+  navigator.clipboard.writeText(token).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+  }).catch(() => toast('Copy failed — select and copy manually', true));
+}
+
+async function verifyDomain(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Checking…';
+  const res = await apiFetch(`/domains/${id}/verify`, { method: 'POST' });
+  if (!res) return;
+  const data = await res.json();
+  toast(data.message || (data.verified ? 'Verified!' : 'Not verified yet'), !data.verified);
+  if (data.verified) loadDomains();
+  else { btn.disabled = false; btn.textContent = '🔍 Check Verification'; }
+}
+
+async function deleteDomain(id, domain) {
+  if (!confirm(`Remove domain "${domain}"?`)) return;
+  const res = await apiFetch(`/domains/${id}`, { method: 'DELETE' });
+  if (!res) return;
+  if (res.ok) { toast('Domain removed'); loadDomains(); }
+  else { const err = await res.json(); toast(err.error || 'Failed to remove domain', true); }
+}
+
+// Settings tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${tab}'`));
+  });
+  document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `tab-${tab}`);
+  });
+  if (tab === 'api-keys') loadApiTokens();
+  if (tab === 'branding') loadBranding();
+  if (tab === 'domains') loadDomains();
+  if (tab === 'tax-season') loadTaxSeason();
+  if (tab === 'document-notifications') loadDocumentNotificationRoutes();
+  if (tab === 'integrations') loadIntegrations();
+  if (tab === 'archives') {
+    loadArchivedCompanies();
+    loadArchiveHealth();
+  }
+}
+
+async function loadDocumentNotificationRoutes() {
+  try {
+    const [staffRes, routesRes] = await Promise.all([
+      apiFetch('/api/staff'),
+      apiFetch('/api/document-notifications/routes'),
+    ]);
+    if (!staffRes?.ok || !routesRes?.ok) throw new Error('Failed to load upload routing');
+    const users = await staffRes.json();
+    const { routes = {} } = await routesRes.json();
+    for (const category of ['tax', 'bookkeeping', 'other']) {
+      const selected = new Set((routes[category] || []).map(item => Number(item.id)));
+      const warning = document.querySelector(`[data-route-category="${category}"] [data-route-warning]`);
+      warning.hidden = selected.size > 0;
+      const container = document.querySelector(`[data-route-category="${category}"] .route-staff-options`);
+      container.innerHTML = users.map(user => {
+        const label = user.display_name || user.name || user.email;
+        return `<label style="display:flex;align-items:center;gap:0.5rem;font-size:0.84rem;"><input type="checkbox" value="${user.id}"${selected.has(Number(user.id)) ? ' checked' : ''}> ${escHtml(label)}</label>`;
+      }).join('') || '<span style="color:var(--muted);">No active staff users.</span>';
+    }
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+async function saveDocumentNotificationRoutes() {
+  const routes = {};
+  for (const category of ['tax', 'bookkeeping', 'other']) {
+    routes[category] = [...document.querySelectorAll(`[data-route-category="${category}"] input:checked`)].map(input => Number(input.value));
+  }
+  const res = await apiFetch('/api/document-notifications/routes', {
+    method: 'PUT',
+    body: JSON.stringify({ routes }),
+  });
+  const data = await res?.json().catch(() => ({}));
+  if (!res?.ok) return toast(data.error || 'Failed to save upload routing', true);
+  toast('Upload routing saved ✓');
+  loadDocumentNotificationRoutes();
+}
+
+async function copyMcpEndpoint(button) {
+  const endpoint = document.getElementById('mcp-endpoint-url').textContent.trim();
+  try {
+    await navigator.clipboard.writeText(endpoint);
+    button.textContent = '✓ Copied';
+    setTimeout(() => { button.textContent = '📋 Copy URL'; }, 1500);
+  } catch (_) {
+    toast('Copy failed — select and copy the URL manually', true);
+  }
+}
+
+async function loadArchiveHealth() {
+  const value = document.getElementById('archive-health-value');
+  const note = document.getElementById('archive-health-note');
+  if (!value || !note) return;
+  try {
+    const res = await apiFetch('/api/communication-archive/health');
+    if (!res.ok) throw new Error('Archive status unavailable');
+    const data = await res.json();
+    value.textContent = data.pending_outbox ? 'Attention needed' : 'Active';
+    value.style.color = data.pending_outbox ? 'var(--orange)' : 'var(--green)';
+    note.textContent = `${Number(data.archived_events || 0).toLocaleString()} retained events · ${Number(data.pending_outbox || 0).toLocaleString()} pending`;
+  } catch (_) {
+    value.textContent = 'Unavailable';
+    value.style.color = 'var(--muted)';
+    note.textContent = 'Could not load archive status';
+  }
+}
+
+async function loadArchivedCompanies() {
+  const wrap = document.getElementById('archived-companies-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">Loading…</div>';
+  try {
+    const res = await apiFetch('/api/companies/archived');
+    if (!res.ok) throw new Error('Failed to load');
+    const data = await res.json();
+    const companies = data.companies || [];
+    if (!companies.length) {
+      wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1.5rem 0;">No archived companies.</div>';
+      return;
+    }
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    let html = '<table class="token-table"><thead><tr><th>Company</th><th>Entity Type</th><th>Relationship</th><th>Archived</th><th></th></tr></thead><tbody>';
+    for (const c of companies) {
+      const archivedDate = c.archived_at ? new Date(c.archived_at).toLocaleDateString() : '—';
+      html += `<tr>
+        <td style="font-weight:600;">${esc(c.company_name || '—')}</td>
+        <td style="color:var(--muted);font-size:0.82rem;">${esc(c.entity_type || '—')}</td>
+        <td style="color:var(--muted);font-size:0.82rem;">${esc(c.relationship_name || '—')}</td>
+        <td style="color:var(--muted);font-size:0.82rem;">${archivedDate}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="restoreCompany(${c.id})" style="font-size:0.78rem;">↩ Restore</button></td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:var(--red,#e05c5c);">❌ ${e.message}</div>`;
+  }
+}
+
+async function restoreCompany(id) {
+  if (!confirm('Restore this company? It will reappear in all views.')) return;
+  try {
+    const res = await apiFetch(`/api/companies/id/${id}/restore`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed');
+    loadArchivedCompanies();
+  } catch(e) {
+    alert('Restore failed: ' + e.message);
+  }
+}
+
+// WebDAV token functions removed — replaced by DarkLion Drive desktop app
+
+// ==================== BRANDING ====================
+async function loadBranding() {
+  const res = await apiFetch('/branding');
+  if (!res || !res.ok) return;
+  const b = await res.json();
+  document.getElementById('client-login-url').value = b.client_login_url || '';
+  document.getElementById('b-portal-logo-style').value = b.portal_logo_style || 'logo';
+  showBrandImage('portal-icon-preview', b.portal_icon_preview_url);
+
+  if (b.display_name) document.getElementById('b-display-name').value = b.display_name;
+  if (b.tagline)       document.getElementById('b-tagline').value = b.tagline;
+  if (b.contact_email) document.getElementById('b-contact-email').value = b.contact_email;
+  if (b.phone)         document.getElementById('b-phone').value = b.phone;
+  if (b.website)       document.getElementById('b-website').value = b.website;
+  if (b.address)       document.getElementById('b-address').value = b.address;
+  if (b.primary_color) {
+    document.getElementById('b-primary-color').value = b.primary_color;
+    document.getElementById('b-color-picker').value = b.primary_color;
+  }
+  if (b.logo_url) {
+    const preview = document.getElementById('logo-preview');
+    preview.innerHTML = `<img src="${b.logo_url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+  }
+}
+
+function syncColorPicker(hex) {
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    document.getElementById('b-color-picker').value = hex;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const picker = document.getElementById('b-color-picker');
+  if (picker) picker.addEventListener('input', () => {
+    document.getElementById('b-primary-color').value = picker.value;
+  });
+});
+
+function showBrandImage(id, url) {
+  const preview = document.getElementById(id);
+  preview.replaceChildren();
+  if (!url) { preview.textContent = 'No icon'; return; }
+  const image = document.createElement('img');
+  image.src = url;
+  image.alt = 'Brand image preview';
+  image.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+  preview.append(image);
+}
+
+async function uploadLogo(input, asset = 'logo') {
+  const file = input.files[0];
+  if (!file) return;
+
+  const form = new FormData();
+  form.append('logo', file);
+
+  const t = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  const res = await fetch('/firms/branding/' + asset, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + t },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return toast(err.error || 'Logo upload failed', true);
+  }
+
+  const data = await res.json();
+  showBrandImage(asset === 'icon' ? 'portal-icon-preview' : 'logo-preview', data.logo_url);
+  toast(asset === 'icon' ? 'Portal icon uploaded. Choose the login page image and save branding.' : 'Logo uploaded ✓');
+}
+
+async function saveBranding() {
+  const body = {
+    portal_logo_style: document.getElementById('b-portal-logo-style').value,
+    display_name:  document.getElementById('b-display-name').value.trim(),
+    tagline:       document.getElementById('b-tagline').value.trim(),
+    contact_email: document.getElementById('b-contact-email').value.trim(),
+    phone:         document.getElementById('b-phone').value.trim(),
+    website:       document.getElementById('b-website').value.trim(),
+    address:       document.getElementById('b-address').value.trim(),
+    primary_color: document.getElementById('b-primary-color').value.trim() || '#C9A84C',
+  };
+
+  const res = await apiFetch('/branding', { method: 'PUT', body: JSON.stringify(body) });
+  if (!res) return;
+  if (res.ok) {
+    toast('Branding saved ✓');
+  } else {
+    const err = await res.json().catch(() => ({}));
+    toast(err.error || 'Failed to save', true);
+  }
+}
+
+// ==================== API TOKENS ====================
+async function loadStaffUsers() {
+  const res = await apiFetch('/staff');
+  if (!res || !res.ok) {
+    staffUsers = [];
+    return;
+  }
+  const data = await res.json().catch(() => []);
+  staffUsers = Array.isArray(data) ? data : [];
+}
+
+function staffOptionsHtml(selectedId = '') {
+  return '<option value="">Unassigned</option>' + staffUsers.map(u => {
+    const label = u.display_name || u.name || u.email;
+    const selected = String(selectedId || '') === String(u.id) ? ' selected' : '';
+    return `<option value="${u.id}"${selected}>${escHtml(label)}${u.email ? ` — ${escHtml(u.email)}` : ''}</option>`;
+  }).join('');
+}
+
+async function loadApiTokens() {
+  if (!staffUsers.length) await loadStaffUsers();
+  const res = await apiFetch('/api-tokens');
+  const el = document.getElementById('api-tokens-list');
+  if (!res) return;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    el.innerHTML = `<div style="color:var(--red);font-size:0.85rem;padding:1rem 0;">${escHtml(err.error || 'Failed to load API keys')}</div>`;
+    return;
+  }
+  const data = await res.json().catch(() => []);
+  const tokens = Array.isArray(data) ? data : [];
+  if (!tokens.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">No API keys yet. Generate one above.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <table class="token-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Key Prefix</th>
+          <th>Staff / Agent Identity</th>
+          <th>Last Used</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tokens.map(t => `
+          <tr id="token-row-${t.id}">
+            <td>${escHtml(t.name)}</td>
+            <td><code style="font-family:monospace;font-size:0.82rem;">${escHtml(t.token_prefix)}</code></td>
+            <td>
+              <select class="form-control" style="min-width:190px;font-size:0.82rem;padding:0.35rem 0.5rem;" onchange="assignTokenStaff(${t.id}, this.value)">
+                ${staffOptionsHtml(t.staff_user_id || '')}
+              </select>
+            </td>
+            <td style="color:var(--muted);">${t.last_used_at ? new Date(t.last_used_at).toLocaleDateString() : 'Never'}</td>
+            <td style="color:var(--muted);">${new Date(t.created_at).toLocaleDateString()}</td>
+            <td><button class="btn btn-danger btn-xs" onclick="revokeToken(${t.id})">Revoke</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openNewTokenModal() {
+  document.getElementById('new-token-name').value = '';
+  const staffSelect = document.getElementById('new-token-staff-user-id');
+  if (staffSelect) {
+    if (!staffUsers.length) loadStaffUsers().then(() => { staffSelect.innerHTML = staffOptionsHtml(''); });
+    staffSelect.innerHTML = staffOptionsHtml('');
+  }
+  document.getElementById('new-token-form-area').style.display = '';
+  document.getElementById('new-token-reveal-area').style.display = 'none';
+  document.getElementById('new-token-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('new-token-name').focus(), 50);
+}
+
+function closeNewTokenModal() {
+  document.getElementById('new-token-modal').style.display = 'none';
+  loadApiTokens();
+}
+
+async function submitNewToken() {
+  const name = document.getElementById('new-token-name').value.trim();
+  const staffUserId = document.getElementById('new-token-staff-user-id').value || null;
+  if (!name) return toast('Enter a name for this key', true);
+  const res = await apiFetch('/api-tokens', { method: 'POST', body: JSON.stringify({ name, staff_user_id: staffUserId }) });
+  if (!res) return;
+  if (!res.ok) { const err = await res.json(); return toast(err.error || 'Failed to create token', true); }
+  const data = await res.json();
+  document.getElementById('new-token-value').textContent = data.token;
+  document.getElementById('new-token-form-area').style.display = 'none';
+  document.getElementById('new-token-reveal-area').style.display = '';
+}
+
+function copyNewToken() {
+  const val = document.getElementById('new-token-value').textContent;
+  navigator.clipboard.writeText(val).then(() => toast('Token copied!')).catch(() => toast('Copy failed', true));
+}
+
+async function assignTokenStaff(id, staffUserId) {
+  const res = await apiFetch(`/api-tokens/${id}`, { method: 'PATCH', body: JSON.stringify({ staff_user_id: staffUserId || null }) });
+  if (!res) return;
+  if (res.ok) toast(staffUserId ? 'API key identity updated' : 'API key unassigned');
+  else { const err = await res.json().catch(() => ({})); toast(err.error || 'Failed to update key identity', true); loadApiTokens(); }
+}
+
+async function revokeToken(id) {
+  if (!confirm('Revoke this API key? Any integrations using it will stop working immediately.')) return;
+  const res = await apiFetch(`/api-tokens/${id}`, { method: 'DELETE' });
+  if (!res) return;
+  if (res.ok) { toast('API key revoked'); loadApiTokens(); }
+  else { const err = await res.json(); toast(err.error || 'Failed to revoke key', true); }
+}
+
+// ==================== TAX SEASON ====================
+async function loadTaxSeason() {
+  const res = await apiFetch('/tax-season');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  const sel = document.getElementById('active-tax-year-select');
+  if (sel && data.active_tax_year) sel.value = data.active_tax_year;
+}
+
+async function saveTaxYear() {
+  const sel = document.getElementById('active-tax-year-select');
+  const saveMsg = document.getElementById('tax-year-save-msg');
+  const errMsg = document.getElementById('tax-year-err-msg');
+  saveMsg.style.display = 'none';
+  errMsg.style.display = 'none';
+
+  const res = await apiFetch('/tax-season', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active_tax_year: sel.value }),
+  });
+  if (!res) return;
+  if (res.ok) {
+    saveMsg.style.display = '';
+    setTimeout(() => saveMsg.style.display = 'none', 3000);
+  } else {
+    const d = await res.json();
+    errMsg.textContent = d.error || 'Failed to save';
+    errMsg.style.display = '';
+  }
+}
+
+
+// ==================== INTEGRATIONS ====================
+async function loadIntegrations() {
+  const res = await apiFetch('/integrations');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  const current = document.getElementById('blueleaf-token-current');
+  if (current) {
+    current.textContent = data.blueleaf_api_token
+      ? `Current token: ${data.blueleaf_api_token}`
+      : 'No token set';
+  }
+  loadLedgerHqStatus();
+}
+
+async function loadLedgerHqStatus() {
+  const statusEl = document.getElementById('ledgerhq-status');
+  const countEl = document.getElementById('ledgerhq-company-count');
+  const connectBtn = document.getElementById('ledgerhq-connect-btn');
+  const disconnectBtn = document.getElementById('ledgerhq-disconnect-btn');
+  const refreshBtn = document.getElementById('ledgerhq-refresh-btn');
+  if (!statusEl) return;
+  try {
+    const res = await apiFetch('/api/ledgerhq/status');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load LedgerHQ status');
+    if (data.connected) {
+      statusEl.innerHTML = '<span class="badge badge-green">Firm Connected</span> <span style="margin-left:0.4rem;">LedgerHQ is connected for this firm.</span>';
+      if (connectBtn) connectBtn.textContent = 'Reconnect LedgerHQ';
+      if (disconnectBtn) disconnectBtn.style.display = '';
+      if (refreshBtn) refreshBtn.style.display = '';
+      refreshLedgerHqCompanies(false);
+    } else {
+      statusEl.innerHTML = '<span class="badge badge-orange">Not Connected</span> <span style="margin-left:0.4rem;">Connect once to choose from all LedgerHQ companies.</span>';
+      if (data.last_error) statusEl.textContent = data.last_error;
+      if (connectBtn) connectBtn.textContent = data.status === 'error' ? 'Reconnect LedgerHQ' : 'Connect LedgerHQ';
+      if (disconnectBtn) disconnectBtn.style.display = 'none';
+      if (refreshBtn) refreshBtn.style.display = 'none';
+      if (countEl) countEl.textContent = '';
+    }
+  } catch(e) {
+    statusEl.textContent = e.message;
+    statusEl.style.color = 'var(--red)';
+  }
+}
+
+async function connectLedgerHq() {
+  try {
+    const res = await apiFetch('/api/ledgerhq/connect/start', {
+      method: 'POST',
+      body: JSON.stringify({ returnTo: '/settings?tab=integrations' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to start LedgerHQ connection');
+    window.location.href = data.authorizationUrl;
+  } catch(e) {
+    window._shellToast(e.message, 'error');
+  }
+}
+
+async function disconnectLedgerHq() {
+  if (!confirm('Disconnect LedgerHQ for this firm? Existing mapped close packages stay in DarkLion, but new LedgerHQ reports will not run until reconnecting.')) return;
+  try {
+    const res = await apiFetch('/api/ledgerhq/disconnect', { method: 'POST', body: '{}' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to disconnect LedgerHQ');
+    window._shellToast('LedgerHQ disconnected', 'success');
+    loadLedgerHqStatus();
+  } catch(e) {
+    window._shellToast(e.message, 'error');
+  }
+}
+
+async function refreshLedgerHqCompanies(showToast = true) {
+  const countEl = document.getElementById('ledgerhq-company-count');
+  if (countEl) countEl.textContent = 'Loading LedgerHQ companies…';
+  try {
+    const res = await apiFetch('/api/ledgerhq/companies');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load LedgerHQ companies');
+    const count = (data.companies || []).length;
+    if (countEl) countEl.textContent = count ? `${count} LedgerHQ compan${count === 1 ? 'y' : 'ies'} available to map.` : 'No LedgerHQ companies returned.';
+    if (showToast) window._shellToast('LedgerHQ companies refreshed', 'success');
+  } catch(e) {
+    if (countEl) countEl.textContent = e.message;
+    if (showToast) window._shellToast(e.message, 'error');
+  }
+}
+
+async function saveBlueleafToken() {
+  const input = document.getElementById('blueleaf-token-input');
+  const saveMsg = document.getElementById('blueleaf-token-save-msg');
+  const errMsg = document.getElementById('blueleaf-token-err-msg');
+  saveMsg.style.display = 'none';
+  errMsg.style.display = 'none';
+
+  const res = await apiFetch('/integrations', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blueleaf_api_token: input.value.trim() }),
+  });
+  if (!res) return;
+  if (res.ok) {
+    input.value = '';
+    window._shellToast('Blueleaf token saved ✓', 'success');
+    loadIntegrations();
+  } else {
+    const d = await res.json().catch(() => ({}));
+    window._shellToast(d.error || 'Failed to save token', 'error');
+  }
+}
+
+async function clearBlueleafToken() {
+  if (!confirm('Remove the Blueleaf API token? Blueleaf sync will be disabled for this firm.')) return;
+  const saveMsg = document.getElementById('blueleaf-token-save-msg');
+  const errMsg = document.getElementById('blueleaf-token-err-msg');
+  saveMsg.style.display = 'none';
+  errMsg.style.display = 'none';
+
+  const res = await apiFetch('/integrations', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blueleaf_api_token: '' }),
+  });
+  if (!res) return;
+  if (res.ok) {
+    window._shellToast('Blueleaf token removed', 'success');
+    loadIntegrations();
+  } else {
+    const d = await res.json().catch(() => ({}));
+    window._shellToast(d.error || 'Failed to clear token', 'error');
+  }
+}
+
+// Init — branding is default tab.
+const initialParams = new URLSearchParams(window.location.search);
+const initialTab = initialParams.get('tab');
+if (initialTab) switchTab(initialTab);
+else loadBranding();
+if (initialParams.get('ledgerhq') === 'connected') {
+  window._shellToast('LedgerHQ connected for this firm', 'success');
+}
+if (initialParams.get('ledgerhq') === 'error') {
+  window._shellToast(initialParams.get('message') || 'LedgerHQ connection failed', 'error');
+}
+loadStaffUsers().then(loadApiTokens);
+</script>
+
+<%- include('partials/shell-close') %>

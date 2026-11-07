@@ -1,0 +1,314 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  /* ── CALENDAR HEATMAP ── */
+  .cal-heatmap {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;
+    padding: 1.5rem;
+  }
+  .cal-hm-day {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 0.5rem; min-height: 72px; display: flex; flex-direction: column;
+    gap: 0.3rem; cursor: default; transition: border-color 0.15s;
+  }
+  .cal-hm-day.has-items { cursor: pointer; }
+  .cal-hm-day.has-items:hover { border-color: var(--gold); }
+  .cal-hm-day.all-retrieved { border-color: rgba(62,207,142,0.4); background: rgba(62,207,142,0.05); }
+  .cal-hm-day.mixed { border-color: rgba(237,137,54,0.4); background: rgba(237,137,54,0.04); }
+  .cal-hm-day.all-pending { border-color: rgba(201,168,76,0.3); }
+  .cal-hm-num { font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+  .cal-hm-day.has-items .cal-hm-num { color: var(--text); }
+  .cal-hm-badges { display: flex; flex-direction: column; gap: 0.15rem; margin-top: auto; }
+  .cal-hm-badge { font-size: 0.7rem; }
+
+  /* ── PROGRESS BAR ── */
+  .cal-progress-wrap { background: var(--card); border-radius: 4px; height: 6px; overflow: hidden; }
+  .cal-progress-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.4s; }
+
+  /* ── STAT CARD VALUES ── */
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+  .stat-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.4rem; }
+  .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--text); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.orange { color: var(--orange); }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; padding: 0 1.5rem; margin-bottom: 1rem; }
+
+  /* ── MONTH NAV ── */
+  .cal-header { display: flex; align-items: center; gap: 0.75rem; padding: 1.25rem 1.5rem 0; }
+  .cal-month-label { font-size: 1.1rem; font-weight: 800; min-width: 160px; }
+
+  /* ── DAY DRAWER ── */
+  .day-drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 410; }
+  .day-drawer-overlay.open { display: block; }
+  .day-drawer {
+    position: fixed; top: 0; right: -420px; bottom: 0; width: 400px;
+    background: var(--shell); border-left: 1px solid var(--border);
+    z-index: 420; display: flex; flex-direction: column;
+    transition: right 0.25s ease;
+  }
+  .day-drawer.open { right: 0; }
+  .day-drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .day-drawer-title { font-size: 1rem; font-weight: 700; color: var(--gold); }
+  .day-drawer-close { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 0.1rem 0.3rem; line-height: 1; }
+  .day-drawer-close:hover { color: var(--text); }
+  .day-drawer-progress { padding: 0.75rem 1.2rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .day-drawer-prog-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.4rem; }
+  .day-drawer-prog-bar { background: var(--card); border-radius: 4px; height: 6px; overflow: hidden; }
+  .day-drawer-prog-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.3s; }
+  .day-drawer-body { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+  .day-drawer-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.65rem 1.2rem; border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+  .day-drawer-row:last-child { border-bottom: none; }
+  .day-drawer-row.retrieved { opacity: 0.6; }
+  .day-drawer-row:hover { background: rgba(201,168,76,0.04); }
+  .dd-row-info { flex: 1; min-width: 0; }
+  .dd-row-company { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dd-row-account { font-size: 0.75rem; color: var(--muted); }
+  .dd-row-method { font-size: 0.7rem; color: var(--muted); background: rgba(255,255,255,0.06); padding: 0.15rem 0.4rem; border-radius: 4px; flex-shrink: 0; }
+  .dd-row-action { flex-shrink: 0; }
+  .btn-dd-retrieve { background: transparent; border: 1px solid var(--green); color: var(--green); border-radius: 5px; padding: 0.25rem 0.6rem; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+  .btn-dd-retrieve:hover { background: var(--green); color: var(--navy); }
+  .dd-retrieved-date { font-size: 0.72rem; color: var(--green); }
+</style>
+
+<main class="main">
+
+  <!-- Month nav -->
+  <div class="cal-header">
+    <button class="btn btn-outline btn-sm" onclick="calChangeMonth(-1)">← Prev</button>
+    <span id="cal-month-display" class="cal-month-label"></span>
+    <button class="btn btn-outline btn-sm" onclick="calChangeMonth(1)">Next →</button>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="cal-stats" style="display:none; margin-top:1.25rem;">
+    <div class="stats-grid" id="cal-stats-grid"></div>
+    <div style="padding: 0 1.5rem;">
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.25rem;" id="cal-pct-label"></div>
+      <div class="cal-progress-wrap"><div class="cal-progress-fill" id="cal-progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Heatmap body -->
+  <div id="stmt-calendar-body" style="margin-top:1rem;">
+    <div style="text-align:center;padding:3rem;color:var(--muted);">Loading calendar…</div>
+  </div>
+
+  <!-- Day drawer -->
+  <div class="day-drawer-overlay" id="day-drawer-overlay" onclick="closeDayDrawer()"></div>
+  <div class="day-drawer" id="day-drawer">
+    <div class="day-drawer-header">
+      <div class="day-drawer-title" id="day-drawer-title">Day —</div>
+      <button class="day-drawer-close" onclick="closeDayDrawer()">✕</button>
+    </div>
+    <div class="day-drawer-progress">
+      <div class="day-drawer-prog-label" id="day-drawer-prog-label">— of — retrieved</div>
+      <div class="day-drawer-prog-bar"><div class="day-drawer-prog-fill" id="day-drawer-prog-fill" style="width:0%"></div></div>
+    </div>
+    <div class="day-drawer-body" id="day-drawer-body">
+      <div style="padding:2rem;text-align:center;color:var(--muted);">Loading…</div>
+    </div>
+  </div>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+(function() {
+  const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  if (!token) { window.location.href = '/login'; return; }
+
+  function qs(sel) { return document.querySelector(sel); }
+
+  const METHOD_LABELS = {
+    qbo_pull: 'QBO Pull', portal: 'Portal', manual: 'Manual Download',
+    email: 'Email', client_upload: 'Client Upload', qbo: 'QBO', client: 'Client'
+  };
+
+  function stmtCurrentMonth() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  }
+
+  let calCurrentMonth = stmtCurrentMonth();
+  let calDaysData = {};
+
+  function calMonthLabel(ym) {
+    const [y, m] = ym.split('-');
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return (months[parseInt(m) - 1] || m) + ' ' + y;
+  }
+
+  window.calChangeMonth = function(delta) {
+    const [y, m] = calCurrentMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    calCurrentMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    qs('#cal-month-display').textContent = calMonthLabel(calCurrentMonth);
+    closeDayDrawer();
+    loadCalendarView();
+  };
+
+  async function loadCalendarView() {
+    const bodyEl = qs('#stmt-calendar-body');
+    const statsEl = qs('#cal-stats');
+    bodyEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">Loading calendar…</div>';
+    statsEl.style.display = 'none';
+
+    try {
+      const res = await apiFetch('/api/statements/calendar?month=' + encodeURIComponent(calCurrentMonth));
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const days = data.days || [];
+      calDaysData = {};
+      let total = 0, retrieved = 0;
+      for (const d of days) {
+        calDaysData[d.day] = d;
+        total += d.total;
+        retrieved += d.retrieved;
+      }
+      const pending = total - retrieved;
+      const pct = total > 0 ? Math.round(retrieved / total * 100) : 0;
+
+      if (total > 0) {
+        statsEl.style.display = '';
+        qs('#cal-stats-grid').innerHTML = `
+          <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value">${total}</div></div>
+          <div class="stat-card"><div class="stat-label">Retrieved</div><div class="stat-value green">${retrieved}</div></div>
+          <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value orange">${pending}</div></div>
+          <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value">${pct}%</div></div>
+        `;
+        qs('#cal-pct-label').textContent = `${retrieved} of ${total} retrieved (${pct}%)`;
+        qs('#cal-progress-fill').style.width = pct + '%';
+      }
+
+      let html = '<div class="cal-heatmap">';
+      for (let day = 1; day <= 31; day++) {
+        const d = calDaysData[day];
+        if (!d) {
+          html += `<div class="cal-hm-day"><div class="cal-hm-num" style="color:rgba(143,163,184,0.3);">${day}</div></div>`;
+        } else {
+          let colorClass = 'all-pending';
+          if (d.pending === 0) colorClass = 'all-retrieved';
+          else if (d.retrieved > 0) colorClass = 'mixed';
+          const pendBadge = d.pending > 0 ? `<span class="cal-hm-badge">🟠 ${d.pending}</span>` : '';
+          const retBadge  = d.retrieved > 0 ? `<span class="cal-hm-badge">✅ ${d.retrieved}</span>` : '';
+          html += `<div class="cal-hm-day has-items ${colorClass}" onclick="openDayDrawer(${day})" title="Day ${day}: ${d.total} statements">
+            <div class="cal-hm-num">${day}</div>
+            <div class="cal-hm-badges">${pendBadge}${retBadge}</div>
+          </div>`;
+        }
+      }
+      html += '</div>';
+      bodyEl.innerHTML = html;
+
+    } catch(e) {
+      bodyEl.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--red);">Failed: ${e.message}</div>`;
+    }
+  }
+
+  window.openDayDrawer = function(day) {
+    const d = calDaysData[day];
+    if (!d) return;
+    qs('#day-drawer-title').textContent = `Day ${day} — ${calMonthLabel(calCurrentMonth)}`;
+    updateDrawerProgress(d);
+    renderDrawerItems(d);
+    qs('#day-drawer-overlay').classList.add('open');
+    qs('#day-drawer').classList.add('open');
+  };
+
+  window.closeDayDrawer = function() {
+    qs('#day-drawer-overlay').classList.remove('open');
+    qs('#day-drawer').classList.remove('open');
+  };
+
+  function updateDrawerProgress(d) {
+    const pct = d.total > 0 ? Math.round(d.retrieved / d.total * 100) : 0;
+    qs('#day-drawer-prog-label').textContent = `${d.retrieved} of ${d.total} retrieved`;
+    qs('#day-drawer-prog-fill').style.width = pct + '%';
+  }
+
+  function renderDrawerItems(d) {
+    if (!d || !d.items || d.items.length === 0) {
+      qs('#day-drawer-body').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted);">No statements for this day.</div>';
+      return;
+    }
+    const sorted = [...d.items].sort((a, b) => (a.isRetrieved === b.isRetrieved ? 0 : a.isRetrieved ? 1 : -1));
+    let html = '';
+    for (const item of sorted) {
+      const methodLabel = METHOD_LABELS[item.method] || item.method || '—';
+      const retrievedDate = item.retrievedAt ? new Date(item.retrievedAt).toLocaleDateString() : '';
+      html += `<div class="day-drawer-row${item.isRetrieved ? ' retrieved' : ''}" id="ddr-${item.id}">
+        <div class="dd-row-info">
+          <div class="dd-row-company">${esc(item.companyName || item.realmId)}</div>
+          <div class="dd-row-account">${esc(item.accountName)}</div>
+        </div>
+        <span class="dd-row-method">${esc(methodLabel)}</span>
+        <div class="dd-row-action">
+          ${item.isRetrieved
+            ? `<span class="dd-retrieved-date">✅ ${retrievedDate}</span>`
+            : `<button class="btn-dd-retrieve" onclick="drawerMarkRetrieved('${item.realmId}',${item.id},${d.day})">✓</button>`
+          }
+        </div>
+      </div>`;
+    }
+    qs('#day-drawer-body').innerHTML = html;
+  }
+
+  window.drawerMarkRetrieved = async function(realmId, id, day) {
+    const btn = qs(`#ddr-${id} .btn-dd-retrieve`);
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const res = await apiFetch('/api/companies/' + realmId + '/statements/' + id + '/retrieve', { method: 'POST', body: '{}' });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const d = calDaysData[day];
+      if (d) {
+        const item = d.items.find(i => i.id === id);
+        if (item) { item.isRetrieved = true; item.retrievedAt = new Date().toISOString(); d.retrieved++; d.pending--; }
+        updateDrawerProgress(d);
+        renderDrawerItems(d);
+        // Refresh stats bar
+        let total = 0, retrieved = 0;
+        for (const dd of Object.values(calDaysData)) { total += dd.total; retrieved += dd.retrieved; }
+        const pct = total > 0 ? Math.round(retrieved / total * 100) : 0;
+        const pending = total - retrieved;
+        qs('#cal-stats-grid').innerHTML = `
+          <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value">${total}</div></div>
+          <div class="stat-card"><div class="stat-label">Retrieved</div><div class="stat-value green">${retrieved}</div></div>
+          <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value orange">${pending}</div></div>
+          <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value">${pct}%</div></div>
+        `;
+        qs('#cal-pct-label').textContent = `${retrieved} of ${total} retrieved (${pct}%)`;
+        qs('#cal-progress-fill').style.width = pct + '%';
+        // Re-render day tile
+        const tiles = document.querySelectorAll('.cal-hm-day');
+        for (const tile of tiles) {
+          if (tile.getAttribute('onclick') === `openDayDrawer(${day})`) {
+            let colorClass = d.pending === 0 ? 'all-retrieved' : d.retrieved > 0 ? 'mixed' : 'all-pending';
+            tile.className = `cal-hm-day has-items ${colorClass}`;
+            const pendBadge = d.pending > 0 ? `<span class="cal-hm-badge">🟠 ${d.pending}</span>` : '';
+            const retBadge  = d.retrieved > 0 ? `<span class="cal-hm-badge">✅ ${d.retrieved}</span>` : '';
+            tile.innerHTML = `<div class="cal-hm-num">${day}</div><div class="cal-hm-badges">${pendBadge}${retBadge}</div>`;
+            break;
+          }
+        }
+      }
+      toast('Marked as retrieved');
+    } catch(e) {
+      if (btn) { btn.disabled = false; btn.textContent = '✓'; }
+      toast('Failed: ' + e.message);
+    }
+  };
+
+  // Init
+  qs('#cal-month-display').textContent = calMonthLabel(calCurrentMonth);
+  loadCalendarView();
+})();
+</script>
+
+<%- include('partials/shell-close') %>

@@ -1,0 +1,31 @@
+node_modules/
+.env
+darklion.db
+darklion.db-shm
+darklion.db-wal
+certs/
+
+# OpenClaw/local agent context files generated during delegated runs
+.openclaw/
+AGENTS.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/
+
+# Desktop app generated output
+apps/desktop/dist/
+build/
+
+# Playwright generated output
+tests/report/
+tests/results/
+
+# Playwright generated auth state
+tests/.auth/
+
+# Local env files
+.env.*
+!.env.example

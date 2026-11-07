@@ -1,0 +1,13 @@
+{
+  "name": "darklion-drive-app",
+  "version": "1.0.2",
+  "description": "DarkLion Drive - mount your DarkLion documents as a Windows drive",
+  "author": "DarkLion AI",
+  "main": "main.js",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.2",
+    "form-data": "^4.0.0"
+  }
+}

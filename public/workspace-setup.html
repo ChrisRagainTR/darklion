@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Workspace setup · DarkLion</title>
+    <link rel="stylesheet" href="/public-offer.css" />
+    <script defer src="/public-offer.js"></script>
+    <script defer src="/workspace-setup.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="wordmark" href="/">DarkLion</a>
+      <nav>
+        <a href="/account">Account security</a
+        ><a href="/today">Open workspace</a>
+      </nav>
+    </header>
+    <main>
+      <span class="eyebrow">For your whole firm</span>
+      <h1 id="workspace-name">Make DarkLion yours.</h1>
+      <p class="lead">
+        Set your identity, bring your team, and organize your client work.
+      </p>
+      <div
+        id="status"
+        class="status"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+      <div class="grid">
+        <section class="card">
+          <span class="step">01 / FIRM IDENTITY</span>
+          <h2>Your firm's details</h2>
+          <label for="display-name">Display name</label
+          ><input id="display-name" maxlength="100" /><label for="contact-email"
+            >Contact email</label
+          ><input id="contact-email" type="email" maxlength="254" /><label
+            for="timezone"
+            >Timezone</label
+          ><select id="timezone">
+            <option>America/New_York</option>
+            <option>America/Chicago</option>
+            <option>America/Denver</option>
+            <option>America/Los_Angeles</option>
+            <option>America/Anchorage</option>
+            <option>Pacific/Honolulu</option>
+            <option>UTC</option></select
+          ><label for="color">Brand color</label
+          ><input id="color" type="color" /><label
+            ><input id="ai-enabled" type="checkbox" />Enable AI summaries and
+            document assistance</label
+          ><label>Portal contact order</label>
+          <p class="note">Move teammates up or down to choose how clients see your team.</p>
+          <div id="staff-order" class="rows"></div>
+          <button id="save">Save firm settings</button>
+        </section>
+        <section class="card">
+          <span class="step">02 / YOUR MEMBERSHIP</span>
+          <h2>Simple, firm-wide access.</h2>
+          <p class="price" id="price">
+            $19 <small>/ month + $5 per staff member</small>
+          </p>
+          <p id="billing-state">Loading membership…</p>
+          <p class="note">
+            Active owners and staff count as seats. Pending invitations and
+            client accounts do not. Staff changes are prorated.
+          </p>
+          <div class="actions">
+            <button id="checkout" hidden>Activate membership</button
+            ><button id="billing" class="secondary" hidden>
+              Manage billing</button
+            ><button id="sync-seats" class="secondary" hidden>
+              Refresh seats
+            </button>
+          </div>
+          <p class="note">
+            Manage invoices, payment details, and cancellation in billing. Your
+            existing records stay available if your subscription ends.
+          </p>
+        </section>
+        <section class="card">
+          <span class="step">03 / YOUR PEOPLE</span>
+          <h2>Invite a teammate</h2>
+          <label for="invite-name">Name</label
+          ><input id="invite-name" autocomplete="name" /><label
+            for="invite-email"
+            >Email</label
+          ><input id="invite-email" type="email" autocomplete="email" /><label
+            for="invite-role"
+            >Role</label
+          ><select id="invite-role">
+            <option value="staff">Staff</option>
+            <option value="admin">Administrator</option></select
+          ><button id="invite">Create invitation</button>
+          <p id="invitation-link" class="note"></p>
+          <a href="/settings">Manage your team and integrations →</a>
+        </section>
+        <section class="card">
+          <span class="step">04 / YOUR CLIENTS</span>
+          <h2>Import your contacts</h2>
+          <p>
+            Bring relationships, people, and companies from a CSV. Existing
+            emails are skipped. Importing never sends invitations.
+          </p>
+          <button id="template" class="secondary">Download CSV template</button
+          ><label for="csv">Contact file (up to 500 contacts)</label
+          ><input id="csv" type="file" accept=".csv,text/csv" />
+          <div class="actions">
+            <button id="preview">Check file</button
+            ><button id="import" hidden>Import contacts</button>
+          </div>
+          <pre id="import-result" hidden></pre>
+        </section>
+        <section class="card">
+          <span class="step">05 / NOTIFICATIONS</span>
+          <h2>Route uploaded documents</h2>
+          <p>
+            Select a staff member for each category. With no selection, active
+            owners and administrators receive the notification.
+          </p>
+          <label for="route-tax">Tax documents</label
+          ><select id="route-tax"></select
+          ><label for="route-bookkeeping">Bookkeeping documents</label
+          ><select id="route-bookkeeping"></select
+          ><label for="route-other">Other documents</label
+          ><select id="route-other"></select
+          ><button id="save-routes">Save notification routing</button>
+        </section>
+        <section class="card wide">
+          <span class="step">06 / YOUR CLIENT BILLING</span>
+          <h2>Connect your Stripe revenue</h2>
+          <p>
+            This connection reads your client invoices and subscriptions. It is
+            separate from your DarkLion membership.
+          </p>
+          <div id="stripe-accounts" class="rows"></div>
+          <label for="stripe-name">Account code</label
+          ><input
+            id="stripe-name"
+            placeholder="firm-billing"
+            maxlength="40"
+          /><label for="stripe-label">Account label</label
+          ><input
+            id="stripe-label"
+            placeholder="Your firm"
+            maxlength="80"
+          /><label for="stripe-key"
+            >Restricted Stripe key with customer, subscription, and invoice read
+            access</label
+          ><input id="stripe-key" type="password" autocomplete="off" /><button
+            id="connect-stripe"
+          >
+            Connect Stripe account
+          </button>
+        </section>
+        <section class="card">
+          <span class="step">07 / DATA &amp; DEPARTURE</span>
+          <h2>Your firm owns its records.</h2>
+          <p>
+            Export your client directory and supported workspace records.
+            Document files remain downloadable from their client records.
+          </p>
+          <button id="export" class="secondary">
+            Download workspace records
+          </button>
+          <p class="note">
+            For full document transfer or account closure, submit a request from
+            <a href="/account">your account</a>. Retention requirements apply.
+          </p>
+          <div id="data-requests" class="rows"></div>
+        </section>
+        <section class="card wide">
+          <span class="step">08 / SERVICE STATUS</span>
+          <h2>AI and connected services</h2>
+          <p class="note">
+            Configuration status does not confirm provider availability.
+          </p>
+          <div id="service-status" class="rows"></div>
+          <h3>AI usage this month</h3>
+          <div id="ai-usage"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

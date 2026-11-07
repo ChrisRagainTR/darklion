@@ -1,0 +1,60 @@
+{
+  "name": "darklion-print-agent",
+  "version": "1.0.0",
+  "description": "DarkLion Print Agent — routes print jobs to DarkLion document management",
+  "author": "DarkLion AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChrisRagainTR/darklion.git"
+  },
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64"
+  },
+  "dependencies": {
+    "form-data": "^4.0.0",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.0",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "ai.darklion.printagent",
+    "productName": "DarkLion Print Agent",
+    "copyright": "Copyright © 2025 DarkLion AI",
+    "asar": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/.cache",
+      "!**/*.map",
+      "!dist/**",
+      "!out/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "DarkLionPrintAgent_Setup_${version}.exe",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
+      "runAfterFinish": true,
+      "installerSidebar": null,
+      "uninstallerSidebar": null
+    }
+  }
+}

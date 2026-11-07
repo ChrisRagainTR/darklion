@@ -1,0 +1,65 @@
+name: Local release checks
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local:
+    name: Local regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: darklion_bootstrap_test
+          POSTGRES_USER: synthetic
+          POSTGRES_PASSWORD: synthetic-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synthetic -d darklion_bootstrap_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Check startup and release script syntax
+        run: |
+          node --check server/index.js
+          node --check server/services/releaseHealth.js
+          node --check scripts/verify-release.js
+      - name: Verify fresh database and repeated initialization
+        run: node --test tests/integration/database-bootstrap.test.cjs
+        env:
+          DATABASE_BOOTSTRAP_TEST_URL: postgres://synthetic:synthetic-ci-only@127.0.0.1:5432/darklion_bootstrap_test
+      - name: Install browser for local portal fixtures
+        run: npx playwright install --with-deps chromium
+      - name: Test candidate code with local fixtures
+        run: npm run test:local
+      - name: Verify portal behavior with synthetic local responses
+        run: npm run test:portal:local
+      - name: Verify document and archive contracts without remote fixtures
+        run: npx playwright test --config tests/reliability/contracts.config.cjs
+      - name: Verify native public app source
+        run: |
+          npm --prefix mobile ci --no-audit --no-fund
+          npm run mobile:typecheck
+          cd mobile && EXPO_PUBLIC_APP_EDITION=public npx expo config --type public > /dev/null

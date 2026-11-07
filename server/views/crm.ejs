@@ -1,0 +1,1791 @@
+<%- include('partials/shell-top', {title: 'CRM', activeNav: 'relationships'}) %>
+
+<style>
+  /* ── Page tabs ── */
+  .page-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .page-tab { padding: 0.65rem 1.25rem; cursor: pointer; font-size: 0.88rem; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .page-tab:hover { color: var(--text); }
+  .page-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* ── Section header ── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .section-title { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+  .section-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+  /* ── Inline search ── */
+  .inline-search { padding: 0.4rem 0.75rem; background: var(--charcoal); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.84rem; outline: none; min-width: 200px; }
+  .inline-search:focus { border-color: var(--gold); }
+
+  /* ── Table ── */
+  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table thead tr { background: rgba(201,168,76,0.06); }
+  .data-table th { padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .data-table td { padding: 0.75rem 1rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr { cursor: pointer; transition: background 0.1s; }
+  .data-table tbody tr:hover { background: rgba(201,168,76,0.04); }
+
+  /* ── Content area ── */
+  .crm-content { padding: 1.5rem; }
+
+  /* ── Slide-in Panel ── */
+  .panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .panel-overlay.open { opacity: 1; pointer-events: all; }
+  .slide-panel { position: fixed; top: 0; right: -640px; width: 640px; max-width: 100vw; height: 100vh; background: var(--charcoal); border-left: 1px solid var(--border); z-index: 310; transition: right 0.25s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; }
+  .slide-panel.open { right: 0; }
+  .panel-header { padding: 1.2rem 1.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 1rem; background: rgba(15,25,35,0.5); flex-shrink: 0; }
+  .panel-header-content { flex: 1; min-width: 0; }
+  .panel-title { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+  .panel-subtitle { font-size: 0.82rem; color: var(--muted); }
+  .panel-close { background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; padding: 0.1rem 0.3rem; line-height: 1; flex-shrink: 0; }
+  .panel-close:hover { color: var(--text); }
+  .panel-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 1.5rem; flex-shrink: 0; }
+  .panel-tab { padding: 0.6rem 1rem; cursor: pointer; font-size: 0.83rem; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .panel-tab:hover { color: var(--text); }
+  .panel-tab.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; }
+  .panel-section { margin-bottom: 1.5rem; }
+  .panel-section-title { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.75rem; }
+
+  /* ── Info cards ── */
+  .info-card { background: rgba(15,25,35,0.5); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 0.75rem; }
+  .info-row { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.35rem; }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-label { font-size: 0.74rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; min-width: 80px; }
+  .info-val { font-size: 0.88rem; color: var(--text); overflow-wrap: anywhere; word-break: normal; }
+
+  /* ── Person list items ── */
+  .person-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .person-item:last-child { border-bottom: none; }
+  .person-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(201,168,76,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+  .person-info { flex: 1; min-width: 0; }
+  .person-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+  .person-meta { font-size: 0.76rem; color: var(--muted); }
+  .person-actions { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
+
+  /* ── Placeholder sections ── */
+  .placeholder-section { padding: 3rem; text-align: center; color: var(--muted); }
+  .placeholder-section .ph-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+  .placeholder-section .ph-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; opacity: 0.7; }
+  .placeholder-section .ph-desc { font-size: 0.85rem; color: var(--muted); }
+
+  /* ── Inline edit ── */
+  .inline-edit-wrap { display: flex; align-items: center; gap: 0.5rem; }
+  .inline-edit-link { color: var(--gold); font-size: 0.84rem; text-decoration: none; }
+  .inline-edit-link:hover { text-decoration: underline; }
+
+  /* ── Toast container (CRM custom toasts) ── */
+  .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; display: flex; flex-direction: column; gap: 0.5rem; }
+  .crm-toast { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 1rem; font-size: 0.84rem; color: var(--text); box-shadow: 0 4px 16px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 0.5rem; animation: slideIn 0.2s; min-width: 260px; max-width: 360px; }
+  .crm-toast.success { border-color: rgba(62,207,142,0.4); }
+  .crm-toast.error { border-color: rgba(245,101,101,0.4); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── Searchable select ── */
+  .searchable-select-wrap { position: relative; }
+  .searchable-select-options { position: absolute; top: 100%; left: 0; right: 0; z-index: 500; background: var(--card); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 220px; overflow-y: auto; display: none; }
+  .searchable-select-options.open { display: block; }
+  .ss-option { padding: 0.5rem 0.75rem; font-size: 0.85rem; cursor: pointer; }
+  .ss-option:hover { background: rgba(201,168,76,0.08); color: var(--gold); }
+  .ss-option.selected { color: var(--gold); font-weight: 600; }
+  .ss-empty { padding: 0.75rem; font-size: 0.82rem; color: var(--muted); text-align: center; }
+
+  /* ── Error / success msgs ── */
+  .error-msg { background: rgba(245,101,101,0.1); border: 1px solid rgba(245,101,101,0.25); border-radius: 6px; padding: 0.7rem 1rem; color: var(--red); font-size: 0.84rem; margin-bottom: 1rem; }
+  .success-msg { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.25); border-radius: 6px; padding: 0.7rem 1rem; color: var(--green); font-size: 0.84rem; margin-bottom: 1rem; }
+
+  /* ── Form overrides for modals ── */
+  .modal-body .form-control { background: var(--navy); }
+  .form-label .req { color: var(--red); margin-left: 2px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238fa3b8'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; background-color: var(--navy); padding-right: 2rem; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .slide-panel { width: 100vw; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<!-- ── Content ── -->
+<div class="crm-content">
+  <!-- Page tabs -->
+  <div class="page-tabs" id="page-tabs">
+    <div class="page-tab active" data-tab="relationships" onclick="switchTab('relationships',null)">👥 Relationships</div>
+    <div class="page-tab" data-tab="people" onclick="switchTab('people',null)">👤 People</div>
+    <div class="page-tab" data-tab="companies" onclick="switchTab('companies',null)">🏢 Companies</div>
+  </div>
+
+  <!-- ── Tab: Relationships ── -->
+  <div id="tab-relationships" class="tab-content" style="display:block;">
+    <div class="section-header">
+      <div class="section-title">Relationships</div>
+      <div class="section-actions">
+        <input type="text" class="inline-search" id="rel-search" placeholder="Filter…" oninput="filterRelationships(this.value)">
+        <button class="btn btn-gold btn-sm" onclick="openNewRelationship()">+ New Relationship</button>
+      </div>
+    </div>
+    <div id="rel-list-container">
+      <div class="loading-state"><div class="loading-spinner"></div><div>Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ── Tab: People ── -->
+  <div id="tab-people" class="tab-content" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">People</div>
+      <div class="section-actions">
+        <input type="text" class="inline-search" id="people-search" placeholder="Filter…" oninput="filterPeople(this.value)">
+        <button class="btn btn-gold btn-sm" onclick="openNewPerson()">+ New Person</button>
+      </div>
+    </div>
+    <div id="people-list-container">
+      <div class="loading-state"><div class="loading-spinner"></div><div>Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Companies ── -->
+  <div id="tab-companies" class="tab-content" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">Companies</div>
+      <div class="section-actions">
+        <input type="text" class="inline-search" id="co-search" placeholder="Filter…" oninput="filterCompanies(this.value)">
+        <button class="btn btn-gold btn-sm" onclick="openNewCompanyModal()">+ New Company</button>
+      </div>
+    </div>
+    <div id="companies-list-container">
+      <div class="loading-state"><div class="loading-spinner"></div><div>Loading…</div></div>
+    </div>
+  </div>
+</div><!-- /crm-content -->
+
+<!-- ── Panel Overlay ── -->
+<div class="panel-overlay" id="panel-overlay" onclick="closeAllPanels()"></div>
+
+<!-- ── Relationship Detail Panel ── -->
+<div class="slide-panel" id="rel-panel">
+  <div class="panel-header">
+    <div class="panel-header-content">
+      <div class="panel-title" id="rel-panel-title">Relationship</div>
+      <div class="panel-subtitle" id="rel-panel-sub"></div>
+    </div>
+    <button class="btn btn-outline btn-sm" id="rel-panel-edit-btn" onclick="editCurrentRelationship()">Edit</button>
+    <button class="panel-close" onclick="closePanel('rel-panel')">✕</button>
+  </div>
+  <div class="panel-tabs">
+    <div class="panel-tab active" data-ptab="rel-people" onclick="switchPanelTab('rel',this,'rel-people')">People</div>
+    <div class="panel-tab" data-ptab="rel-companies" onclick="switchPanelTab('rel',this,'rel-companies')">Companies</div>
+    <div class="panel-tab" data-ptab="rel-documents" onclick="switchPanelTab('rel',this,'rel-documents')">Documents</div>
+    <div class="panel-tab" data-ptab="rel-notes" onclick="switchPanelTab('rel',this,'rel-notes')">Notes</div>
+  </div>
+  <div class="panel-body">
+    <div id="rel-panel-content-rel-people">
+      <div class="section-header" style="margin-bottom:0.75rem;">
+        <div style="font-size:0.8rem;color:var(--muted);">People in this relationship</div>
+        <button class="btn btn-gold btn-xs" onclick="openNewPersonInRel()">+ Add Person</button>
+      </div>
+      <div id="rel-people-list"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+    </div>
+    <div id="rel-panel-content-rel-companies" style="display:none;">
+      <div id="rel-companies-list"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+    </div>
+    <div id="rel-panel-content-rel-documents" style="display:none;">
+      <div id="rel-docs-content"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+    </div>
+    <div id="rel-panel-content-rel-notes" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Internal Notes</label>
+        <textarea class="form-control" id="rel-notes-textarea" rows="6" placeholder="Add internal notes…"></textarea>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="saveRelationshipNotes()">Save Notes</button>
+      <span id="rel-notes-saved" style="display:none;color:var(--green);font-size:0.8rem;margin-left:0.5rem;">✓ Saved</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Person Detail Panel ── -->
+<div class="slide-panel" id="person-panel">
+  <div class="panel-header">
+    <div class="panel-header-content">
+      <div class="panel-title" id="person-panel-title">Person</div>
+      <div id="person-panel-badges" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem;"></div>
+      <div class="panel-subtitle" id="person-panel-sub"></div>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="editCurrentPerson()">Edit</button>
+    <button class="panel-close" onclick="closePanel('person-panel')">✕</button>
+  </div>
+  <div class="panel-tabs">
+    <div class="panel-tab active" data-ptab="p-overview" onclick="switchPanelTab('p',this,'p-overview')">Overview</div>
+    <div class="panel-tab" data-ptab="p-companies" onclick="switchPanelTab('p',this,'p-companies')">Companies</div>
+    <div class="panel-tab" data-ptab="p-documents" onclick="switchPanelTab('p',this,'p-documents')">Documents</div>
+    <div class="panel-tab" data-ptab="p-messages" onclick="switchPanelTab('p',this,'p-messages')">Messages</div>
+    <div class="panel-tab" data-ptab="p-pipeline" onclick="switchPanelTab('p',this,'p-pipeline')">Pipeline</div>
+  </div>
+  <div class="panel-body">
+    <div id="person-panel-content-p-overview">
+      <div id="p-overview-content"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+    </div>
+    <div id="person-panel-content-p-companies" style="display:none;">
+      <div class="section-header" style="margin-bottom:0.75rem;">
+        <div style="font-size:0.8rem;color:var(--muted);">Company access</div>
+        <button class="btn btn-gold btn-xs" onclick="openGrantAccess()">+ Grant Access</button>
+      </div>
+      <div id="p-companies-content"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+    </div>
+    <div id="person-panel-content-p-documents" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+        <div style="display:flex;gap:0.4rem;">
+          <button class="btn btn-sm" id="pdoc-tab-personal" onclick="switchDocSubTab('personal')" style="background:var(--gold);color:#000;font-weight:600;border:none;border-radius:6px;padding:0.3rem 0.75rem;cursor:pointer;font-size:0.8rem;">Personal</button>
+          <button class="btn btn-sm" id="pdoc-tab-bycompany" onclick="switchDocSubTab('bycompany')" style="background:transparent;color:var(--muted);font-weight:500;border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.75rem;cursor:pointer;font-size:0.8rem;">By Company</button>
+        </div>
+        <button class="btn btn-gold btn-xs" onclick="openUploadModal('person', currentPersonId)">+ Upload</button>
+      </div>
+      <div id="pdoc-personal-content"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+      <div id="pdoc-bycompany-content" style="display:none;"><div class="loading-state"><div class="loading-spinner"></div></div></div>
+    </div>
+    <div id="person-panel-content-p-messages" style="display:none;">
+      <div class="placeholder-section">
+        <div class="ph-icon">💬</div>
+        <div class="ph-title">Secure Messaging</div>
+        <div class="ph-desc">Secure messaging coming soon</div>
+      </div>
+    </div>
+    <div id="person-panel-content-p-pipeline" style="display:none;">
+      <div class="placeholder-section">
+        <div class="ph-icon">⚙️</div>
+        <div class="ph-title">Pipeline Jobs</div>
+        <div class="ph-desc">Pipelines coming soon</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Upload Document Modal ── -->
+<div class="modal-overlay hidden" id="upload-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">Upload Document</div>
+      <button class="modal-close" onclick="closeModal('upload-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="upload-form-error" class="error-msg" style="display:none;"></div>
+      <div id="upload-dropzone" style="border:2px dashed var(--border);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:1rem;"
+           onclick="document.getElementById('upload-file-input').click()"
+           ondragover="uploadDragOver(event)"
+           ondragleave="uploadDragLeave(event)"
+           ondrop="uploadDrop(event)">
+        <div id="upload-dropzone-text" style="color:var(--muted);font-size:0.9rem;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">📂</div>
+          <div>Drag & drop a file here, or <span style="color:var(--gold);text-decoration:underline;">click to browse</span></div>
+          <div style="font-size:0.78rem;margin-top:0.4rem;">Max 50 MB</div>
+        </div>
+        <div id="upload-file-name" style="display:none;color:var(--text);font-weight:600;font-size:0.9rem;"></div>
+      </div>
+      <input type="file" id="upload-file-input" style="display:none;" onchange="uploadFileSelected(this)">
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input type="text" class="form-control" id="upload-display-name" placeholder="Friendly name (auto-filled from filename)">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Year</label>
+          <input type="text" class="form-control" id="upload-year" placeholder="2024" maxlength="4">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Document Type</label>
+          <select class="form-control" id="upload-doc-type">
+            <option value="other">Other</option>
+            <option value="tax_return">Tax Return</option>
+            <option value="w2">W-2</option>
+            <option value="1099">1099</option>
+            <option value="engagement_letter">Engagement Letter</option>
+            <option value="organizer">Organizer</option>
+            <option value="statement">Statement</option>
+          </select>
+        </div>
+      </div>
+      <div id="upload-progress-wrap" style="display:none;margin-top:0.5rem;">
+        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden;">
+          <div id="upload-progress-bar" style="background:var(--gold);height:100%;width:0%;transition:width 0.3s;"></div>
+        </div>
+        <div id="upload-progress-label" style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem;text-align:center;">Uploading…</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('upload-modal')">Cancel</button>
+      <button class="btn btn-gold" id="upload-submit-btn" onclick="submitUpload()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Relationship Form Modal ── -->
+<div class="modal-overlay hidden" id="rel-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="rel-modal-title">New Relationship</div>
+      <button class="modal-close" onclick="closeModal('rel-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="rel-form-error" class="error-msg" style="display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Name <span class="req">*</span></label>
+        <input type="text" class="form-control" id="rel-form-name" placeholder="e.g. Smith Family">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Service Tier</label>
+          <select class="form-control" id="rel-form-tier">
+            <option value="">— Select —</option>
+            <option value="standard">Standard</option>
+            <option value="legacy_blueprint">Legacy Blueprint</option>
+            <option value="tax_only">Tax Only</option>
+            <option value="full_service">Full Service</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing Status</label>
+          <select class="form-control" id="rel-form-billing">
+            <option value="">— Select —</option>
+            <option value="active">Active</option>
+            <option value="past_due">Past Due</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="rel-form-notes" placeholder="Internal notes…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('rel-modal')">Cancel</button>
+      <button class="btn btn-gold" id="rel-form-submit" onclick="submitRelationshipForm()">Create Relationship</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Person Form Modal ── -->
+<div class="modal-overlay hidden" id="person-modal">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:720px;width:100%;display:flex;flex-direction:column;max-height:90vh;">
+    <div class="modal-header" style="flex-shrink:0;">
+      <div class="modal-title" id="person-modal-title">New Person</div>
+      <button class="modal-close" onclick="closeModal('person-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;flex:1;padding-right:0.25rem;">
+      <div id="person-form-error" class="error-msg" style="display:none;margin-bottom:0.75rem;"></div>
+
+      <!-- Relationship — full width (only shown for new person) -->
+      <div class="form-group" id="person-form-rel-wrap">
+        <label class="form-label">Relationship <span class="req">*</span></label>
+        <div class="searchable-select-wrap">
+          <input type="text" class="form-control" id="person-form-rel-search" placeholder="Search relationship…" oninput="searchableSelectFilter('rel',this.value)" onfocus="openSearchableSelect('rel')" autocomplete="off">
+          <input type="hidden" id="person-form-rel-id">
+          <div class="searchable-select-options" id="ss-rel-options"></div>
+        </div>
+      </div>
+
+      <!-- Two-column: personal info left, address right -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem;align-items:start;">
+        <!-- LEFT -->
+        <div>
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">Personal Info</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 0.75rem;">
+            <div class="form-group"><label class="form-label">First Name <span class="req">*</span></label><input type="text" class="form-control" id="person-form-fname" placeholder="First"></div>
+            <div class="form-group"><label class="form-label">Last Name <span class="req">*</span></label><input type="text" class="form-control" id="person-form-lname" placeholder="Last"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input type="email" class="form-control" id="person-form-email" placeholder="email@example.com"></div>
+          <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-control" id="person-form-phone" placeholder="(555) 000-0000"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 0.75rem;">
+            <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" class="form-control" id="person-form-dob"></div>
+            <div class="form-group"><label class="form-label">Billing Method</label>
+              <select class="form-control" id="person-form-billing">
+                <option value="">— Select —</option>
+                <option value="monthly_billing">Monthly Billing</option>
+                <option value="client_invoice">Client Invoice</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Filing Status</label>
+            <select class="form-control" id="person-form-filing" onchange="personFormFilingChanged(this.value)">
+              <option value="">— Select —</option>
+              <option value="single">Single</option>
+              <option value="mfj">Married Filing Jointly</option>
+              <option value="mfs">Married Filing Separately</option>
+              <option value="hoh">Head of Household</option>
+              <option value="qw">Qualifying Widow(er)</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Stanford Tax URL</label><input type="url" class="form-control" id="person-form-stanford" placeholder="https://…"></div>
+        </div>
+        <!-- RIGHT: address -->
+        <div>
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">Address</div>
+          <div class="form-group"><label class="form-label">Street Address</label><input type="text" class="form-control" id="person-form-addr1" placeholder="123 Main St"></div>
+          <div class="form-group"><label class="form-label">Line 2 <span style="color:var(--muted);font-weight:400;">(optional)</span></label><input type="text" class="form-control" id="person-form-addr2" placeholder="Apt, Suite, etc."></div>
+          <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" id="person-form-city" placeholder="Springfield"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 0.75rem;">
+            <div class="form-group"><label class="form-label">State</label><input type="text" class="form-control" id="person-form-state" placeholder="FL" maxlength="2"></div>
+            <div class="form-group"><label class="form-label">ZIP</label><input type="text" class="form-control" id="person-form-zip" placeholder="34108" maxlength="10"></div>
+          </div>
+          <div class="form-group" style="margin-top:0.5rem;"><label class="form-label">Notes</label><textarea class="form-control" id="person-form-notes" placeholder="Internal notes…" rows="3"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Spouse section — full width, shown only when MFJ/MFS -->
+      <div id="person-form-spouse-section" style="display:none;border-top:1px solid var(--border);padding-top:1rem;margin-top:0.25rem;">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">Spouse</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+          <div class="form-group"><label class="form-label">Spouse Name</label><input type="text" class="form-control" id="person-form-spouse-name" placeholder="Full name"></div>
+          <div class="form-group"><label class="form-label">Spouse Email</label><input type="email" class="form-control" id="person-form-spouse-email" placeholder="spouse@email.com"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions" style="flex-shrink:0;margin-top:1rem;">
+      <button class="btn btn-outline" onclick="closeModal('person-modal')">Cancel</button>
+      <button class="btn btn-gold" id="person-form-submit" onclick="submitPersonForm()">Create Person</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Grant Access Modal ── -->
+<div class="modal-overlay hidden" id="grant-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">Grant Company Access</div>
+      <button class="modal-close" onclick="closeModal('grant-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="grant-form-error" class="error-msg" style="display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Company</label>
+        <select class="form-control" id="grant-company-id">
+          <option value="">— Select company —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Access Level</label>
+          <select class="form-control" id="grant-access-level">
+            <option value="view">View</option>
+            <option value="full">Full</option>
+            <option value="sign">Sign</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ownership %</label>
+          <input type="number" class="form-control" id="grant-ownership" placeholder="0" min="0" max="100">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('grant-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="submitGrantAccess()">Grant Access</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── New Company Modal ── -->
+<div class="modal-overlay hidden" id="new-company-modal" onclick="if(event.target===this)closeModal('new-company-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">New Company</div>
+      <button class="modal-close" onclick="closeModal('new-company-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="new-co-error" class="error-msg" style="display:none;margin-bottom:0.75rem;"></div>
+      <div class="form-group"><label class="form-label">Company Name *</label><input type="text" class="form-control" id="new-co-name" placeholder="e.g. Smith Financial Inc"></div>
+      <div class="form-group"><label class="form-label">Relationship *</label><select class="form-control" id="new-co-rel"><option value="">Loading…</option></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+        <div class="form-group"><label class="form-label">Entity Type</label>
+          <select class="form-control" id="new-co-type">
+            <option value="s_corp">S Corp</option>
+            <option value="c_corp">C Corp</option>
+            <option value="partnership">Partnership</option>
+            <option value="sole_prop">Sole Prop</option>
+            <option value="trust">Trust</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Tax Year End</label><input type="text" class="form-control" id="new-co-tax-year-end" placeholder="12/31"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+        <div class="form-group"><label class="form-label">Billing Method</label>
+          <select class="form-control" id="new-co-billing">
+            <option value="">— Select —</option>
+            <option value="monthly_billing">Monthly Billing</option>
+            <option value="client_invoice">Client Invoice</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Bookkeeping Service</label>
+          <select class="form-control" id="new-co-bk">
+            <option value="none">None</option>
+            <option value="bank_feed">Bank Feed</option>
+            <option value="accrual">Accrual</option>
+            <option value="client_prepared">Client Prepared</option>
+          </select>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.25rem;">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">Address</div>
+        <div class="form-group"><label class="form-label">Street Address</label><input type="text" class="form-control" id="new-co-addr1" placeholder="123 Main St"></div>
+        <div class="form-group"><label class="form-label">Line 2 <span style="color:var(--muted);font-weight:400;">(optional)</span></label><input type="text" class="form-control" id="new-co-addr2" placeholder="Suite, Unit, etc."></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 0.75rem;">
+          <div class="form-group"><label class="form-label">City</label><input type="text" class="form-control" id="new-co-city" placeholder="Springfield"></div>
+          <div class="form-group"><label class="form-label">State</label><input type="text" class="form-control" id="new-co-state" placeholder="FL" maxlength="2"></div>
+          <div class="form-group"><label class="form-label">ZIP</label><input type="text" class="form-control" id="new-co-zip" placeholder="34108" maxlength="10"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('new-company-modal')">Cancel</button>
+      <button class="btn btn-gold" id="new-co-submit" onclick="submitNewCompany()">Create Company</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast container ── -->
+<div class="toast-container" id="toast-container"></div>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+// =====================================================================
+//  STATE
+// =====================================================================
+let allRelationships = [];
+let allPeople = [];
+let allCompanies = [];
+let relPage = 1, peoplePage = 1, companiesPage = 1;
+const PAGE_SIZE = 10;
+let relSort = { col: null, dir: 1 };
+let companiesSort = { col: null, dir: 1 };
+
+function sortList(list, col, dir) {
+  return [...list].sort((a, b) => {
+    let av = a[col], bv = b[col];
+    if (av == null) av = dir === 1 ? Infinity : -Infinity;
+    if (bv == null) bv = dir === 1 ? Infinity : -Infinity;
+    // Coerce numeric strings to numbers for proper numeric sort
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return dir * (an - bn);
+    if (typeof av === 'string') return dir * av.localeCompare(bv);
+    return dir * (av - bv);
+  });
+}
+
+function toggleSort(state, col) {
+  if (state.col === col) state.dir *= -1;
+  else { state.col = col; state.dir = 1; }
+}
+
+function sortArrow(state, col) {
+  if (state.col !== col) return '<span style="opacity:0.3;font-size:0.7rem;"> ⇅</span>';
+  return state.dir === 1 ? '<span style="font-size:0.7rem;"> ↑</span>' : '<span style="font-size:0.7rem;"> ↓</span>';
+}
+
+function exportCSV(headers, rows, filename) {
+  const escape = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function paginationBar(current, total, onPrev, onNext) {
+  if (total <= 1) return '';
+  return `<div style="display:flex;align-items:center;justify-content:center;gap:1rem;padding:0.75rem 0;font-size:0.84rem;color:var(--muted);">
+    <button class="btn btn-ghost btn-sm" ${current<=1?'disabled':''} onclick="${onPrev}" style="${current<=1?'opacity:0.4;cursor:default;':''}">← Prev</button>
+    <span>Page ${current} of ${total}</span>
+    <button class="btn btn-ghost btn-sm" ${current>=total?'disabled':''} onclick="${onNext}" style="${current>=total?'opacity:0.4;cursor:default;':''}">Next →</button>
+  </div>`;
+}
+let currentRelId = null;
+let currentPersonId = null;
+let editingRelId = null;
+let editingPersonId = null;
+
+// Searchable select state
+const ssData = { rel: [] };
+const ssFiltered = { rel: [] };
+
+// =====================================================================
+//  INIT
+// =====================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Honor ?tab= query param from sidebar links
+  const urlTab = new URLSearchParams(window.location.search).get('tab');
+  if (urlTab && ['relationships','people','companies'].includes(urlTab)) {
+    switchTab(urlTab, document.querySelector(`[data-tab="${urlTab}"]`));
+  }
+
+  // Show/hide spouse section when filing status changes
+  function personFormFilingChanged(val) {
+    document.getElementById('person-form-spouse-section').style.display = ['mfj','Married Filing Jointly','mfs','Married Filing Separately'].includes(val) ? '' : 'none';
+  }
+  document.getElementById('person-form-filing').addEventListener('change', function() {
+    personFormFilingChanged(this.value);
+  });
+
+  loadRelationships();
+  loadPeople();
+  loadCompanies();
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllPanels(); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.searchable-select-wrap')) {
+      document.querySelectorAll('.searchable-select-options.open').forEach(el => el.classList.remove('open'));
+    }
+  });
+});
+
+// =====================================================================
+//  TABS
+// =====================================================================
+function switchTab(tab, linkEl) {
+  document.querySelectorAll('#tab-relationships, #tab-people, #tab-companies').forEach(el => el.style.display = 'none');
+  document.getElementById('tab-' + tab).style.display = 'block';
+  document.querySelectorAll('.page-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+}
+
+// =====================================================================
+//  PANEL UTILS
+// =====================================================================
+function openPanel(id) {
+  document.getElementById('panel-overlay').classList.add('open');
+  document.getElementById(id).classList.add('open');
+}
+function closePanel(id) {
+  document.getElementById(id).classList.remove('open');
+  const anyOpen = document.querySelectorAll('.slide-panel.open').length > 0;
+  if (!anyOpen) document.getElementById('panel-overlay').classList.remove('open');
+}
+function closeAllPanels() {
+  document.querySelectorAll('.slide-panel').forEach(p => p.classList.remove('open'));
+  document.getElementById('panel-overlay').classList.remove('open');
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  el.classList.add('open');
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('open');
+  el.classList.add('hidden');
+}
+
+function switchPanelTab(prefix, el, tabId) {
+  const panel = el.closest('.slide-panel');
+  panel.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t === el));
+  panel.querySelectorAll('[id^="' + prefix + '-panel-content-"], [id^="person-panel-content-"]').forEach(c => {
+    c.style.display = c.id === prefix + '-panel-content-' + tabId ? '' : 'none';
+  });
+  if (tabId === 'rel-people') loadRelPeople();
+  if (tabId === 'rel-companies') loadRelCompanies();
+  if (tabId === 'rel-documents') loadRelDocuments();
+  if (tabId === 'p-overview') loadPersonOverview();
+  if (tabId === 'p-companies') loadPersonCompanies();
+  if (tabId === 'p-documents') loadPersonDocuments();
+}
+
+// =====================================================================
+//  TOAST (CRM custom — appends to #toast-container)
+// =====================================================================
+const toast = (msg, type = 'success') => {
+  const el = document.createElement('div');
+  el.className = `crm-toast ${type}`;
+  el.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+};
+
+// =====================================================================
+//  RELATIONSHIPS
+// =====================================================================
+async function loadRelationships() {
+  try {
+    const res = await apiFetch('/api/relationships');
+    allRelationships = await res.json();
+    renderRelationships(allRelationships);
+    ssData.rel = allRelationships.map(r => ({ id: r.id, label: r.name }));
+  } catch(e) {
+    document.getElementById('rel-list-container').innerHTML = `<div class="error-msg">Failed to load relationships.</div>`;
+  }
+}
+
+function renderRelationships(list) {
+  const c = document.getElementById('rel-list-container');
+  if (!list.length) {
+    c.innerHTML = `<div class="empty-state"><div style="font-size:2.5rem;margin-bottom:0.75rem;opacity:0.5;">👥</div><div>No relationships yet.</div></div>`;
+    return;
+  }
+  const sorted = relSort.col ? sortList(list, relSort.col, relSort.dir) : list;
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  relPage = Math.min(relPage, totalPages);
+  const page = sorted.slice((relPage-1)*PAGE_SIZE, relPage*PAGE_SIZE);
+  c.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+    <button class="btn btn-outline btn-sm" onclick="exportRelationshipsCSV()" style="font-size:0.78rem;">⇩ Export CSV</button>
+  </div>
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr>
+      <th style="cursor:pointer;" onclick="toggleSort(relSort,'name');renderRelationships(window._relFilteredList||allRelationships)">Name${sortArrow(relSort,'name')}</th><th>Primary Email</th><th>Primary Contact</th><th style="cursor:pointer;" onclick="toggleSort(relSort,'mrr');renderRelationships(window._relFilteredList||allRelationships)">Monthly Billing${sortArrow(relSort,'mrr')}</th><th>Billing</th><th>Actions</th>
+    </tr></thead>
+    <tbody>${page.map(r => `
+      <tr onclick="window.location.href='/crm/relationship/${r.id}'">
+        <td style="font-weight:600;">${esc(r.name)}${parseInt(r.unread_count||0)>0?` <span style="display:inline-flex;align-items:center;justify-content:center;background:#e74c3c;color:#fff;border-radius:999px;padding:0.1rem 0.45rem;font-size:0.65rem;font-weight:800;margin-left:0.35rem;">${r.unread_count}</span>`:''}
+          ${(r.primary_city||r.primary_state)?`<div style="font-size:0.74rem;font-weight:400;color:var(--muted);margin-top:0.15rem;">${[r.primary_city,r.primary_state].filter(Boolean).map(esc).join(', ')}</div>`:''}
+        </td>
+        <td style="color:var(--muted);font-size:0.84rem;">${r.primary_person_email ? esc(r.primary_person_email) : '—'}</td>
+        <td>${r.primary_person_name ? `<span style="color:var(--text);">${esc(r.primary_person_name)}</span>${parseInt(r.people_count||0)>1?`<span style="color:var(--muted);font-size:0.74rem;"> +${r.people_count-1}</span>`:''}` : '—'}</td>
+        <td>${r.mrr != null ? `<span style="color:var(--gold);font-weight:600;">$${parseFloat(r.mrr).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}<span style="font-size:0.74rem;font-weight:400;color:var(--muted);">/mo</span></span>` : '<span style="color:var(--muted);font-size:0.82rem;">—</span>'}</td>
+        <td>${billingBadge(r.billing_status)}</td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn btn-ghost btn-xs" onclick="openEditRelationship(${r.id})">Edit</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteRelationship(${r.id})">Delete</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  ${paginationBar(relPage, totalPages, `relPage--;renderRelationships(window._relFilteredList||allRelationships)`, `relPage++;renderRelationships(window._relFilteredList||allRelationships)`)}`;
+}
+
+function exportRelationshipsCSV() {
+  const list = window._relFilteredList || allRelationships;
+  const sorted = relSort.col ? sortList(list, relSort.col, relSort.dir) : list;
+  exportCSV(
+    ['Name', 'Primary Email', 'Primary Contact', 'Location', 'Monthly Billing', 'Billing Status'],
+    sorted.map(r => [
+      r.name,
+      r.primary_person_email || '',
+      r.primary_person_name || '',
+      [r.primary_city, r.primary_state].filter(Boolean).join(', '),
+      r.mrr != null ? r.mrr : '',
+      r.billing_status || ''
+    ]),
+    'relationships.csv'
+  );
+}
+
+function filterRelationships(q) {
+  const f = q.toLowerCase();
+  const filtered = allRelationships.filter(r =>
+    (r.name||'').toLowerCase().includes(f) ||
+    (r.service_tier||'').toLowerCase().includes(f) ||
+    (r.billing_status||'').toLowerCase().includes(f)
+  );
+  window._relFilteredList = filtered;
+  relPage = 1;
+  renderRelationships(filtered);
+}
+
+async function openRelationship(id) {
+  currentRelId = id;
+  const rel = allRelationships.find(r => r.id === id) || {};
+  document.getElementById('rel-panel-title').textContent = rel.name || 'Relationship';
+  document.getElementById('rel-panel-sub').innerHTML = tierBadge(rel.service_tier) + ' ' + billingBadge(rel.billing_status);
+  document.getElementById('rel-notes-textarea').value = rel.notes || '';
+  const panel = document.getElementById('rel-panel');
+  panel.querySelectorAll('.panel-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+  panel.querySelectorAll('[id^="rel-panel-content-"]').forEach((c,i) => c.style.display = i===0?'':'none');
+  openPanel('rel-panel');
+  loadRelPeople();
+}
+
+async function loadRelPeople() {
+  if (!currentRelId) return;
+  const c = document.getElementById('rel-people-list');
+  c.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
+  try {
+    const res = await apiFetch(`/api/relationships/${currentRelId}/people`);
+    const rawPeople = await res.json();
+    const people = rawPeople.map(p => ({ ...p, portal_status: p.portal_enabled ? 'enabled' : (p.portal_invite_token ? 'invited' : 'none') }));
+    if (!people.length) { c.innerHTML = `<div class="empty-state"><div style="font-size:2rem;opacity:0.5;">👤</div><div>No people yet.</div></div>`; return; }
+    c.innerHTML = people.map(p => `
+      <div class="person-item">
+        <div class="person-avatar">${initials(p.first_name, p.last_name)}</div>
+        <div class="person-info">
+          <div class="person-name">${esc(formatPersonDisplayName(p))}</div>
+          <div class="person-meta">${p.email ? esc(p.email) : ''}${p.filing_status ? ' · '+filingLabel(p.filing_status) : ''}</div>
+        </div>
+        <div class="person-actions">
+          ${portalBadge(p.portal_status)}
+          <button class="btn btn-ghost btn-xs" onclick="openPerson(${p.id})">View →</button>
+        </div>
+      </div>`).join('');
+  } catch(e) { c.innerHTML = `<div class="error-msg">Failed to load people.</div>`; }
+}
+
+async function loadRelCompanies() {
+  if (!currentRelId) return;
+  const c = document.getElementById('rel-companies-list');
+  c.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
+  try {
+    const res = await apiFetch(`/api/relationships/${currentRelId}/companies`);
+    const companies = await res.json();
+    if (!companies.length) { c.innerHTML = `<div class="empty-state"><div style="font-size:2rem;opacity:0.5;">🏢</div><div>No companies linked.</div></div>`; return; }
+    c.innerHTML = `<div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Company</th><th>Entity Type</th><th>Status</th></tr></thead>
+      <tbody>${companies.map(co => `
+        <tr>
+          <td style="font-weight:600;">${esc(co.display_name||co.company_name||co.name||'Unknown')}</td>
+          <td>${co.entity_type ? `<span class="badge badge-muted">${esc(co.entity_type)}</span>` : '—'}</td>
+          <td>${co.active !== false ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-muted">Inactive</span>'}</td>
+        </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch(e) { c.innerHTML = `<div class="error-msg">Failed to load companies.</div>`; }
+}
+
+async function saveRelationshipNotes() {
+  if (!currentRelId) return;
+  const notes = document.getElementById('rel-notes-textarea').value;
+  try {
+    await apiFetch(`/api/relationships/${currentRelId}`, { method: 'PUT', body: JSON.stringify({ notes }) });
+    const rel = allRelationships.find(r => r.id === currentRelId);
+    if (rel) rel.notes = notes;
+    const saved = document.getElementById('rel-notes-saved');
+    saved.style.display = 'inline';
+    setTimeout(() => saved.style.display = 'none', 2000);
+    toast('Notes saved');
+  } catch(e) { toast('Failed to save notes', 'error'); }
+}
+
+function openNewRelationship() {
+  editingRelId = null;
+  document.getElementById('rel-modal-title').textContent = 'New Relationship';
+  document.getElementById('rel-form-submit').textContent = 'Create Relationship';
+  document.getElementById('rel-form-name').value = '';
+  document.getElementById('rel-form-tier').value = '';
+  document.getElementById('rel-form-billing').value = '';
+  document.getElementById('rel-form-notes').value = '';
+  document.getElementById('rel-form-error').style.display = 'none';
+  openModal('rel-modal');
+  setTimeout(() => document.getElementById('rel-form-name').focus(), 100);
+}
+
+async function openEditRelationship(id) {
+  const rel = allRelationships.find(r => r.id === id);
+  if (!rel) return;
+  editingRelId = id;
+  document.getElementById('rel-modal-title').textContent = 'Edit Relationship';
+  document.getElementById('rel-form-submit').textContent = 'Save Changes';
+  document.getElementById('rel-form-name').value = rel.name || '';
+  document.getElementById('rel-form-tier').value = rel.service_tier || '';
+  document.getElementById('rel-form-billing').value = rel.billing_status || '';
+  document.getElementById('rel-form-notes').value = rel.notes || '';
+  document.getElementById('rel-form-error').style.display = 'none';
+  openModal('rel-modal');
+}
+
+function editCurrentRelationship() {
+  if (currentRelId) openEditRelationship(currentRelId);
+}
+
+async function submitRelationshipForm() {
+  const name = document.getElementById('rel-form-name').value.trim();
+  if (!name) { showFormError('rel-form-error', 'Name is required.'); return; }
+  const body = {
+    name,
+    service_tier: document.getElementById('rel-form-tier').value || null,
+    billing_status: document.getElementById('rel-form-billing').value || null,
+    notes: document.getElementById('rel-form-notes').value || null,
+  };
+  const btn = document.getElementById('rel-form-submit');
+  btn.disabled = true;
+  try {
+    let res;
+    if (editingRelId) {
+      res = await apiFetch(`/api/relationships/${editingRelId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      res = await apiFetch('/api/relationships', { method: 'POST', body: JSON.stringify(body) });
+    }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Request failed'); }
+    closeModal('rel-modal');
+    toast(editingRelId ? 'Relationship updated' : 'Relationship created');
+    await loadRelationships();
+  } catch(e) { showFormError('rel-form-error', e.message); }
+  btn.disabled = false;
+}
+
+async function deleteRelationship(id) {
+  const rel = allRelationships.find(r => r.id === id) || {};
+  const name = rel.name ? ` “${rel.name}”` : '';
+  const warning = `Delete relationship${name}? This will permanently delete the relationship and all attached people, companies, company access links, documents, engagement letters, portal/message history, and active pipeline cards. Proposals will remain but will be unlinked. This cannot be undone.`;
+  if (!await dlConfirm(warning, { danger: true, confirmLabel: 'Delete Relationship + Attached Records' })) return;
+  try {
+    const res = await apiFetch(`/api/relationships/${id}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to delete relationship');
+    const deleted = data.deleted || {};
+    toast(`Relationship deleted${deleted.people || deleted.companies ? ` (${deleted.people || 0} people, ${deleted.companies || 0} companies)` : ''}`);
+    if (currentRelId === id) closePanel('rel-panel');
+    allRelationships = allRelationships.filter(r => r.id !== id);
+    window._relFilteredList = (window._relFilteredList || allRelationships).filter(r => r.id !== id);
+    renderRelationships(window._relFilteredList || allRelationships);
+    await loadRelationships();
+  } catch(e) { toast(e.message || 'Failed to delete', 'error'); }
+}
+
+// =====================================================================
+//  PEOPLE
+// =====================================================================
+async function loadPeople() {
+  try {
+    const res = await apiFetch('/api/people');
+    allPeople = (await res.json()).map(p => ({
+      ...p,
+      portal_status: p.portal_enabled ? 'enabled' : (p.portal_invite_token ? 'invited' : 'none')
+    }));
+    renderPeople(allPeople);
+  } catch(e) {
+    document.getElementById('people-list-container').innerHTML = `<div class="error-msg">Failed to load people.</div>`;
+  }
+}
+
+function renderPeople(list) {
+  const c = document.getElementById('people-list-container');
+  if (!list.length) {
+    c.innerHTML = `<div class="empty-state"><div style="font-size:2.5rem;margin-bottom:0.75rem;opacity:0.5;">👤</div><div>No people yet.</div></div>`;
+    return;
+  }
+  const totalPages = Math.ceil(list.length / PAGE_SIZE);
+  peoplePage = Math.min(peoplePage, totalPages);
+  const page = list.slice((peoplePage-1)*PAGE_SIZE, peoplePage*PAGE_SIZE);
+  c.innerHTML = `<div class="table-wrap"><table class="data-table">
+    <thead><tr>
+      <th>Name</th><th>Email</th><th>Relationship</th><th>Filing Status</th><th>Portal</th><th>Actions</th>
+    </tr></thead>
+    <tbody>${page.map(p => `
+      <tr onclick="window.location.href='/crm/person/${p.id}'">
+        <td style="font-weight:600;">${esc(formatPersonDisplayName(p))}${parseInt(p.unread_count||0)>0?` <span style="display:inline-flex;align-items:center;justify-content:center;background:#e74c3c;color:#fff;border-radius:999px;padding:0.1rem 0.45rem;font-size:0.65rem;font-weight:800;margin-left:0.35rem;">${p.unread_count}</span>`:''}${(p.city||p.state)?`<div style="font-size:0.74rem;font-weight:400;color:var(--muted);margin-top:0.15rem;">${[p.city,p.state].filter(Boolean).map(esc).join(', ')}</div>`:''}</td>
+        <td style="color:var(--muted);">${p.email ? esc(p.email) : '—'}</td>
+        <td>${p.relationship_name ? `<span style="color:var(--gold);">${esc(p.relationship_name)}</span>` : '—'}</td>
+        <td>${p.filing_status ? `<span class="badge badge-muted">${filingLabel(p.filing_status)}</span>` : '—'}</td>
+        <td>${portalBadge(p.portal_status)}</td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn btn-ghost btn-xs" onclick="openEditPerson(${p.id})">Edit</button>
+          <button class="btn btn-danger btn-xs" onclick="deletePerson(${p.id})">Delete</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  ${paginationBar(peoplePage, totalPages, `peoplePage--;renderPeople(window._peopleFilteredList||allPeople)`, `peoplePage++;renderPeople(window._peopleFilteredList||allPeople)`)}`;
+}
+
+function filterPeople(q) {
+  const f = q.toLowerCase();
+  const filtered = allPeople.filter(p =>
+    formatPersonDisplayName(p).toLowerCase().includes(f) ||
+    (p.first_name+' '+p.last_name).toLowerCase().includes(f) ||
+    (p.spouse_name||'').toLowerCase().includes(f) ||
+    (p.email||'').toLowerCase().includes(f) ||
+    (p.relationship_name||'').toLowerCase().includes(f)
+  );
+  window._peopleFilteredList = filtered;
+  peoplePage = 1;
+  renderPeople(filtered);
+}
+
+async function openPerson(id) {
+  currentPersonId = id;
+  const p = allPeople.find(x => x.id === id);
+  if (p) populatePersonPanelHeader(p);
+  const panel = document.getElementById('person-panel');
+  panel.querySelectorAll('.panel-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+  panel.querySelectorAll('[id^="person-panel-content-"]').forEach((c,i) => c.style.display = i===0?'':'none');
+  openPanel('person-panel');
+  loadPersonOverview();
+}
+
+function populatePersonPanelHeader(p) {
+  document.getElementById('person-panel-title').textContent = formatPersonDisplayName(p);
+  const badges = document.getElementById('person-panel-badges');
+  badges.innerHTML = '';
+  if (p.filing_status) badges.innerHTML += `<span class="badge badge-muted">${filingLabel(p.filing_status)}</span>`;
+  badges.innerHTML += portalBadge(p.portal_status);
+  let sub = '';
+  if (p.email) sub += `📧 ${esc(p.email)}`;
+  if (p.phone) sub += (sub ? '  ·  ' : '') + `📞 ${esc(p.phone)}`;
+  const cityState = [p.city, p.state].filter(Boolean).map(esc).join(', ');
+  if (cityState) sub += (sub ? '  ·  ' : '') + `📍 ${cityState}`;
+  if (p.relationship_name) sub += (sub ? '<br>' : '') + `<a href="#" class="inline-edit-link" onclick="openRelByName('${esc(p.relationship_name)}');return false;">👥 ${esc(p.relationship_name)}</a>`;
+  document.getElementById('person-panel-sub').innerHTML = sub;
+}
+
+async function loadPersonOverview() {
+  if (!currentPersonId) return;
+  const c = document.getElementById('p-overview-content');
+  c.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
+  try {
+    const res = await apiFetch(`/api/people/${currentPersonId}`);
+    const p = await res.json();
+    populatePersonPanelHeader(p);
+    const spouseHtml = ['mfj','mfs'].includes(p.filing_status) && p.spouse_name ? esc(p.spouse_name) : '—';
+    c.innerHTML = `
+      <div class="info-card">
+        <div class="panel-section-title">Contact Info</div>
+        <div class="info-row"><span class="info-label">Email</span><span class="info-val">${p.email ? esc(p.email) : '—'}</span></div>
+        <div class="info-row"><span class="info-label">Phone</span><span class="info-val">${p.phone ? esc(p.phone) : '—'}</span></div>
+        <div class="info-row"><span class="info-label">DOB</span><span class="info-val">${p.date_of_birth ? esc(p.date_of_birth) : '—'}</span></div>
+        <div class="info-row"><span class="info-label">Spouse</span><span class="info-val">${spouseHtml}</span></div>
+        ${(p.address_line1||p.city||p.state||p.zip) ? `<div class="info-row"><span class="info-label">Address</span><span class="info-val">${[p.address_line1, p.address_line2].filter(x=>x&&x.trim()).map(esc).join('<br>')}${(p.address_line1||p.address_line2)&&(p.city||p.state||p.zip)?'<br>':''}${[p.city, p.state, p.zip].filter(x=>x&&x.trim()).map(esc).join(', ')}</span></div>` : `<div class="info-row"><span class="info-label">Address</span><span class="info-val" style="color:var(--muted);">—</span></div>`}
+      </div>
+      ${p.stanford_tax_url ? `
+      <div class="info-card">
+        <div class="panel-section-title">Stanford Tax</div>
+        <a href="${esc(p.stanford_tax_url)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">🔗 Open Stanford Tax Profile</a>
+        <button class="btn btn-ghost btn-xs" style="margin-left:0.5rem;" onclick="editStanfordUrl(${p.id}, '${esc(p.stanford_tax_url).replace(/'/g,"\\'")}')">Edit</button>
+      </div>` : `
+      <div class="info-card">
+        <div class="panel-section-title">Stanford Tax</div>
+        <span style="color:var(--muted);font-size:0.84rem;">No URL set.</span>
+        <button class="btn btn-ghost btn-xs" style="margin-left:0.5rem;" onclick="editStanfordUrl(${p.id}, '')">Add URL</button>
+      </div>`}
+      <div class="info-card">
+        <div class="panel-section-title">Internal Notes</div>
+        <textarea class="form-control" id="p-notes-ta" rows="4" placeholder="Add notes…" onblur="autoSavePersonNotes(${p.id}, this.value)">${esc(p.notes||'')}</textarea>
+        <div id="p-notes-saved" style="display:none;color:var(--green);font-size:0.78rem;margin-top:0.3rem;">✓ Saved</div>
+      </div>
+      ${(p.portal_status !== 'enabled') ? `
+      <div class="info-card" style="border-color:rgba(201,168,76,0.3);">
+        <div class="panel-section-title">Portal Access</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.85rem;color:var(--muted);">${p.portal_status === 'invited' ? 'Invite sent — awaiting activation' : 'Not set up'}</span>
+          <button class="btn btn-gold btn-sm" onclick="sendPortalInvite(${p.id})">Send Invite</button>
+        </div>
+      </div>` : ''}
+    `;
+  } catch(e) { c.innerHTML = `<div class="error-msg">Failed to load person detail.</div>`; }
+}
+
+async function loadPersonCompanies() {
+  if (!currentPersonId) return;
+  const c = document.getElementById('p-companies-content');
+  c.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
+  try {
+    const res = await apiFetch(`/api/people/${currentPersonId}`);
+    const p = await res.json();
+    const access = p.company_access || p.companies || [];
+    if (!access.length) { c.innerHTML = `<div class="empty-state"><div style="font-size:2rem;opacity:0.5;">🏢</div><div>No company access yet.</div></div>`; return; }
+    c.innerHTML = `<div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Company</th><th>Entity Type</th><th>Access</th><th>Ownership</th><th></th></tr></thead>
+      <tbody>${access.map(a => `
+        <tr>
+          <td style="font-weight:600;">${esc(a.display_name||a.company_name||a.name||'Unknown')}</td>
+          <td>${a.entity_type ? `<span class="badge badge-muted">${esc(a.entity_type)}</span>` : '—'}</td>
+          <td>${accessBadge(a.access_level)}</td>
+          <td>${a.ownership_pct != null ? a.ownership_pct+'%' : '—'}</td>
+          <td><button class="btn btn-danger btn-xs" onclick="revokeAccess(${currentPersonId}, ${a.company_id||a.id})">Revoke</button></td>
+        </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch(e) { c.innerHTML = `<div class="error-msg">Failed to load company access.</div>`; }
+}
+
+async function autoSavePersonNotes(id, notes) {
+  try {
+    await apiFetch(`/api/people/${id}`, { method: 'PUT', body: JSON.stringify({ notes }) });
+    const saved = document.getElementById('p-notes-saved');
+    if (saved) { saved.style.display = 'block'; setTimeout(() => saved.style.display = 'none', 1500); }
+    const p = allPeople.find(x => x.id === id);
+    if (p) p.notes = notes;
+  } catch(e) { /* silent */ }
+}
+
+async function editStanfordUrl(id, current) {
+  const url = prompt('Stanford Tax URL:', current);
+  if (url === null) return;
+  try {
+    await apiFetch(`/api/people/${id}`, { method: 'PUT', body: JSON.stringify({ stanford_tax_url: url }) });
+    toast('Stanford Tax URL updated');
+    loadPersonOverview();
+    const p = allPeople.find(x => x.id === id);
+    if (p) p.stanford_tax_url = url;
+  } catch(e) { toast('Failed to update', 'error'); }
+}
+
+async function sendPortalInvite(id) {
+  try {
+    const res = await apiFetch(`/api/people/${id}/invite`, { method: 'POST' });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+    toast('Invite sent');
+    await loadPeople();
+    loadPersonOverview();
+  } catch(e) { toast('Could not send invite: ' + e.message, 'error'); }
+}
+
+async function openGrantAccess() {
+  if (!currentPersonId) return;
+  const person = allPeople.find(p => p.id === currentPersonId);
+  const relId = person?.relationship_id;
+  let companies = [];
+  if (relId) {
+    try {
+      const res = await apiFetch(`/api/relationships/${relId}/companies`);
+      companies = await res.json();
+    } catch(e) {}
+  }
+  if (!companies.length) companies = allCompanies;
+  const sel = document.getElementById('grant-company-id');
+  sel.innerHTML = '<option value="">— Select company —</option>' +
+    companies.map(c => `<option value="${c.id||c.company_id}">${esc(c.display_name||c.company_name||c.name||'Unknown')}</option>`).join('');
+  document.getElementById('grant-access-level').value = 'view';
+  document.getElementById('grant-ownership').value = '';
+  document.getElementById('grant-form-error').style.display = 'none';
+  openModal('grant-modal');
+}
+
+async function submitGrantAccess() {
+  const companyId = document.getElementById('grant-company-id').value;
+  if (!companyId) { showFormError('grant-form-error', 'Select a company.'); return; }
+  const body = {
+    company_id: parseInt(companyId),
+    access_level: document.getElementById('grant-access-level').value,
+    ownership_pct: document.getElementById('grant-ownership').value ? parseFloat(document.getElementById('grant-ownership').value) : null,
+  };
+  try {
+    const res = await apiFetch(`/api/people/${currentPersonId}/company-access`, { method: 'POST', body: JSON.stringify(body) });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+    closeModal('grant-modal');
+    toast('Access granted');
+    loadPersonCompanies();
+  } catch(e) { showFormError('grant-form-error', e.message); }
+}
+
+async function revokeAccess(personId, companyId) {
+  if (!await dlConfirm('Revoke this company access?', { danger: true, confirmLabel: 'Revoke' })) return;
+  try {
+    const res = await apiFetch(`/api/people/${personId}/company-access/${companyId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+    toast('Access revoked');
+    loadPersonCompanies();
+  } catch(e) { toast('Failed to revoke: ' + e.message, 'error'); }
+}
+
+function openNewPerson(prefilledRelId = null, prefilledRelName = null) {
+  editingPersonId = null;
+  document.getElementById('person-modal-title').textContent = 'New Person';
+  document.getElementById('person-form-submit').textContent = 'Create Person';
+  document.getElementById('person-form-fname').value = '';
+  document.getElementById('person-form-lname').value = '';
+  document.getElementById('person-form-email').value = '';
+  document.getElementById('person-form-phone').value = '';
+  document.getElementById('person-form-filing').value = '';
+  document.getElementById('person-form-billing').value = '';
+  document.getElementById('person-form-spouse-section').style.display = 'none';
+  document.getElementById('person-form-dob').value = '';
+  document.getElementById('person-form-stanford').value = '';
+  document.getElementById('person-form-notes').value = '';
+  document.getElementById('person-form-rel-id').value = prefilledRelId || '';
+  document.getElementById('person-form-rel-search').value = prefilledRelName || '';
+  document.getElementById('person-form-spouse-name').value = '';
+  document.getElementById('person-form-spouse-email').value = '';
+  document.getElementById('person-form-addr1').value = '';
+  document.getElementById('person-form-addr2').value = '';
+  document.getElementById('person-form-city').value = '';
+  document.getElementById('person-form-state').value = '';
+  document.getElementById('person-form-zip').value = '';
+  document.getElementById('person-form-error').style.display = 'none';
+  // Show relationship field for new person
+  const relWrap = document.getElementById('person-form-rel-wrap');
+  if (relWrap) relWrap.style.display = '';
+  openModal('person-modal');
+  setTimeout(() => document.getElementById('person-form-fname').focus(), 100);
+}
+
+function openNewPersonInRel() {
+  const rel = allRelationships.find(r => r.id === currentRelId);
+  openNewPerson(currentRelId, rel?.name);
+}
+
+async function openEditPerson(id) {
+  let p = allPeople.find(x => x.id === id);
+  if (!p) {
+    try { const res = await apiFetch(`/api/people/${id}`); p = await res.json(); } catch(e) { return; }
+  }
+  editingPersonId = id;
+  document.getElementById('person-modal-title').textContent = 'Edit Person';
+  document.getElementById('person-form-submit').textContent = 'Save Changes';
+  document.getElementById('person-form-fname').value = p.first_name || '';
+  document.getElementById('person-form-lname').value = p.last_name || '';
+  document.getElementById('person-form-email').value = p.email || '';
+  document.getElementById('person-form-phone').value = p.phone || '';
+  document.getElementById('person-form-filing').value = p.filing_status || '';
+  document.getElementById('person-form-billing').value = p.billing_method || '';
+  document.getElementById('person-form-spouse-section').style.display = ['mfj','mfs'].includes(p.filing_status) ? '' : 'none';
+  document.getElementById('person-form-dob').value = p.date_of_birth ? p.date_of_birth.slice(0,10) : '';
+  document.getElementById('person-form-stanford').value = p.stanford_tax_url || '';
+  document.getElementById('person-form-notes').value = p.notes || '';
+  const rel = allRelationships.find(r => r.id === p.relationship_id);
+  document.getElementById('person-form-rel-id').value = p.relationship_id || '';
+  document.getElementById('person-form-rel-search').value = rel?.name || '';
+  document.getElementById('person-form-error').style.display = 'none';
+  document.getElementById('person-form-spouse-name').value = p.spouse_name || '';
+  document.getElementById('person-form-spouse-email').value = p.spouse_email || '';
+  // spouse_portal field may not exist in this modal (managed on person page)
+  const spousePortalEl = document.getElementById('person-form-spouse-portal');
+  if (spousePortalEl) spousePortalEl.checked = !!p.spouse_portal_enabled;
+  document.getElementById('person-form-addr1').value = p.address_line1 || '';
+  document.getElementById('person-form-addr2').value = p.address_line2 || '';
+  document.getElementById('person-form-city').value = p.city || '';
+  document.getElementById('person-form-state').value = p.state || '';
+  document.getElementById('person-form-zip').value = p.zip || '';
+  // Hide relationship field when editing (can't change relationship from this modal)
+  const relWrap = document.getElementById('person-form-rel-wrap');
+  if (relWrap) relWrap.style.display = 'none';
+  openModal('person-modal');
+}
+
+function editCurrentPerson() {
+  if (currentPersonId) openEditPerson(currentPersonId);
+}
+
+async function submitPersonForm() {
+  const fname = document.getElementById('person-form-fname').value.trim();
+  const lname = document.getElementById('person-form-lname').value.trim();
+  const relId = document.getElementById('person-form-rel-id').value;
+  if (!fname || !lname) { showFormError('person-form-error', 'First and last name are required.'); return; }
+  if (!relId) { showFormError('person-form-error', 'Please select a relationship.'); return; }
+  const emailVal = document.getElementById('person-form-email').value.trim();
+  if (!emailVal) { showFormError('person-form-error', 'Email is required.'); return; }
+  const body = {
+    first_name: fname,
+    last_name: lname,
+    relationship_id: parseInt(relId),
+    email: document.getElementById('person-form-email').value.trim() || null,
+    phone: document.getElementById('person-form-phone').value.trim() || null,
+    filing_status: document.getElementById('person-form-filing').value || null,
+    billing_method: document.getElementById('person-form-billing').value || null,
+    date_of_birth: document.getElementById('person-form-dob').value || null,
+    stanford_tax_url: document.getElementById('person-form-stanford').value.trim() || null,
+    notes: document.getElementById('person-form-notes').value || null,
+    spouse_name: document.getElementById('person-form-spouse-name').value.trim() || null,
+    spouse_email: document.getElementById('person-form-spouse-email').value.trim() || null,
+    // spouse_portal_enabled only set via the portal invite flow, not creation form
+    address_line1: document.getElementById('person-form-addr1').value.trim() || '',
+    address_line2: document.getElementById('person-form-addr2').value.trim() || '',
+    city: document.getElementById('person-form-city').value.trim() || '',
+    state: document.getElementById('person-form-state').value.trim().toUpperCase() || '',
+    zip: document.getElementById('person-form-zip').value.trim() || '',
+  };
+  const btn = document.getElementById('person-form-submit');
+  btn.disabled = true;
+  try {
+    let res;
+    if (editingPersonId) {
+      res = await apiFetch(`/api/people/${editingPersonId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      res = await apiFetch('/api/people', { method: 'POST', body: JSON.stringify(body) });
+    }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Request failed'); }
+    closeModal('person-modal');
+    toast(editingPersonId ? 'Person updated' : 'Person created');
+    await loadPeople();
+    if (currentRelId) { loadRelPeople(); }
+    if (currentPersonId && editingPersonId === currentPersonId) { loadPersonOverview(); }
+  } catch(e) { showFormError('person-form-error', e.message); }
+  btn.disabled = false;
+}
+
+async function deletePerson(id) {
+  if (!await dlConfirm('Delete this person? This cannot be undone.', { danger: true, confirmLabel: 'Delete' })) return;
+  try {
+    await apiFetch(`/api/people/${id}`, { method: 'DELETE' });
+    toast('Person deleted');
+    if (currentPersonId === id) closePanel('person-panel');
+    await loadPeople();
+  } catch(e) { toast('Failed to delete', 'error'); }
+}
+
+// =====================================================================
+//  COMPANIES
+// =====================================================================
+async function deleteCompany(id) {
+  const co = allCompanies.find(c => (c.id||c.company_id) === id);
+  const name = co ? (co.display_name||co.company_name||co.name||'this company') : 'this company';
+  if (!await dlConfirm(`Delete ${name}? This cannot be undone.`, { danger: true, confirmLabel: 'Delete' })) return;
+  try {
+    const res = await apiFetch(`/api/companies/id/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+    toast('Company deleted');
+    await loadCompanies();
+  } catch(e) { toast(e.message || 'Failed to delete', 'error'); }
+}
+
+async function loadCompanies() {
+  try {
+    const res = await apiFetch('/api/relationships/all-companies');
+    const companies = await res.json();
+    allCompanies = Array.isArray(companies) ? companies : [];
+    renderCompanies(allCompanies);
+  } catch(e) {
+    document.getElementById('companies-list-container').innerHTML = `<div class="error-msg">Failed to load companies.</div>`;
+  }
+}
+
+function renderCompanies(list) {
+  const c = document.getElementById('companies-list-container');
+  if (!list.length) {
+    c.innerHTML = `<div class="empty-state"><div style="font-size:2.5rem;margin-bottom:0.75rem;opacity:0.5;">🏢</div><div>No companies found.</div></div>`;
+    return;
+  }
+  const coSorted = companiesSort.col ? sortList(list, companiesSort.col, companiesSort.dir) : list;
+  const totalPages = Math.ceil(coSorted.length / PAGE_SIZE);
+  companiesPage = Math.min(companiesPage, totalPages);
+  const page = coSorted.slice((companiesPage-1)*PAGE_SIZE, companiesPage*PAGE_SIZE);
+  c.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+    <button class="btn btn-outline btn-sm" onclick="exportCompaniesCSV()" style="font-size:0.78rem;">⇩ Export CSV</button>
+  </div>
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr>
+      <th style="cursor:pointer;" onclick="toggleSort(companiesSort,'company_name');renderCompanies(window._companiesFilteredList||allCompanies)">Company${sortArrow(companiesSort,'company_name')}</th>
+      <th>Relationship</th>
+      <th style="cursor:pointer;" onclick="toggleSort(companiesSort,'annual_revenue');renderCompanies(window._companiesFilteredList||allCompanies)">Last 12 Mo Revenue${sortArrow(companiesSort,'annual_revenue')}</th>
+      <th>Status</th><th>Actions</th>
+    </tr></thead>
+    <tbody>${page.map(co => `
+      <tr onclick="window.location.href='/crm/company/${co.id||co.company_id||0}'" style="cursor:pointer;">
+        <td style="font-weight:600;">${esc(co.display_name||co.company_name||co.name||'Unknown')}${(co.city||co.state)?`<div style="font-size:0.74rem;font-weight:400;color:var(--muted);margin-top:0.15rem;">${[co.city,co.state].filter(Boolean).map(esc).join(', ')}</div>`:''}</td>
+        <td>${co.relationship_name ? `<span style="color:var(--gold);">${esc(co.relationship_name)}</span>` : '—'}</td>
+        <td>${co.annual_revenue != null ? `<span style="color:var(--gold);font-weight:600;">$${parseFloat(co.annual_revenue).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</span>` : (co.realm_id && !co.realm_id.startsWith('import-') ? '<span style="background:rgba(62,207,142,0.12);color:#3ecf8e;border:1px solid rgba(62,207,142,0.25);border-radius:4px;padding:0.1rem 0.45rem;font-size:0.72rem;font-weight:600;">📊 QBO</span>' : '<span style="color:var(--muted);font-size:0.82rem;">No Books</span>')}</td>
+        <td>${co.status === 'inactive' ? '<span class="badge badge-muted">Inactive</span>' : '<span class="badge badge-green">Active</span>'}</td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn btn-danger btn-xs" onclick="deleteCompany(${co.id||co.company_id||0})">Delete</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  ${paginationBar(companiesPage, totalPages, `companiesPage--;renderCompanies(window._companiesFilteredList||allCompanies)`, `companiesPage++;renderCompanies(window._companiesFilteredList||allCompanies)`)}`;
+}
+
+function filterCompanies(q) {
+  const f = q.toLowerCase();
+  const filtered = allCompanies.filter(c =>
+    (c.display_name||c.company_name||c.name||'').toLowerCase().includes(f) ||
+    (c.entity_type||'').toLowerCase().includes(f) ||
+    (c.relationship_name||'').toLowerCase().includes(f)
+  );
+  window._companiesFilteredList = filtered;
+  companiesPage = 1;
+  renderCompanies(filtered);
+}
+
+function exportCompaniesCSV() {
+  const list = window._companiesFilteredList || allCompanies;
+  const sorted = companiesSort.col ? sortList(list, companiesSort.col, companiesSort.dir) : list;
+  exportCSV(
+    ['Company', 'Relationship', 'Location', 'Last 12 Mo Revenue', 'Status'],
+    sorted.map(co => [
+      co.display_name || co.company_name || co.name || '',
+      co.relationship_name || '',
+      [co.city, co.state].filter(Boolean).join(', '),
+      co.annual_revenue != null ? co.annual_revenue : '',
+      co.status || 'active'
+    ]),
+    'companies.csv'
+  );
+}
+
+async function openNewCompanyModal() {
+  const sel = document.getElementById('new-co-rel');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  ['new-co-name','new-co-tax-year-end','new-co-addr1','new-co-addr2','new-co-city','new-co-state','new-co-zip'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('new-co-type').value = 's_corp';
+  document.getElementById('new-co-bk').value = 'none';
+  document.getElementById('new-co-billing').value = '';
+  document.getElementById('new-co-error').style.display = 'none';
+  document.getElementById('new-co-submit').disabled = false;
+  document.getElementById('new-co-submit').textContent = 'Create Company';
+  document.getElementById('new-company-modal').classList.remove('hidden');
+  document.getElementById('new-company-modal').classList.add('open');
+  try {
+    const res = await apiFetch('/api/relationships');
+    const rels = await res.json();
+    sel.innerHTML = '<option value="">— Select relationship —</option>' +
+      rels.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('');
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
+}
+
+async function submitNewCompany() {
+  const name = document.getElementById('new-co-name').value.trim();
+  const rel = document.getElementById('new-co-rel').value;
+  const errEl = document.getElementById('new-co-error');
+  const btn = document.getElementById('new-co-submit');
+  errEl.style.display = 'none';
+  if (!name) { errEl.textContent = 'Company name is required.'; errEl.style.display = ''; return; }
+  if (!rel) { errEl.textContent = 'Please select a relationship.'; errEl.style.display = ''; return; }
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const res = await apiFetch('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify({
+        company_name: name,
+        relationship_id: parseInt(rel),
+        entity_type: document.getElementById('new-co-type').value,
+        bookkeeping_service: document.getElementById('new-co-bk').value,
+        billing_method: document.getElementById('new-co-billing').value || null,
+        tax_year_end: document.getElementById('new-co-tax-year-end').value.trim() || null,
+        address_line1: document.getElementById('new-co-addr1').value.trim(),
+        address_line2: document.getElementById('new-co-addr2').value.trim(),
+        city: document.getElementById('new-co-city').value.trim(),
+        state: document.getElementById('new-co-state').value.trim().toUpperCase(),
+        zip: document.getElementById('new-co-zip').value.trim(),
+      }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create company'); }
+    const co = await res.json();
+    closeModal('new-company-modal');
+    window.location.href = `/crm/company/${co.id}`;
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = '';
+    btn.disabled = false; btn.textContent = 'Create Company';
+  }
+}
+
+// =====================================================================
+//  SEARCHABLE SELECT
+// =====================================================================
+function openSearchableSelect(key) {
+  const opts = document.getElementById(`ss-${key}-options`);
+  if (key === 'rel') ssFiltered.rel = [...ssData.rel];
+  renderSearchableOptions(key);
+  opts.classList.add('open');
+}
+
+function searchableSelectFilter(key, q) {
+  if (key === 'rel') {
+    ssFiltered.rel = ssData.rel.filter(o => o.label.toLowerCase().includes(q.toLowerCase()));
+    document.getElementById('person-form-rel-id').value = '';
+  }
+  renderSearchableOptions(key);
+  document.getElementById(`ss-${key}-options`).classList.add('open');
+}
+
+function renderSearchableOptions(key) {
+  const opts = document.getElementById(`ss-${key}-options`);
+  const data = ssFiltered[key];
+  if (!data.length) {
+    opts.innerHTML = '<div class="ss-empty">No results</div>';
+    return;
+  }
+  opts.innerHTML = data.map(o => `<div class="ss-option" onclick="selectSearchableOption('${key}',${o.id},'${o.label.replace(/'/g,"\\'")}' )">${esc(o.label)}</div>`).join('');
+}
+
+function selectSearchableOption(key, id, label) {
+  if (key === 'rel') {
+    document.getElementById('person-form-rel-id').value = id;
+    document.getElementById('person-form-rel-search').value = label;
+  }
+  document.getElementById(`ss-${key}-options`).classList.remove('open');
+}
+
+function openRelByName(name) {
+  const rel = allRelationships.find(r => r.name === name);
+  if (rel) { switchTab('relationships', null); openRelationship(rel.id); }
+}
+
+// =====================================================================
+//  HELPERS
+// =====================================================================
+function initials(first, last) {
+  return ((first||'').charAt(0) + (last||'').charAt(0)).toUpperCase() || '?';
+}
+
+function tierBadge(tier) {
+  if (!tier) return '<span class="badge badge-muted">—</span>';
+  const labels = { standard: 'Standard', legacy_blueprint: 'Legacy Blueprint', tax_only: 'Tax Only', full_service: 'Full Service' };
+  const classes = { standard: 'badge-muted', legacy_blueprint: 'badge-gold', tax_only: 'badge-blue', full_service: 'badge-green' };
+  return `<span class="badge ${classes[tier]||'badge-muted'}">${labels[tier]||tier}</span>`;
+}
+
+function billingBadge(status) {
+  if (!status) return '—';
+  const map = { active: 'badge-green', past_due: 'badge-orange', cancelled: 'badge-red' };
+  const labels = { active: 'Active', past_due: 'Past Due', cancelled: 'Cancelled' };
+  return `<span class="badge ${map[status]||'badge-muted'}">${labels[status]||status}</span>`;
+}
+
+function portalBadge(status) {
+  if (!status || status === 'none') return '<span class="badge badge-muted">Not Set Up</span>';
+  if (status === 'enabled') return '<span class="badge badge-green">Enabled</span>';
+  if (status === 'invited') return '<span class="badge badge-orange">Invited</span>';
+  return `<span class="badge badge-muted">${esc(status)}</span>`;
+}
+
+function accessBadge(level) {
+  const map = { view: 'badge-muted', full: 'badge-gold', sign: 'badge-green' };
+  const labels = { view: 'View', full: 'Full', sign: 'Sign' };
+  return `<span class="badge ${map[level]||'badge-muted'}">${labels[level]||esc(level)||'—'}</span>`;
+}
+
+function filingLabel(s) {
+  const map = { single: 'Single', mfj: 'MFJ', mfs: 'MFS', hoh: 'HOH', qw: 'QW' };
+  return map[s] || s;
+}
+
+function showFormError(elId, msg) {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.style.display = '';
+}
+
+// =====================================================================
+//  DOCUMENTS
+// =====================================================================
+const DOC_ICONS = { tax_return: '📋', w2: '📄', '1099': '📄', engagement_letter: '✍️', organizer: '📝', statement: '🏦', other: '📎' };
+function docIcon(type) { return DOC_ICONS[type] || '📎'; }
+function fmtBytes(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function docCard(doc, showDeliver = true) {
+  const icon = docIcon(doc.doc_type);
+  const deliveredBadge = doc.is_delivered ? '<span class="badge badge-green" style="font-size:0.7rem;">Delivered</span>' : '<span class="badge badge-muted" style="font-size:0.7rem;">Not Delivered</span>';
+  const yearBadge = doc.year ? `<span class="badge badge-muted" style="font-size:0.7rem;">${esc(doc.year)}</span>` : '';
+  const typeBadge = `<span class="badge badge-muted" style="font-size:0.7rem;">${esc(doc.doc_type||'other')}</span>`;
+  const deliverToggle = showDeliver ? `<button class="btn btn-ghost btn-xs" style="font-size:0.72rem;" onclick="toggleDelivered(${doc.id}, ${!doc.is_delivered})">${doc.is_delivered ? 'Undeliver' : 'Deliver'}</button>` : '';
+  return `
+    <div style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.7rem 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:1.4rem;flex-shrink:0;">${icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(doc.display_name||'Untitled')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.25rem;">${yearBadge}${typeBadge}${deliveredBadge}</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;">${fmtBytes(doc.size_bytes)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.3rem;flex-shrink:0;">
+        <button class="btn btn-ghost btn-xs" onclick="downloadDoc(${doc.id})">⬇ Download</button>
+        ${deliverToggle}
+        <button class="btn btn-danger btn-xs" onclick="deleteDoc(${doc.id})">Delete</button>
+      </div>
+    </div>`;
+}
+
+async function downloadDoc(docId) {
+  try {
+    const res = await apiFetch(`/api/documents/${docId}/download`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    window.open(data.url, '_blank');
+  } catch (e) { toast('Download failed: ' + e.message, 'error'); }
+}
+
+async function deleteDoc(docId) {
+  if (!await dlConfirm('Delete this document? This cannot be undone.', { danger: true, confirmLabel: 'Delete' })) return;
+  try {
+    const res = await apiFetch(`/api/documents/${docId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+    toast('Document deleted');
+    loadPersonDocuments();
+    if (currentRelId) loadRelDocuments();
+  } catch (e) { toast('Failed to delete: ' + e.message, 'error'); }
+}
+
+async function toggleDelivered(docId, deliver) {
+  try {
+    let res;
+    if (deliver) {
+      res = await apiFetch(`/api/documents/${docId}/deliver`, { method: 'POST' });
+    } else {
+      res = await apiFetch(`/api/documents/${docId}`, { method: 'PUT', body: JSON.stringify({ is_delivered: false }) });
+    }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+    toast(deliver ? 'Marked as delivered' : 'Delivery revoked');
+    loadPersonDocuments();
+    if (currentRelId) loadRelDocuments();
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+let currentDocSubTab = 'personal';
+
+function switchDocSubTab(tab) {
+  currentDocSubTab = tab;
+  const personal = document.getElementById('pdoc-personal-content');
+  const byco = document.getElementById('pdoc-bycompany-content');
+  const btnP = document.getElementById('pdoc-tab-personal');
+  const btnC = document.getElementById('pdoc-tab-bycompany');
+  if (tab === 'personal') {
+    personal.style.display = ''; byco.style.display = 'none';
+    btnP.style.background = 'var(--gold)'; btnP.style.color = '#000';
+    btnC.style.background = 'transparent'; btnC.style.color = 'var(--muted)';
+    loadPersonDocsPersonal();
+  } else {
+    personal.style.display = 'none'; byco.style.display = '';
+    btnP.style.background = 'transparent'; btnP.style.color = 'var(--muted)';
+    btnC.style.background = 'var(--gold)'; btnC.style.color = '#000';
+    loadPersonDocsByCompany();
+  }
+}
+
+async function loadPersonDocuments() {
+  if (!currentPersonId) return;
+  switchDocSubTab(currentDocSubTab || 'personal');
+}
+
+async function loadPersonDocsPersonal() {
+  if (!currentPersonId) return;
+  const c = document.getElementById('pdoc-personal-content');
+  c.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
+  try {
+    const res = await apiFetch(`/api/documents?owner_type=person&owner_id=${currentPersonId}`);
+    const docs = await res.json();
+    if (!docs.length) { c.innerHTML = '<div class="empty-state"><div style="font-size:2rem;opacity:0.5;">📄</div><div>No personal documents yet.</div></div>'; return; }
+    c.innerHTML = docs.map(d => docCard(d)).join('');
+  } catch (e) { c.innerHTML = '<div class="error-msg">Failed to load documents.</div>'; }
+}
+
+async function loadPersonDocsByCompany() {
+  if (!currentPersonId) return;
+  const c = document.getElementById('pdoc-bycompany-content');
+  c.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
+  try {
+    const pRes = await apiFetch(`/api/people/${currentPersonId}`);
+    const p = await pRes.json();
+    const companies = p.company_access || p.companies || [];
+    if (!companies.length) { c.innerHTML = '<div class="empty-state"><div style="font-size:2rem;opacity:0.5;">🏢</div><div>No company access.</div></div>'; return; }
+    let html = '';
+    for (const co of companies) {
+      const coId = co.company_id || co.id;
+      const coName = co.display_name || co.company_name || co.name || 'Unknown';
+      try {
+        const docsRes = await apiFetch(`/api/documents?owner_type=company&owner_id=${coId}`);
+        const docs = await docsRes.json();
+        html += `<div style="margin-bottom:1rem;"><div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.5rem;">${esc(coName)}</div>`;
+        html += !docs.length ? '<div style="color:var(--muted);font-size:0.83rem;padding:0.5rem 0;">No documents.</div>' : docs.map(d => docCard(d)).join('');
+        html += '</div>';
+      } catch (e) {}
+    }
+    c.innerHTML = html || '<div class="empty-state">No documents found.</div>';
+  } catch (e) { c.innerHTML = '<div class="error-msg">Failed to load documents.</div>'; }
+}
+
+async function loadRelDocuments() {
+  if (!currentRelId) return;
+  const c = document.getElementById('rel-docs-content');
+  c.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
+  try {
+    const [peopleRes, companiesRes] = await Promise.all([
+      apiFetch(`/api/relationships/${currentRelId}/people`),
+      apiFetch(`/api/relationships/${currentRelId}/companies`),
+    ]);
+    const people = await peopleRes.json();
+    const companies = await companiesRes.json();
+    let html = '';
+    for (const p of people) {
+      const pName = formatPersonDisplayName(p);
+      try {
+        const docsRes = await apiFetch(`/api/documents?owner_type=person&owner_id=${p.id}`);
+        const docs = await docsRes.json();
+        html += `<div style="margin-bottom:1rem;"><div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.5rem;">👤 ${esc(pName)}</div>`;
+        html += !docs.length ? '<div style="color:var(--muted);font-size:0.83rem;padding:0.5rem 0;">No documents.</div>' : docs.map(d => docCard(d)).join('');
+        html += '</div>';
+      } catch (e) {}
+    }
+    for (const co of companies) {
+      const coId = co.id || co.company_id;
+      const coName = co.display_name || co.company_name || co.name || 'Unknown';
+      try {
+        const docsRes = await apiFetch(`/api/documents?owner_type=company&owner_id=${coId}`);
+        const docs = await docsRes.json();
+        html += `<div style="margin-bottom:1rem;"><div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.5rem;">🏢 ${esc(coName)}</div>`;
+        html += !docs.length ? '<div style="color:var(--muted);font-size:0.83rem;padding:0.5rem 0;">No documents.</div>' : docs.map(d => docCard(d)).join('');
+        html += '</div>';
+      } catch (e) {}
+    }
+    c.innerHTML = html || '<div class="empty-state"><div style="font-size:2rem;opacity:0.5;">📄</div><div>No documents in this relationship.</div></div>';
+  } catch (e) { c.innerHTML = '<div class="error-msg">Failed to load documents.</div>'; }
+}
+
+// ── Upload Modal ──
+let uploadOwnerType = null;
+let uploadOwnerId = null;
+let uploadFile = null;
+
+function openUploadModal(ownerType, ownerId) {
+  uploadOwnerType = ownerType;
+  uploadOwnerId = ownerId;
+  uploadFile = null;
+  document.getElementById('upload-file-input').value = '';
+  document.getElementById('upload-display-name').value = '';
+  document.getElementById('upload-year').value = new Date().getFullYear().toString();
+  document.getElementById('upload-doc-type').value = 'other';
+  document.getElementById('upload-form-error').style.display = 'none';
+  document.getElementById('upload-progress-wrap').style.display = 'none';
+  document.getElementById('upload-submit-btn').disabled = false;
+  document.getElementById('upload-dropzone-text').style.display = '';
+  document.getElementById('upload-file-name').style.display = 'none';
+  document.getElementById('upload-dropzone').style.borderColor = 'var(--border)';
+  openModal('upload-modal');
+}
+
+function uploadDragOver(e) { e.preventDefault(); document.getElementById('upload-dropzone').style.borderColor = 'var(--gold)'; }
+function uploadDragLeave(e) { document.getElementById('upload-dropzone').style.borderColor = 'var(--border)'; }
+function uploadDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-dropzone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
+  if (file) setUploadFile(file);
+}
+function uploadFileSelected(input) { const file = input.files[0]; if (file) setUploadFile(file); }
+function setUploadFile(file) {
+  uploadFile = file;
+  document.getElementById('upload-dropzone-text').style.display = 'none';
+  const nameEl = document.getElementById('upload-file-name');
+  nameEl.textContent = `📎 ${file.name}  (${fmtBytes(file.size)})`;
+  nameEl.style.display = '';
+  const displayName = document.getElementById('upload-display-name');
+  if (!displayName.value) { displayName.value = file.name.replace(/\.[^.]+$/, ''); }
+}
+
+async function submitUpload() {
+  if (!uploadFile) {
+    document.getElementById('upload-form-error').textContent = 'Please select a file.';
+    document.getElementById('upload-form-error').style.display = '';
+    return;
+  }
+  document.getElementById('upload-form-error').style.display = 'none';
+  document.getElementById('upload-submit-btn').disabled = true;
+  const progressWrap = document.getElementById('upload-progress-wrap');
+  const progressBar = document.getElementById('upload-progress-bar');
+  const progressLabel = document.getElementById('upload-progress-label');
+  progressWrap.style.display = '';
+  progressBar.style.width = '20%';
+  progressLabel.textContent = 'Uploading…';
+  const formData = new FormData();
+  formData.append('file', uploadFile);
+  formData.append('owner_type', uploadOwnerType);
+  formData.append('owner_id', uploadOwnerId);
+  formData.append('year', document.getElementById('upload-year').value.trim());
+  formData.append('doc_type', document.getElementById('upload-doc-type').value);
+  formData.append('display_name', document.getElementById('upload-display-name').value.trim() || uploadFile.name);
+  try {
+    const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+    const res = await fetch('/api/documents/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    progressBar.style.width = '90%';
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    progressBar.style.width = '100%';
+    progressLabel.textContent = 'Done!';
+    setTimeout(() => {
+      closeModal('upload-modal');
+      toast('Document uploaded');
+      loadPersonDocuments();
+      if (currentRelId) loadRelDocuments();
+    }, 500);
+  } catch (e) {
+    document.getElementById('upload-form-error').textContent = e.message;
+    document.getElementById('upload-form-error').style.display = '';
+    document.getElementById('upload-submit-btn').disabled = false;
+    progressWrap.style.display = 'none';
+  }
+}
+</script>
+
+<%- include('partials/shell-close') %>

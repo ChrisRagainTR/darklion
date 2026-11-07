@@ -1,0 +1,581 @@
+
+
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- SHARED JS: auth, search, user menu -->
+  <script>
+  (function() {
+    'use strict';
+    var token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+    if (!token) { window.location.replace('/login'); return; }
+
+    function apiFetch(url, opts) {
+      opts = opts || {};
+      var headers = { 'Authorization': 'Bearer ' + token };
+      if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+      return fetch(url, Object.assign({}, opts, { headers: Object.assign(headers, opts.headers || {}) }))
+        .then(function(res) {
+          if (res.status === 401) { localStorage.removeItem('dl_token'); window.location.replace('/login?expired=1'); throw new Error('Unauthorized'); }
+          return res;
+        });
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+
+    // ── Shared stability primitives ──
+    window.DLStability = window.DLStability || {
+      esc: esc,
+      nearBottom: function(el, threshold) {
+        if (!el) return true;
+        return (el.scrollHeight - el.scrollTop - el.clientHeight) < (threshold || 96);
+      },
+      preserveScroll: function(el, fn) {
+        if (!el || typeof fn !== 'function') return fn && fn();
+        var top = el.scrollTop;
+        var height = el.scrollHeight;
+        var near = this.nearBottom(el);
+        var result = fn();
+        requestAnimationFrame(function() {
+          if (near) el.scrollTop = el.scrollHeight;
+          else el.scrollTop = Math.max(0, top + (el.scrollHeight - height));
+        });
+        return result;
+      },
+      showSkeleton: function(el, label) {
+        if (!el) return;
+        el.innerHTML = '<div class="loading-state" style="padding:1.5rem;text-align:center;color:var(--muted);"><div class="loading-spinner"></div><div>' + esc(label || 'Loading…') + '</div></div>';
+      },
+      showInlineUpdating: function(el, label) {
+        if (!el) return null;
+        var badge = el.querySelector('[data-inline-updating="1"]');
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.dataset.inlineUpdating = '1';
+          badge.style.cssText = 'position:absolute;right:0.75rem;top:0.75rem;z-index:5;border:1px solid rgba(201,168,76,0.28);border-radius:999px;background:rgba(15,17,23,0.86);color:var(--gold);font-size:0.7rem;font-weight:700;padding:0.22rem 0.55rem;box-shadow:0 8px 24px rgba(0,0,0,0.25);';
+          if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+          el.appendChild(badge);
+        }
+        badge.textContent = label || 'Updating…';
+        return badge;
+      },
+      hideInlineUpdating: function(el) {
+        var badge = el && el.querySelector('[data-inline-updating="1"]');
+        if (badge) badge.remove();
+      },
+      showErrorState: function(el, message, retryActionName) {
+        if (!el) return;
+        el.innerHTML = '<div style="padding:1.25rem;color:var(--muted);font-size:0.85rem;text-align:center;"><div style="color:var(--red);font-weight:700;margin-bottom:0.35rem;">Could not load</div><div>' + esc(message || 'Something went wrong.') + '</div>' + (retryActionName ? '<button class="btn btn-outline btn-sm" style="margin-top:0.75rem;" onclick="' + retryActionName + '()">Try again</button>' : '') + '</div>';
+      },
+      quietRefresh: function(key, fn, delay) {
+        window.__dlQuietRefreshTimers = window.__dlQuietRefreshTimers || {};
+        clearTimeout(window.__dlQuietRefreshTimers[key]);
+        window.__dlQuietRefreshTimers[key] = setTimeout(function(){ Promise.resolve().then(fn).catch(function(){}); }, delay || 250);
+      }
+    };
+
+    // ── User menu ──
+    var userDropdown = document.getElementById('user-dropdown');
+    var headerUserBtn = document.getElementById('header-user-btn');
+    headerUserBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      userDropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', function() { userDropdown.classList.remove('open'); });
+
+    // ── Populate user info from JWT ──
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      var name = payload.name || payload.email || '?';
+      var firmName = payload.firmName || '';
+      document.getElementById('user-menu-name').innerHTML = esc(name) + ' <span class="user-caret">▼</span>';
+      document.getElementById('user-menu-firm').textContent = firmName;
+      var initials = name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+      document.getElementById('user-avatar').textContent = initials || '?';
+      // Load avatar
+      if (payload.userId) {
+        apiFetch('/firms/team/' + payload.userId + '/avatar').then(function(r){return r.json();}).then(function(d){
+          if (d.url) {
+            var av = document.getElementById('user-avatar');
+            var img = document.createElement('img');
+            img.src = d.url;
+            img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+            img.onerror = function(){img.remove();};
+            av.textContent = '';
+            av.appendChild(img);
+          }
+        }).catch(function(){});
+      }
+    } catch(e) {}
+
+    apiFetch('/api/firm-settings').then(function(r){
+      if(r.status===403 && !window.DLAuth?.support){location.href='/account?required=1';throw Error('MFA required');}
+      return r.json();
+    }).then(function(p){
+      if(!p.name)return;
+      document.getElementById('user-menu-firm').textContent=p.name;
+      if(p.edition==='public'){
+        var logo=document.getElementById('header-logo-link');
+        if(logo){logo.textContent=p.name;logo.style.cssText='color:var(--gold);font-size:18px;font-weight:800;text-decoration:none;';}
+      }
+    }).catch(function(){});
+
+    if (!window.DLAuth?.support) apiFetch('/api/platform-admin/status').then(function(r){
+      if (!r.ok) return;
+      var link=document.createElement('a');link.className='umd-item';link.href='/admin';link.textContent='Admin center';userDropdown.prepend(link);
+    }).catch(function(){});
+
+    // ── Logout ──
+    document.getElementById('header-logout-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      // End the session on the server too, not just in this browser.
+      fetch('/api/account-security/sessions/current/revoke', { method: 'POST', keepalive: true, headers: { 'Authorization': 'Bearer ' + localStorage.getItem('dl_token') } }).catch(function(){});
+      localStorage.removeItem('dl_token');
+      localStorage.removeItem('dl_firm');
+      window.location.replace('/login');
+    });
+
+    // ── Recent clients (localStorage) ──
+    var RECENT_KEY = 'dl_recent_clients_' + (payload && (payload.firmId || payload.id) || 'unknown');
+    function getRecentClients() {
+      try {
+        return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').filter(function(x) {
+          return x && x._type && x.id != null && x._label;
+        }).slice(0, 5);
+      } catch(e) {
+        return [];
+      }
+    }
+    function setRecentClients(items) {
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify((items || []).slice(0, 5))); } catch(e) {}
+    }
+    function validateRecentClients() {
+      var recents = getRecentClients();
+      if (!recents.length || !window.apiFetch) return;
+      clearTimeout(recentValidationTimer);
+      recentValidationTimer = setTimeout(function() {
+        apiFetch('/api/search/validate-recents', {
+          method: 'POST',
+          body: JSON.stringify({ items: recents })
+        }).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+          if (!d || !Array.isArray(d.items)) return;
+          setRecentClients(d.items);
+          if (hcdOpen && !searchResults.length) renderSearchResults();
+        }).catch(function() {});
+      }, 50);
+    }
+    function addRecentClient(r) {
+      if (!r || !r._type || r.id == null) return;
+      var item = {
+        _type: r._type,
+        id: r.id,
+        _label: r._label || r.name || 'Untitled',
+        _sub: r._sub || ''
+      };
+      var recents = getRecentClients().filter(function(x){ return !(x._type === item._type && String(x.id) === String(item.id)); });
+      recents.unshift(item);
+      recents = recents.slice(0, 5);
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify(recents)); } catch(e) {}
+    }
+
+    // ── Unified search ──
+    var searchTimer = null;
+    var recentValidationTimer = null;
+    var searchResults = [];
+    var hcdOpen = false;
+    var hcdFocusIdx = -1;
+    var searchBar = document.getElementById('header-search-bar');
+    var searchDropdown = document.getElementById('header-client-dropdown');
+
+    function searchIconForType(type) {
+      return type === 'relationship' ? '👥' : type === 'company' ? '🏢' : '👤';
+    }
+    function navigateTo(r) {
+      addRecentClient(r);
+      closeSearch();
+      if (r._type === 'relationship') window.location.href = '/crm/relationship/' + r.id;
+      else if (r._type === 'company') window.location.href = '/crm/company/' + r.id;
+      else window.location.href = '/crm/person/' + r.id;
+    }
+    function setSearchFocus(idx) {
+      var opts = Array.prototype.slice.call(document.querySelectorAll('.hcd-option[data-nav-idx]'));
+      if (!opts.length) { hcdFocusIdx = -1; return; }
+      if (idx < 0) idx = 0;
+      if (idx >= opts.length) idx = opts.length - 1;
+      hcdFocusIdx = idx;
+      opts.forEach(function(el, i) { el.classList.toggle('focused', i === idx); });
+      if (opts[idx]) opts[idx].scrollIntoView({ block: 'nearest' });
+    }
+    function renderSearchResults() {
+      var list = document.getElementById('hcd-list');
+      var footer = document.getElementById('hcd-footer');
+      if (!list || !footer) return;
+
+      var rows = [];
+      if (!searchResults.length) {
+        var recents = getRecentClients();
+        if (recents.length) {
+          rows.push('<div style="padding:0.45rem 1rem 0.25rem;font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Recent</div>');
+          recents.forEach(function(r, i) {
+            rows.push('<div class="hcd-option" data-ridx="' + i + '" data-nav-idx="' + i + '">' +
+              '<span style="font-size:1rem;">' + searchIconForType(r._type) + '</span>' +
+              '<span class="hcd-info"><span class="hcd-name">' + esc(r._label) + '</span><span class="hcd-meta">' + esc(r._sub || '') + '</span></span></div>');
+          });
+          list.innerHTML = rows.join('');
+          footer.textContent = 'Recently visited';
+          list.querySelectorAll('.hcd-option[data-ridx]').forEach(function(el) {
+            el.addEventListener('click', function() {
+              navigateTo(recents[parseInt(el.dataset.ridx, 10)]);
+            });
+            el.addEventListener('mouseenter', function() {
+              setSearchFocus(parseInt(el.dataset.navIdx, 10));
+            });
+          });
+          setSearchFocus(0);
+        } else {
+          list.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.82rem;">Type to search, or open a CRM record and it will show up here next time.</div>';
+          footer.textContent = '';
+          hcdFocusIdx = -1;
+        }
+        return;
+      }
+
+      list.innerHTML = searchResults.map(function(r, i) {
+        return '<div class="hcd-option" data-idx="' + i + '" data-nav-idx="' + i + '">' +
+          '<span style="font-size:1rem;">' + searchIconForType(r._type) + '</span>' +
+          '<span class="hcd-info"><span class="hcd-name">' + esc(r._label) + '</span><span class="hcd-meta">' + esc(r._sub || '') + '</span></span></div>';
+      }).join('');
+      footer.textContent = searchResults.length + ' result' + (searchResults.length !== 1 ? 's' : '');
+      list.querySelectorAll('.hcd-option[data-idx]').forEach(function(el) {
+        el.addEventListener('click', function() {
+          navigateTo(searchResults[parseInt(el.dataset.idx, 10)]);
+        });
+        el.addEventListener('mouseenter', function() {
+          setSearchFocus(parseInt(el.dataset.navIdx, 10));
+        });
+      });
+      setSearchFocus(0);
+    }
+    function openSearch() {
+      if (!searchBar || !searchDropdown) return;
+      hcdOpen = true;
+      searchBar.removeAttribute('readonly');
+      searchBar.classList.add('open');
+      searchDropdown.classList.add('open');
+      renderSearchResults();
+      validateRecentClients();
+    }
+    function closeSearch() {
+      if (!searchBar || !searchDropdown) return;
+      hcdOpen = false;
+      hcdFocusIdx = -1;
+      searchResults = [];
+      clearTimeout(searchTimer);
+      searchDropdown.classList.remove('open');
+      searchBar.classList.remove('open');
+      searchBar.setAttribute('readonly', '');
+      searchBar.value = '';
+      searchBar.placeholder = 'Search relationships, companies, people…';
+    }
+    if (searchBar && searchDropdown) {
+      searchBar.addEventListener('focus', function() {
+        searchBar.placeholder = 'Search relationships, companies, people…';
+        openSearch();
+      });
+      searchBar.addEventListener('input', function() {
+        var q = searchBar.value.trim();
+        clearTimeout(searchTimer);
+        hcdFocusIdx = -1;
+        if (q.length < 2) {
+          searchResults = [];
+          renderSearchResults();
+          return;
+        }
+        searchTimer = setTimeout(function() {
+          apiFetch('/api/search?q=' + encodeURIComponent(q)).then(function(r) { return r.json(); }).then(function(d) {
+            searchResults = [].concat(
+              (d.relationships || []).map(function(r) { return Object.assign({}, r, { _type: 'relationship', _label: r.name, _sub: 'Relationship' }); }),
+              (d.companies || []).map(function(c) { return Object.assign({}, c, { _type: 'company', _label: c.name || c.company_name, _sub: c.entity_type || 'Company' }); }),
+              (d.people || []).map(function(p) { return Object.assign({}, p, { _type: 'person', _label: (window.formatPersonDisplayName ? window.formatPersonDisplayName(p) : ((p.first_name || '') + ' ' + (p.last_name || '')).trim()), _sub: p.relationship_name || 'Person' }); })
+            );
+            renderSearchResults();
+          }).catch(function() {});
+        }, 200);
+      });
+      searchBar.addEventListener('keydown', function(e) {
+        if (!hcdOpen) return;
+        var activeList = searchResults.length ? searchResults : getRecentClients();
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSearchFocus(hcdFocusIdx + 1);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSearchFocus(hcdFocusIdx <= 0 ? 0 : hcdFocusIdx - 1);
+        } else if (e.key === 'Enter') {
+          if (hcdFocusIdx >= 0 && activeList[hcdFocusIdx]) {
+            e.preventDefault();
+            navigateTo(activeList[hcdFocusIdx]);
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeSearch();
+          searchBar.blur();
+        }
+      });
+      document.addEventListener('click', function(e) {
+        if (hcdOpen && !e.target.closest('.header-search-wrap')) closeSearch();
+      });
+    }
+
+    // ── Toast ──
+    window._shellToast = window.toast = function(msg, type) {
+      try {
+        var t = document.getElementById('toast');
+        if (!t) return;
+        t.textContent = msg;
+        t.className = 'toast show' + (type==='error'?' error':'');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(function(){ t.className='toast'; }, 3000);
+      } catch(e) { /* non-fatal */ }
+    };
+
+    // ── apiFetch exposed globally for page scripts ──
+    window.apiFetch = apiFetch;
+    window.esc = esc;
+    window.addRecentClient = addRecentClient;
+
+    // Desktop/web safety: dropping files outside supported zones should never
+    // navigate the app window away from DarkLion.
+    function hasDraggedFiles(event) {
+      var dt = event && event.dataTransfer;
+      if (!dt) return false;
+      if (dt.files && dt.files.length) return true;
+      return Array.prototype.indexOf.call(dt.types || [], 'Files') >= 0;
+    }
+    document.addEventListener('dragover', function(e) {
+      if (hasDraggedFiles(e)) e.preventDefault();
+    }, true);
+    document.addEventListener('drop', function(e) {
+      if (hasDraggedFiles(e)) e.preventDefault();
+    }, true);
+
+    function setNavBadge(id, count) {
+      var badge = document.getElementById(id);
+      if (!badge) return;
+      var n = parseInt(count || 0, 10) || 0;
+      if (n > 0) { badge.textContent = n > 99 ? '99+' : String(n); badge.style.display = 'inline-flex'; }
+      else { badge.textContent = ''; badge.style.display = 'none'; }
+    }
+
+    var _baseDocumentTitle = document.title.replace(/^\([^)]*\)\s*/, '');
+    var _lastUnreadDocumentTitle = document.title;
+    function setBrowserUnreadIndicator(total) {
+      if (document.title !== _lastUnreadDocumentTitle) {
+        _baseDocumentTitle = document.title.replace(/^\([^)]*\)\s*/, '') || _baseDocumentTitle;
+      }
+      var n = parseInt(total || 0, 10) || 0;
+      _lastUnreadDocumentTitle = (n > 0 ? '(' + (n > 99 ? '99+' : n) + ') ' : '') + _baseDocumentTitle;
+      document.title = _lastUnreadDocumentTitle;
+    }
+    var _desktopLastNotificationAt = Object.create(null);
+    function getDesktopBridge() {
+      return window.darklionDesktop && window.darklionDesktop.isDesktop ? window.darklionDesktop : null;
+    }
+    function updateDesktopBadge(total) {
+      var bridge = getDesktopBridge();
+      if (!bridge || typeof bridge.setBadgeCount !== 'function') return;
+      try { bridge.setBadgeCount(parseInt(total || 0, 10) || 0); } catch(e) { /* non-fatal */ }
+    }
+    function notifyDesktopOnce(key, payload, minGapMs) {
+      var bridge = getDesktopBridge();
+      if (!bridge || typeof bridge.notify !== 'function') return;
+      var now = Date.now();
+      var dedupeKey = key || (payload && (payload.route || payload.title)) || 'darklion-notification';
+      var gap = minGapMs || 2500;
+      if (_desktopLastNotificationAt[dedupeKey] && now - _desktopLastNotificationAt[dedupeKey] < gap) return;
+      _desktopLastNotificationAt[dedupeKey] = now;
+      try { bridge.notify(payload || {}); } catch(e) { /* non-fatal */ }
+    }
+    window.DLDesktop = {
+      isDesktop: !!getDesktopBridge(),
+      setBadgeCount: updateDesktopBadge,
+      notifyOnce: notifyDesktopOnce,
+      navigate: function(routePath) {
+        var bridge = getDesktopBridge();
+        if (!bridge || typeof bridge.navigate !== 'function') return;
+        try { bridge.navigate(routePath); } catch(e) { /* non-fatal */ }
+      }
+    };
+    function fetchInboxIndicatorCount() {
+      return apiFetch('/api/messages/unread-count').then(function(r){ return r.json(); }).then(function(d){
+        var total = parseInt(d && d.total || 0, 10) || 0;
+        setNavBadge('nav-inbox-badge', total);
+        return total;
+      }).catch(function(){ return 0; });
+    }
+    function fetchTeamChatIndicatorCount() {
+      return apiFetch('/api/team-chat/unread-count').then(function(r){ return r.json(); }).then(function(d){
+        return parseInt(d && d.unread_count || 0, 10) || 0;
+      }).catch(function(){ return 0; });
+    }
+    function parseShellJwtPayload() {
+      try { return JSON.parse(atob(String(token || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
+      catch (_) { return {}; }
+    }
+    function titleForTeamChatNotification(chat) {
+      if (!chat) return 'New Team Chat message';
+      var title = chat.title || chat.name || 'Team Chat';
+      return title ? 'Team Chat — ' + title : 'New Team Chat message';
+    }
+    var _desktopTeamChatWatchdogLastUnread = null;
+    var _desktopTeamChatWatchdogBusy = false;
+    function runDesktopTeamChatWatchdog() {
+      if (!getDesktopBridge() || _desktopTeamChatWatchdogBusy) return Promise.resolve();
+      var payload = parseShellJwtPayload();
+      if (!payload.userId) return Promise.resolve();
+      _desktopTeamChatWatchdogBusy = true;
+      return apiFetch('/api/team-chat/conversations?limit=50')
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          var chats = Array.isArray(data && data.conversations) ? data.conversations : [];
+          var total = chats.reduce(function(sum, chat){ return sum + (parseInt(chat.unread_count || 0, 10) || 0); }, 0);
+          var previous = _desktopTeamChatWatchdogLastUnread;
+          _desktopTeamChatWatchdogLastUnread = total;
+          if (typeof updateBrowserUnreadIndicator === 'function') updateBrowserUnreadIndicator();
+          if (previous === null || total <= previous) return;
+          var unread = chats.find(function(chat){ return (parseInt(chat.unread_count || 0, 10) || 0) > 0; }) || null;
+          notifyDesktopOnce('team-chat-watchdog-' + total + '-' + (unread && (unread.updated_at || unread.last_message_at || unread.id) || Date.now()), {
+            title: titleForTeamChatNotification(unread),
+            body: (unread && (unread.preview_text || unread.preview || unread.last_message_preview)) || 'New message in Team Chat',
+            route: '/team-chat'
+          }, 1000);
+        })
+        .catch(function(){ /* non-fatal watchdog */ })
+        .finally(function(){ _desktopTeamChatWatchdogBusy = false; });
+    }
+    function updateBrowserUnreadIndicator() {
+      return Promise.all([fetchInboxIndicatorCount(), fetchTeamChatIndicatorCount()]).then(function(counts){
+        var total = (counts[0] || 0) + (counts[1] || 0);
+        setBrowserUnreadIndicator(total);
+        updateDesktopBadge(total);
+      }).catch(function(){ /* non-fatal */ });
+    }
+    window.updateBrowserUnreadIndicator = updateBrowserUnreadIndicator;
+
+    // ── Sidebar "My Work" overdue badge ──
+    function updateMyWorkBadge() {
+      var badge = document.getElementById('nav-mywork-badge');
+      if (!badge) return;
+      apiFetch('/api/my-work/count').then(function(r){ return r.json(); }).then(function(d){
+        setNavBadge('nav-mywork-badge', d && d.overdue ? d.overdue : 0);
+      }).catch(function(){ /* non-fatal */ });
+    }
+
+    // ── Sidebar Team Chat unread badge ──
+    function updateTeamChatBadge() {
+      var badge = document.getElementById('nav-teamchat-badge');
+      if (!badge) return Promise.resolve();
+      return apiFetch('/api/team-chat/unread-count').then(function(r){ return r.json(); }).then(function(d){
+        setNavBadge('nav-teamchat-badge', d && d.unread_count ? d.unread_count : 0);
+        if (typeof updateBrowserUnreadIndicator === 'function') updateBrowserUnreadIndicator();
+      }).catch(function(){ /* non-fatal */ });
+    }
+    window.updateTeamChatBadge = updateTeamChatBadge;
+
+    function updateSidebarBadges() { updateMyWorkBadge(); updateTeamChatBadge(); updateBrowserUnreadIndicator(); }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateSidebarBadges);
+    } else {
+      updateSidebarBadges();
+    }
+    document.addEventListener('visibilitychange', function(){ if (!document.hidden) updateBrowserUnreadIndicator(); });
+    setInterval(updateMyWorkBadge, 60000);
+    setInterval(updateTeamChatBadge, 10000);
+    setInterval(updateBrowserUnreadIndicator, 30000);
+    if (getDesktopBridge()) {
+      runDesktopTeamChatWatchdog();
+      setInterval(runDesktopTeamChatWatchdog, 5000);
+    }
+
+    // ── Styled confirm dialog (replaces browser native confirm()) ──
+    window.dlConfirm = function(message, opts) {
+      return new Promise(function(resolve) {
+        opts = opts || {};
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        var box = document.createElement('div');
+        box.style.cssText = 'background:var(--card,#1e2f40);border:1px solid var(--border,rgba(201,168,76,0.2));border-radius:12px;padding:1.75rem 2rem;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+        var title = opts.title ? '<div style="font-size:1rem;font-weight:700;margin-bottom:0.6rem;color:var(--text,#e8edf2);">' + esc(opts.title) + '</div>' : '';
+        var icon = opts.icon ? '<div style="font-size:2rem;margin-bottom:0.75rem;">' + opts.icon + '</div>' : '';
+        var confirmLabel = opts.confirmLabel || 'Confirm';
+        var cancelLabel = opts.cancelLabel || 'Cancel';
+        var requiredText = opts.requiredText || '';
+        var inputHtml = requiredText
+          ? '<div style="margin:-0.4rem 0 1.2rem;"><label style="display:block;font-size:0.76rem;color:var(--muted,#8fa3b8);margin-bottom:0.35rem;">Type <strong style="color:var(--text,#e8edf2);">' + esc(requiredText) + '</strong> to confirm</label><input id="dl-confirm-input" autocomplete="off" style="width:100%;background:var(--input-bg,#0f1923);border:1px solid var(--border,rgba(201,168,76,0.2));color:var(--text,#e8edf2);border-radius:7px;padding:0.55rem 0.7rem;font-size:0.9rem;" /></div>'
+          : '';
+        var confirmStyle = opts.danger
+          ? 'background:var(--red,#f56565);color:#fff;border:none;'
+          : 'background:var(--gold,#c9a84c);color:#0f1923;border:none;';
+        box.innerHTML = icon + title +
+          '<div style="font-size:0.92rem;color:var(--muted,#8fa3b8);line-height:1.6;margin-bottom:1.5rem;">' + message + '</div>' +
+          inputHtml +
+          '<div style="display:flex;gap:0.75rem;justify-content:flex-end;">' +
+            '<button id="dl-confirm-cancel" style="background:transparent;border:1px solid var(--border,rgba(201,168,76,0.2));color:var(--text,#e8edf2);padding:0.5rem 1.1rem;border-radius:7px;cursor:pointer;font-size:0.88rem;font-weight:600;">' + cancelLabel + '</button>' +
+            '<button id="dl-confirm-ok" style="' + confirmStyle + 'padding:0.5rem 1.25rem;border-radius:7px;cursor:pointer;font-size:0.88rem;font-weight:700;">' + confirmLabel + '</button>' +
+          '</div>';
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        function close(result) { document.body.removeChild(overlay); resolve(result); }
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) close(false); });
+        box.querySelector('#dl-confirm-cancel').addEventListener('click', function() { close(false); });
+        var okBtn = box.querySelector('#dl-confirm-ok');
+        var input = box.querySelector('#dl-confirm-input');
+        if (input) {
+          okBtn.disabled = true;
+          okBtn.style.opacity = '0.45';
+          okBtn.style.cursor = 'not-allowed';
+          input.addEventListener('input', function() {
+            var ok = input.value.trim().toUpperCase() === String(requiredText).toUpperCase();
+            okBtn.disabled = !ok;
+            okBtn.style.opacity = ok ? '1' : '0.45';
+            okBtn.style.cursor = ok ? 'pointer' : 'not-allowed';
+          });
+          input.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !okBtn.disabled) close(true); });
+        }
+        okBtn.addEventListener('click', function() { if (!okBtn.disabled) close(true); });
+        (input || okBtn).focus();
+      });
+    };
+
+    // ── Dynamic tab-bar sticky offset (adjusts to entity-header height) ──
+    function updateTabBarTop() {
+      var eh = document.querySelector('.entity-header');
+      if (!eh) return;
+      // tab-bar sticky is relative to <main> which already starts below the top header
+      // so offset = entity-header height only
+      document.documentElement.style.setProperty('--tab-bar-top', eh.offsetHeight + 'px');
+    }
+    // Run on load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateTabBarTop);
+    } else {
+      updateTabBarTop();
+    }
+    window.addEventListener('resize', updateTabBarTop);
+    // Re-run whenever entity-header resizes (e.g. after data loads in)
+    if (window.ResizeObserver) {
+      var _ehObserver = new ResizeObserver(updateTabBarTop);
+      function _observeEntityHeader() {
+        var eh = document.querySelector('.entity-header');
+        if (eh) _ehObserver.observe(eh);
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _observeEntityHeader);
+      } else {
+        _observeEntityHeader();
+      }
+    }
+  })();
+  </script>

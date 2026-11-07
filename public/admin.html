@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin center — DarkLion</title>
+    <link rel="icon" href="/lion-logo.png" />
+    <link rel="stylesheet" href="/admin.css?v=__ASSET_VERSION__" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/admin"
+        ><img src="/lion-logo.png" alt="" /><span
+          >Dark<span class="gold">Lion</span></span
+        ></a
+      ><span class="header-title">Admin center</span>
+      <div class="identity">
+        <span id="admin-name">Checking access…</span
+        ><small
+          >Platform administration ·
+          <a href="#" id="admin-sign-out">Sign out</a></small
+        >
+      </div>
+    </header>
+    <aside class="nav">
+      <a id="nav-firms" href="/admin">Firms</a
+      ><a id="nav-log" href="/admin/access-log">Access log</a
+      ><a class="back" href="/today">Back to workspace</a>
+    </aside>
+    <main id="main" aria-live="polite">
+      <div class="spinner">Checking administrator access…</div>
+    </main>
+    <script src="/js/admin.js?v=__ASSET_VERSION__"></script>
+  </body>
+</html>

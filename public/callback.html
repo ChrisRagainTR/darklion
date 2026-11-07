@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <title>QuickBooks Authorization — DarkLion</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0f1923;
+      --charcoal: #1c2b3a;
+      --card: #1e2f40;
+      --gold: #c9a84c;
+      --text: #e8edf2;
+      --muted: #8fa3b8;
+      --border: rgba(201,168,76,0.2);
+      --green: #3ecf8e;
+      --red: #f56565;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      padding: 1.2rem 2rem;
+      background: rgba(15,25,35,0.95);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .nav-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .nav-name span { color: var(--gold); }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .callback-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 3rem;
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .status-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin: 0 auto 1.5rem;
+    }
+
+    .status-icon.loading {
+      background: rgba(201,168,76,0.12);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .status-icon.success { background: rgba(62,207,142,0.12); }
+    .status-icon.error   { background: rgba(245,101,101,0.12); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+
+    h1.success { color: var(--green); }
+    h1.error   { color: var(--red); }
+
+    .status-msg {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.65;
+    }
+
+    .fallback-box {
+      background: rgba(15,25,35,0.7);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.6rem;
+      text-align: left;
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .fallback-box h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+
+    .data-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .data-row:last-child { margin-bottom: 0; }
+
+    .data-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .data-value {
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: var(--gold);
+      background: rgba(201,168,76,0.05);
+      border: 1px solid rgba(201,168,76,0.1);
+      border-radius: 5px;
+      padding: 0.5rem 0.75rem;
+      word-break: break-all;
+    }
+
+    .btn-home {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0.75rem 1.8rem;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-top: 1.5rem;
+      transition: background 0.2s;
+    }
+
+    .btn-home:hover { background: #e2c068; }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+    }
+
+    .footer-links a:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-brand" href="/">
+      <img src="/lion-logo.png" alt="DarkLion" width="36" height="36" style="display:block;flex-shrink:0;">
+      <span class="nav-name">Dark<span>Lion</span></span>
+    </a>
+  </nav>
+
+  <main>
+    <div class="callback-card" id="callback-card">
+      <div class="status-icon loading" id="status-icon">&#x23F3;</div>
+      <h1 id="status-title">Processing Authorization&hellip;</h1>
+      <p class="status-msg" id="status-msg">Please wait while we complete the QuickBooks connection.</p>
+
+      <div class="fallback-box" id="fallback-box">
+        <h3>If automatic connection failed, send this to your administrator:</h3>
+        <div class="data-row">
+          <span class="data-label">Authorization Code</span>
+          <span class="data-value" id="display-code">&mdash;</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Realm ID (Company)</span>
+          <span class="data-value" id="display-realm">&mdash;</span>
+        </div>
+      </div>
+
+      <div id="home-btn-wrap" style="display:none;">
+        <a href="/dashboard" class="btn-home">&#x2190; Go to Dashboard</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <ul class="footer-links">
+      <li><a href="/privacy.html">Privacy Policy</a></li>
+      <li><a href="/terms.html">Terms of Service</a></li>
+      <li><a href="/">Home</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    (async function () {
+      const params  = new URLSearchParams(window.location.search);
+      const code    = params.get('code');
+      const realmId = params.get('realmId');
+      const state   = params.get('state');
+      const error   = params.get('error');
+
+      const iconEl  = document.getElementById('status-icon');
+      const titleEl = document.getElementById('status-title');
+      const msgEl   = document.getElementById('status-msg');
+      const fallback = document.getElementById('fallback-box');
+      const btnWrap  = document.getElementById('home-btn-wrap');
+
+      function showSuccess(autoConnected) {
+        iconEl.className  = 'status-icon success';
+        iconEl.textContent = '\u2705';
+        titleEl.className = 'success';
+        titleEl.textContent = 'Authorization Complete!';
+        msgEl.textContent   = 'QuickBooks is now connected. DarkLion will begin processing your transactions shortly.';
+
+        if (!autoConnected) {
+          // Show fallback box with code/realmId
+          document.getElementById('display-code').textContent  = code  || '(not provided)';
+          document.getElementById('display-realm').textContent = realmId || '(not provided)';
+          fallback.style.display = 'block';
+        }
+
+        btnWrap.style.display = 'block';
+      }
+
+      function showError(message) {
+        iconEl.className   = 'status-icon error';
+        iconEl.textContent = '\u274C';
+        titleEl.className  = 'error';
+        titleEl.textContent = 'Authorization Failed';
+        msgEl.textContent  = message || 'An unknown error occurred. Please try connecting again.';
+        btnWrap.style.display = 'block';
+      }
+
+      if (error) {
+        showError('QuickBooks returned an error: ' + error + '. Please try again or contact your administrator.');
+        return;
+      }
+
+      if (!code) {
+        showError('No authorization code was received. Please return to the connect page and try again.');
+        return;
+      }
+
+      // Forward to backend for token exchange
+      // state may contain firmId:nonce — pass it through so backend can associate company with firm
+      const backendUrl = new URL('/auth/callback', window.location.origin);
+      if (code)    backendUrl.searchParams.set('code', code);
+      if (realmId) backendUrl.searchParams.set('realmId', realmId);
+      if (state)   backendUrl.searchParams.set('state', state);
+
+      // Also send JWT in Authorization header if available
+      const dlToken = localStorage.getItem('dl_token');
+
+      let autoConnected = false;
+      try {
+        const headers = {};
+        if (dlToken) headers['Authorization'] = 'Bearer ' + dlToken;
+        const res = await fetch(backendUrl.toString(), { signal: AbortSignal.timeout(15000), headers });
+        if (res.ok) {
+          autoConnected = true;
+          try {
+            const data = await res.json();
+            // If we know which company was connected, redirect back to it
+            if (data.company_id) {
+              const appBase = window.location.origin;
+              setTimeout(() => { window.location.href = `${appBase}/crm/company/${data.company_id}?connected=1`; }, 1500);
+            }
+          } catch(e) { /* non-fatal */ }
+        }
+      } catch (e) {
+        autoConnected = false;
+      }
+
+      showSuccess(autoConnected);
+
+      // If initiated from dashboard, redirect back after success
+      if (autoConnected && sessionStorage.getItem('connect_from') === 'dashboard') {
+        sessionStorage.removeItem('connect_from');
+        const homeBtn = document.querySelector('.btn-home');
+        if (homeBtn) { homeBtn.href = '/dashboard'; homeBtn.textContent = '\u2190 Back to Dashboard'; }
+        setTimeout(() => { window.location.href = '/dashboard'; }, 2000);
+      }
+    })();
+  </script>
+
+</body>
+</html>

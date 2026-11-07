@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> — DarkLion</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #080f17; color: #e8edf2; font: 16px/1.5 system-ui, sans-serif; }
+    main { width: min(460px, 100%); padding: 32px; border: 1px solid rgba(201,168,76,.3); border-radius: 16px; background: #152331; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { color: #a9b8c7; }
+    ul { padding-left: 22px; color: #d6dee7; }
+    .actions { display: flex; gap: 12px; margin-top: 28px; }
+    button { flex: 1; padding: 11px 14px; border: 1px solid #c9a84c; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+    #allow { background: #c9a84c; color: #080f17; }
+    #deny { background: transparent; color: #e8edf2; }
+    #error { color: #ff9a9a; min-height: 24px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Connect <%= clientName %>?</h1>
+    <p>This MCP client is requesting access to your current DarkLion firm as your staff account.</p>
+    <ul>
+      <% request.scope.split(' ').forEach(function(scope) { %>
+        <li><%= scope === 'darklion:write'
+          ? 'Create or update data when you explicitly use a write tool'
+          : scope === 'darklion:communicate'
+            ? 'Send client communications only when you explicitly use a communication tool'
+            : 'Read firm data available to your staff account' %></li>
+      <% }); %>
+    </ul>
+    <p>Only continue if you initiated this connection.</p>
+    <form id="consent">
+      <% ['response_type','client_id','redirect_uri','resource','scope','state','code_challenge','code_challenge_method'].forEach(function(key) { %>
+        <input type="hidden" name="<%= key %>" value="<%= request[key] || '' %>">
+      <% }); %>
+      <div class="actions">
+        <button id="deny" type="button">Cancel</button>
+        <button id="allow" type="button">Allow</button>
+      </div>
+      <div id="error" role="alert"></div>
+    </form>
+  </main>
+  <script>
+    const token = localStorage.getItem('dl_token');
+    if (!token) {
+      const returnTo = location.pathname + location.search;
+      location.replace('/login?returnTo=' + encodeURIComponent(returnTo));
+    }
+    async function decide(decision) {
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(button => { button.disabled = true; });
+      const body = Object.fromEntries(new FormData(document.getElementById('consent')));
+      body.decision = decision;
+      try {
+        const response = await fetch('/oauth/authorize', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        if (response.status === 401) {
+          localStorage.removeItem('dl_token');
+          const returnTo = location.pathname + location.search;
+          location.replace('/login?returnTo=' + encodeURIComponent(returnTo));
+          return;
+        }
+        if (!response.ok || !data.redirect_to) throw new Error(data.error_description || 'Authorization failed.');
+        location.replace(data.redirect_to);
+      } catch (error) {
+        document.getElementById('error').textContent = error.message;
+        buttons.forEach(button => { button.disabled = false; });
+      }
+    }
+    document.getElementById('allow').addEventListener('click', () => decide('allow'));
+    document.getElementById('deny').addEventListener('click', () => decide('deny'));
+  </script>
+</body>
+</html>

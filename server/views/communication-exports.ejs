@@ -1,0 +1,183 @@
+<%- include('partials/shell-top', { title: title, activeNav: 'settings' }) %>
+<style>
+  .archive-page { max-width:1080px; margin:0 auto; padding:1.75rem 1.5rem 3rem; }
+  .archive-breadcrumb { display:inline-flex; align-items:center; gap:0.4rem; color:var(--muted); font-size:0.78rem; text-decoration:none; margin-bottom:1rem; }
+  .archive-breadcrumb:hover { color:var(--text); }
+  .archive-header { display:flex; align-items:flex-end; justify-content:space-between; gap:2rem; padding-bottom:1.25rem; border-bottom:1px solid var(--border); }
+  .archive-header h1 { font-size:1.45rem; line-height:1.2; margin:0 0 0.4rem; }
+  .archive-header p { color:var(--muted); margin:0; max-width:650px; font-size:0.86rem; line-height:1.55; }
+  .archive-state { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; color:var(--green); font-size:0.78rem; font-weight:700; }
+  .archive-state-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 4px rgba(62,207,142,0.1); }
+  .archive-builder { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1.5rem; align-items:end; padding:1.5rem 0; border-bottom:1px solid var(--border); }
+  .archive-fields { display:grid; grid-template-columns:repeat(3,minmax(150px,1fr)); gap:0.85rem; }
+  .archive-field label { display:block; color:var(--muted); font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem; }
+  .archive-field input { width:100%; height:40px; padding:0 0.7rem; border:1px solid var(--border); border-radius:6px; background:var(--charcoal); color:var(--text); font:inherit; font-size:0.84rem; outline:none; }
+  .archive-field input:focus { border-color:var(--gold); }
+  .archive-generate { min-width:150px; height:40px; }
+  .archive-feedback { min-height:1.25rem; padding-top:0.65rem; color:var(--muted); font-size:0.78rem; grid-column:1 / -1; }
+  .archive-feedback.success { color:var(--green); }
+  .archive-feedback.error { color:var(--red); }
+  .archive-list-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.5rem 0 0.75rem; }
+  .archive-list-head h2 { margin:0; font-size:0.92rem; }
+  .archive-list { border-top:1px solid var(--border); }
+  .archive-row { display:grid; grid-template-columns:minmax(210px,1.2fr) minmax(150px,0.7fr) minmax(130px,0.6fr) auto; gap:1rem; align-items:center; min-height:72px; padding:0.8rem 0; border-bottom:1px solid var(--border); }
+  .archive-range { color:var(--text); font-size:0.85rem; font-weight:700; }
+  .archive-id { color:var(--muted); font-size:0.69rem; margin-top:0.25rem; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; overflow:hidden; text-overflow:ellipsis; }
+  .archive-metric-label { color:var(--muted); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; }
+  .archive-metric-value { color:var(--text); font-size:0.84rem; font-weight:700; margin-top:0.2rem; }
+  .archive-status { display:inline-flex; align-items:center; gap:0.35rem; color:var(--green); font-size:0.76rem; font-weight:700; text-transform:capitalize; }
+  .archive-status.warn { color:var(--orange); }
+  .archive-empty { padding:2.5rem 0; color:var(--muted); font-size:0.84rem; text-align:center; }
+  .archive-download { min-width:120px; }
+  @media (max-width:760px) {
+    .archive-page { padding:1.25rem 1rem 2rem; }
+    .archive-header { align-items:flex-start; flex-direction:column; gap:0.75rem; }
+    .archive-builder { grid-template-columns:1fr; }
+    .archive-fields { grid-template-columns:1fr; }
+    .archive-generate { width:100%; }
+    .archive-row { grid-template-columns:1fr 1fr; }
+    .archive-row-main { grid-column:1 / -1; }
+    .archive-download { width:100%; }
+  }
+</style>
+
+<main class="shell-main">
+  <div class="archive-page">
+    <a class="archive-breadcrumb" href="/settings?tab=archives"><span aria-hidden="true">←</span> Settings / Archives</a>
+
+    <header class="archive-header">
+      <div>
+        <h1>Communications archive</h1>
+        <p>Create a date-based package of client messages, internal communications, attachments, participant details, and checksum verification files.</p>
+      </div>
+      <div class="archive-state"><span class="archive-state-dot"></span> Archive active</div>
+    </header>
+
+    <section class="archive-builder" aria-labelledby="create-export-heading">
+      <div>
+        <h2 id="create-export-heading" style="font-size:0.92rem;margin:0 0 0.85rem;">Create export</h2>
+        <div class="archive-fields">
+          <div class="archive-field">
+            <label for="startDate">Start date</label>
+            <input id="startDate" type="date" />
+          </div>
+          <div class="archive-field">
+            <label for="endDate">End date</label>
+            <input id="endDate" type="date" />
+          </div>
+          <div class="archive-field">
+            <label for="timezone">Timezone</label>
+            <input id="timezone" type="text" value="America/New_York" />
+          </div>
+        </div>
+        <div class="archive-feedback" id="exportStatus" role="status"></div>
+      </div>
+      <button id="createExportBtn" class="btn btn-gold archive-generate" type="button">Generate export</button>
+    </section>
+
+    <section aria-labelledby="recent-exports-heading">
+      <div class="archive-list-head">
+        <h2 id="recent-exports-heading">Recent exports</h2>
+        <button id="refreshExportsBtn" class="btn btn-outline btn-sm" type="button" aria-label="Refresh exports">Refresh</button>
+      </div>
+      <div class="archive-list" id="exportsList"><div class="archive-empty">Loading exports…</div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+}
+
+function setDefaultDates() {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - 30);
+  document.getElementById('endDate').value = today.toISOString().slice(0, 10);
+  document.getElementById('startDate').value = start.toISOString().slice(0, 10);
+}
+
+async function loadExports() {
+  const list = document.getElementById('exportsList');
+  list.innerHTML = '<div class="archive-empty">Loading exports…</div>';
+  const res = await apiFetch('/api/communication-exports');
+  if (!res.ok) {
+    list.innerHTML = '<div class="archive-empty">Exports could not be loaded.</div>';
+    return;
+  }
+  const data = await res.json();
+  const rows = data.exports || [];
+  if (!rows.length) {
+    list.innerHTML = '<div class="archive-empty">No exports have been generated yet.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(row => {
+    const hasExceptions = Number(row.exception_count || 0) > 0;
+    return `
+      <div class="archive-row">
+        <div class="archive-row-main">
+          <div class="archive-range">${escapeHtml(row.start_date)} to ${escapeHtml(row.end_date)}</div>
+          <div class="archive-id" title="${escapeHtml(row.export_id)}">${escapeHtml(row.export_id)}</div>
+        </div>
+        <div>
+          <div class="archive-metric-label">Contents</div>
+          <div class="archive-metric-value">${Number(row.event_count || 0).toLocaleString()} events</div>
+        </div>
+        <div>
+          <div class="archive-metric-label">Verification</div>
+          <div class="archive-status ${hasExceptions ? 'warn' : ''}">${hasExceptions ? `${Number(row.exception_count).toLocaleString()} exceptions` : 'Passed'}</div>
+        </div>
+        <button class="btn btn-outline btn-sm archive-download" type="button" data-export-id="${escapeHtml(row.export_id)}" onclick="downloadExport(this.dataset.exportId)">Download ZIP</button>
+      </div>`;
+  }).join('');
+}
+
+async function createExport() {
+  const status = document.getElementById('exportStatus');
+  const button = document.getElementById('createExportBtn');
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+  if (!startDate || !endDate) {
+    status.className = 'archive-feedback error';
+    status.textContent = 'Choose both a start date and an end date.';
+    return;
+  }
+  button.disabled = true;
+  button.textContent = 'Generating…';
+  status.className = 'archive-feedback';
+  status.textContent = 'Building the retained export package. Large date ranges may take a moment.';
+  try {
+    const res = await apiFetch('/api/communication-exports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startDate, endDate, timezone: document.getElementById('timezone').value || 'America/New_York' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Export failed.');
+    status.className = 'archive-feedback success';
+    status.textContent = 'Export ready. Download it from the first row below.';
+    await loadExports();
+  } catch (error) {
+    status.className = 'archive-feedback error';
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Generate export';
+  }
+}
+
+async function downloadExport(exportId) {
+  const res = await apiFetch(`/api/communication-exports/${encodeURIComponent(exportId)}/download?file=export.zip`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return window._shellToast?.(data.error || 'Download failed', 'error');
+  if (data.url) window.open(data.url, '_blank', 'noopener');
+  else window._shellToast?.('A download URL could not be created.', 'error');
+}
+
+document.getElementById('createExportBtn').addEventListener('click', createExport);
+document.getElementById('refreshExportsBtn').addEventListener('click', loadExports);
+setDefaultDates();
+loadExports();
+</script>
+<%- include('partials/shell-bottom') %>

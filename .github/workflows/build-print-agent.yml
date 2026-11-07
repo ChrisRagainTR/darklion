@@ -1,0 +1,67 @@
+name: Build DarkLion Print Agent
+
+on:
+  push:
+    paths:
+      - 'darklion-print-agent/**'
+    branches: [main]
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Node.js
+        shell: powershell
+        run: node --version; npm --version
+
+      - name: Verify Redmon64.dll placeholder
+        shell: powershell
+        run: |
+          # redmon64.dll is committed to the repo as a placeholder
+          # Real Redmon install is handled post-install by printer-setup.ps1
+          Write-Host "Redmon64.dll present: $((Test-Path 'darklion-print-agent\installer\redmon64.dll'))"
+
+      - name: Create placeholder icon (if not present)
+        shell: powershell
+        run: |
+          # electron-builder needs an icon.ico — create a minimal one if not committed
+          $iconPath = "darklion-print-agent\app\renderer\icon.ico"
+          if (-not (Test-Path $iconPath)) {
+            # Use a 1x1 valid ICO file (base64 encoded minimal ICO)
+            $icoBase64 = "AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            [System.IO.File]::WriteAllBytes($iconPath, [System.Convert]::FromBase64String($icoBase64))
+            Write-Host "Placeholder icon created."
+          } else {
+            Write-Host "Icon already exists."
+          }
+
+      - name: Install Electron app dependencies
+        working-directory: darklion-print-agent/app
+        run: npm ci
+
+      - name: Build Windows installer
+        working-directory: darklion-print-agent/app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:win
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkLionPrintAgent-installer
+          path: darklion-print-agent/app/dist/DarkLionPrintAgent_Setup_*.exe
+          retention-days: 30
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: darklion-print-agent/dist/DarkLionPrintAgent_Setup_*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

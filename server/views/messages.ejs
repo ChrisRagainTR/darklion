@@ -1,0 +1,2048 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+    .main { display: flex; flex-direction: row; height: calc(100vh - var(--header-h)); overflow: hidden; }
+
+    .inbox-panel {
+      width: 340px; flex-shrink: 0; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; height: 100%; overflow: hidden;
+    }
+    .inbox-header {
+      padding: 1.25rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+    .inbox-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .inbox-header h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0; }
+    .inbox-search {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.82rem;
+      margin-bottom: 0.5rem;
+    }
+    .inbox-search:focus { outline: none; border-color: var(--gold); }
+
+    .inbox-list { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+    .thread-card {
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s;
+    }
+    .thread-card:hover { background: rgba(201,168,76,0.05); }
+    .thread-card.active { background: rgba(201,168,76,0.1); border-left: 3px solid var(--gold); }
+    .thread-card.mentioned { border-left: 3px solid #3ecf8e; background: rgba(62,207,142,0.05); }
+    .thread-card.mentioned .thread-card-subject { color: #3ecf8e; }
+    .thread-card-name { font-size: 0.85rem; font-weight: 600; color: var(--text); display: flex; justify-content: space-between; }
+    .thread-card-subject { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+    .thread-card-preview { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thread-card-meta { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.3rem; flex-wrap: wrap; }
+    .thread-card-actions { display: none; gap: 0.35rem; margin-top: 0.4rem; justify-content: flex-end; }
+    .thread-card:hover .thread-card-actions { display: flex; }
+    .unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); margin-left: auto; flex-shrink: 0; }
+    .unread-count-badge { background: var(--gold); color: var(--navy); font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 10px; }
+    .draft-count-badge { background: rgba(201,168,76,0.16); color: var(--gold); border: 1px solid rgba(201,168,76,0.32); font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 10px; }
+
+    .archive-btn {
+      font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; cursor: pointer; border: 1px solid;
+      background: transparent; border-color: var(--muted); color: var(--muted);
+    }
+    .archive-btn:hover { border-color: #e05555; color: #e05555; }
+
+    /* ── AI SUMMARY MODAL ── */
+    .summary-modal-overlay { display:none; position:fixed; inset:0; z-index:1200; background:rgba(0,0,0,0.62); align-items:center; justify-content:center; padding:1rem; }
+    .summary-modal-overlay.open { display:flex; }
+    .summary-panel {
+      width:min(760px, 96vw); max-height:min(760px, 86vh); border:1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; background: var(--card); border-radius:14px; box-shadow:0 22px 70px rgba(0,0,0,0.48);
+    }
+    .summary-panel-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap:0.75rem; flex-shrink: 0;
+    }
+    .summary-panel-header h3 { font-size: 0.98rem; font-weight: 800; color: var(--text); margin: 0; }
+    .summary-panel-actions { display:flex; gap:0.45rem; align-items:center; }
+    .summary-panel-body {
+      flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+      font-size: 0.86rem; line-height: 1.7; color: var(--muted);
+    }
+    .summary-panel-body strong {
+      color: var(--gold); display: block;
+      margin-top: 0.85rem; margin-bottom: 0.2rem;
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .summary-panel-body strong:first-child { margin-top: 0; }
+    .summary-panel-body p { margin: 0 0 0.4rem; color: var(--text); }
+
+    /* ── THREAD DETAIL ── */
+    .detail-panel {
+      flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden;
+    }
+    .detail-header {
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: var(--card);
+      display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+    }
+    .detail-header-left { flex: 1; }
+    .detail-header-person { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .detail-header-person a { color: var(--gold); text-decoration: none; }
+    .detail-header-person a:hover { text-decoration: underline; }
+    .detail-header-subject { font-size: 0.85rem; color: var(--muted); margin-top: 0.15rem; }
+    .detail-header-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+    .detail-messages {
+      flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+    }
+    .thread-body {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 210px; overflow: hidden;
+    }
+    .thread-message-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+    .archived-thread-banner {
+      display: none; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: 0.65rem 1.5rem; border-bottom: 1px solid rgba(201,168,76,0.28);
+      background: rgba(201,168,76,0.08); color: var(--muted); font-size: 0.78rem;
+    }
+    .archived-thread-banner strong { color: var(--gold); }
+    .date-navigator {
+      min-height: 0; overflow-y: auto; border-left: 1px solid var(--border);
+      background: rgba(255,255,255,0.012); padding: 1rem 0.75rem;
+    }
+    .date-navigator-title {
+      color: var(--muted); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; margin: 0 0.35rem 0.8rem;
+    }
+    .date-nav-month { margin-bottom: 0.9rem; }
+    .date-nav-month-label {
+      color: var(--text); font-size: 0.72rem; font-weight: 700; margin: 0 0.35rem 0.35rem;
+    }
+    .date-nav-item {
+      width: 100%; border: 0; border-left: 2px solid transparent; background: transparent;
+      color: var(--muted); border-radius: 0 6px 6px 0; padding: 0.38rem 0.45rem;
+      display: flex; justify-content: space-between; gap: 0.5rem; cursor: pointer;
+      font: inherit; font-size: 0.74rem; text-align: left;
+    }
+    .date-nav-item:hover { color: var(--text); background: rgba(201,168,76,0.06); }
+    .date-nav-item.active {
+      color: var(--gold); border-left-color: var(--gold); background: rgba(201,168,76,0.09);
+    }
+    .date-nav-count { color: var(--muted); font-size: 0.66rem; }
+    .message-date-divider {
+      width: 100%; display: flex; align-items: center; gap: 0.7rem;
+      color: var(--muted); font-size: 0.68rem; font-weight: 700; scroll-margin-top: 1rem;
+    }
+    .message-date-divider::before, .message-date-divider::after {
+      content: ""; height: 1px; flex: 1; background: var(--border);
+    }
+    .message-date-divider span {
+      border: 1px solid var(--border); background: var(--card); border-radius: 999px;
+      padding: 0.22rem 0.6rem; white-space: nowrap;
+    }
+    .date-jump-compact {
+      display: none; padding: 0.55rem 1rem; border-bottom: 1px solid var(--border); background: var(--card);
+    }
+    .date-jump-compact select {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 0.4rem 0.55rem; font-size: 0.78rem;
+    }
+    .msg-bubble-wrap { display: flex; flex-direction: column; width: 100%; }
+    .msg-bubble-wrap.staff { align-items: flex-end; }
+    .msg-bubble-wrap.client { align-items: flex-start; }
+    .msg-bubble {
+      display: inline-block; width: fit-content; min-width: 44px; max-width: min(92%, 920px); padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap;
+    }
+    .msg-bubble.staff { background: var(--gold); color: var(--navy); }
+    .msg-bubble.client { background: var(--charcoal); color: var(--text); border: 1px solid var(--border); }
+    .msg-bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 800; }
+    .msg-bubble.client a, .msg-bubble.internal a, .msg-bubble.task a { color: #93c5fd; }
+    .msg-bubble.internal { background: rgba(255,200,0,0.1); border: 1px dashed var(--gold); color: var(--text); }
+    .msg-bubble-wrap.pending { opacity: 0.74; }
+    .msg-bubble-wrap.failed .msg-bubble { border: 1px solid rgba(224,85,85,0.55); background: rgba(224,85,85,0.10); color: var(--text); }
+    .msg-failed-actions { display:flex; gap:0.4rem; justify-content:flex-end; margin-top:0.25rem; }
+    .msg-bubble.task { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.35); color: var(--text); border-left: 3px solid #3b82f6; }
+    .msg-meta { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+    .msg-internal-label { font-size: 0.62rem; color: var(--gold); margin-bottom: 0.15rem; }
+    .msg-task-label { font-size: 0.62rem; color: #60a5fa; margin-bottom: 0.15rem; font-weight: 700; letter-spacing: 0.04em; }
+
+    /* ── TASK THREAD CARD ── */
+    .thread-card.has-task { border-left: 3px solid #3b82f6; background: rgba(59,130,246,0.04); }
+    .thread-card.has-task .thread-card-subject { color: #60a5fa; }
+    .task-badge { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.62rem; font-weight: 700; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.35); border-radius: 4px; padding: 0.1rem 0.35rem; vertical-align: middle; margin-left: 0.3rem; }
+    .msg-delete-btn {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.7rem; padding: 0 0.25rem; margin-left: 0.35rem;
+      line-height: 1; opacity: 0.6; transition: opacity 0.15s, color 0.15s;
+    }
+    .msg-delete-btn:hover { opacity: 1; color: #e74c3c; }
+    .msg-delete-btn.confirm { color: #e74c3c; opacity: 1; font-weight: 700; }
+    .msg-bubble-wrap.staff:hover .msg-delete-btn { display: inline-block; }
+    .msg-bubble-row { display: flex; width: 100%; align-items: center; justify-content: flex-end; }
+    .msg-bubble-wrap.client .msg-bubble-row { justify-content: flex-start; }
+    .msg-bubble-wrap.staff .msg-bubble-row { justify-content: flex-end; }
+
+    .no-thread-selected {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 0.75rem; color: var(--muted);
+    }
+    .no-thread-selected .nts-icon { font-size: 3rem; opacity: 0.4; }
+
+    /* ── REPLY BOX ── */
+    .reply-box {
+      padding: 1rem 1.5rem 0.9rem; border-top: 1px solid var(--border); background: var(--card);
+      position: relative; min-height: 205px; flex-shrink: 0;
+    }
+    .reply-box.drag-over { box-shadow: inset 0 0 0 2px var(--gold); background: rgba(201,168,76,0.06); }
+    .reply-box-controls { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .reply-box-controls label { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+    .reply-box textarea {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.88rem; font-family: inherit;
+      resize: none; min-height: 135px; max-height: min(240px, 40vh); margin-bottom: 0.5rem; overflow-y: hidden;
+    }
+    .reply-box textarea:focus { outline: none; border-color: var(--gold); }
+    .reply-box-actions { display: flex; gap: 0.5rem; align-items: stretch; }
+    .btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.88; }
+    .btn-gold { background: var(--gold); color: var(--navy); }
+    .btn-outline { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-outline:hover { color: var(--text); border-color: var(--gold); }
+    .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.77rem; }
+    .btn-danger { background: transparent; color: #e05555; border: 1px solid #e05555; }
+    .btn-danger:hover { background: rgba(224,85,85,0.1); }
+
+    /* ── ATTACHMENTS ── */
+    .attach-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.4rem; }
+    .attach-chip-input { display: inline-flex; align-items: center; gap: 0.3rem; background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.75rem; color: var(--text); }
+    .attach-chip-input button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.8rem; padding: 0; line-height: 1; }
+    .attach-chip-input button:hover { color: #e55; }
+    .btn-attach { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 0.3rem 0.65rem; font-size: 0.77rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-attach:hover { color: var(--text); border-color: var(--gold); }
+    .msg-attachments { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .attachment-chip { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(0,0,0,0.25); border: 1px solid rgba(0,0,0,0.2); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.75rem; color: #fff; text-decoration: none; font-weight: 500; }
+    .attachment-chip:hover { background: rgba(0,0,0,0.4); color: #fff; }
+    .attachment-image-card { display: block; color: inherit; text-decoration: none; border: 1px solid rgba(0,0,0,0.18); border-radius: 10px; overflow: hidden; max-width: min(420px, 68vw); background: rgba(0,0,0,0.16); }
+    .attachment-image-card img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: rgba(0,0,0,0.18); }
+    .attachment-image-card .attachment-chip { border: 0; border-top: 1px solid rgba(0,0,0,0.16); border-radius: 0; width: 100%; justify-content: flex-start; }
+    .att-size { color: var(--muted); font-size: 0.7rem; }
+
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── NEW CONVERSATION MODAL ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.5rem; width: 420px; max-width: 95vw; display: flex; flex-direction: column; gap: 1rem;
+    }
+    .modal-box h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0; }
+    .modal-field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.3rem; }
+    .modal-field input, .modal-field select, .modal-field textarea {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 0.5rem 0.65rem; font-size: 0.85rem; font-family: inherit;
+    }
+    .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus {
+      outline: none; border-color: var(--gold);
+    }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.25rem; }
+    .person-search-results {
+      position: absolute; z-index: 1100; background: var(--charcoal); border: 1px solid var(--gold);
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); width: 100%; max-height: 200px; overflow-y: auto;
+    }
+    .person-search-item {
+      padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.85rem; transition: background 0.1s;
+    }
+    .person-search-item:hover { background: rgba(201,168,76,0.1); }
+    .modal-field-wrap { position: relative; }
+
+
+    /* ── INBOX TABS ── */
+    .inbox-tabs {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0;
+      border-bottom: 1px solid var(--border); background: var(--card); flex-shrink: 0;
+    }
+    .inbox-tab {
+      min-width: 0; padding: 0.55rem 0.5rem; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); background: none; border: none; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+      white-space: normal; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.3rem;
+      line-height: 1.2; text-align: center;
+    }
+    .inbox-tab:hover { color: var(--text); }
+    .inbox-tab.active { color: var(--text); border-bottom-color: var(--gold); }
+    .inbox-tab.active-task { color: #60a5fa; border-bottom-color: #3b82f6; }
+    .tab-count {
+      font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.38rem;
+      border-radius: 10px; line-height: 1.4;
+    }
+    #tabMessages .tab-count { background: rgba(201,168,76,0.18); color: var(--gold); }
+    #tabDocumentUploads .tab-count { background: rgba(62,207,142,0.16); color: #3ecf8e; }
+    #tabTasks .tab-count { background: rgba(59,130,246,0.18); color: #60a5fa; }
+    #tabArchived .tab-count { background: rgba(148,163,184,0.16); color: #a8b2c1; }
+    .document-upload-card { border-left: 3px solid #3ecf8e; background: rgba(62,207,142,0.035); }
+    .document-upload-card.unread { background: rgba(62,207,142,0.09); }
+    .document-upload-label { color:#3ecf8e; font-size:0.61rem; font-weight:800; letter-spacing:0.08em; }
+    .document-upload-files { white-space:normal; line-height:1.4; }
+    .sms-exception-banner {
+      display: none; margin: 0.55rem 0.7rem 0; padding: 0.55rem 0.65rem;
+      border: 1px solid rgba(245,158,11,0.45); border-radius: 7px;
+      background: rgba(245,158,11,0.1); color: var(--text); font-size: 0.75rem;
+    }
+    .sms-exception-banner summary { cursor: pointer; font-weight: 700; color: #fbbf24; }
+    .sms-exception-item { margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(245,158,11,0.25); }
+    .sms-exception-meta { color: var(--muted); font-size: 0.68rem; margin-bottom: 0.18rem; }
+    .sms-exception-resolve { margin-top: 0.3rem; border: 0; background: none; color: var(--gold); cursor: pointer; font-size: 0.7rem; padding: 0; }
+
+    @media (max-width: 1050px) {
+      .thread-body { grid-template-columns: minmax(0, 1fr); }
+      .date-navigator { display: none; }
+      .date-jump-compact.has-dates { display: block; }
+    }
+
+    @media (max-width: 768px) {
+      .inbox-panel { width: 260px; }
+    }
+    @media (max-width: 600px) {
+      .main {
+        position: fixed !important; left: 0 !important; top: var(--header-h) !important;
+        right: 0 !important; bottom: 0 !important; overflow: hidden !important;
+        display: flex !important; flex-direction: column !important;
+      }
+      .inbox-panel {
+        width: 100% !important; flex: 1 !important; overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important; border-right: none !important;
+        display: flex !important; flex-direction: column !important; height: 100% !important;
+      }
+      .inbox-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .inbox-panel.mobile-hidden { display: none !important; }
+      .detail-panel {
+        width: 100% !important; flex: 1 !important; overflow: hidden !important;
+        display: none !important; flex-direction: column !important; height: 100% !important;
+      }
+      .detail-panel.mobile-visible { display: flex !important; }
+      #threadView { flex: 1 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
+      .thread-body { flex: 1 !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; }
+      .thread-message-column { flex: 1 !important; min-height: 0 !important; }
+      .detail-messages { flex: 1 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; padding: 1rem !important; min-height: 0 !important; }
+      .detail-header { flex-shrink: 0 !important; padding: 0.6rem 1rem; flex-wrap: wrap; }
+      .detail-header-subject { display: none; }
+      .detail-header-controls { display: none; }
+      .archived-thread-banner { padding: 0.55rem 1rem; }
+      .reply-box { flex-shrink: 0 !important; padding: 0.75rem 1rem; min-height: 155px; }
+      .reply-box textarea { min-height: 108px; max-height: min(210px, 34vh); font-size: 1rem; }
+      .mobile-back-btn {
+        display: flex !important; flex-shrink: 0 !important; align-items: center; gap: 0.4rem;
+        background: none; border: none; color: var(--gold); font-size: 0.95rem; font-weight: 600;
+        cursor: pointer; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); width: 100%;
+      }
+      .thread-card { padding: 1rem; }
+      .thread-card-actions { display: flex !important; }
+      .btn { padding: 0.55rem 1rem; }
+    }
+</style>
+
+<main class="main">
+
+  <!-- Inbox panel -->
+  <div class="inbox-panel" id="inboxPanel">
+    <div class="inbox-header">
+      <div class="inbox-header-row">
+        <h2>💬 My Inbox</h2>
+
+      </div>
+      <input type="text" class="inbox-search" id="searchBox" placeholder="Search by name…" oninput="filterThreads()">
+    </div>
+    <div class="inbox-tabs">
+      <button class="inbox-tab active" id="tabMessages" onclick="switchTab('messages')">
+        💬 Messages <span class="tab-count" id="tabCountMessages">0</span>
+      </button>
+      <button class="inbox-tab" id="tabDocumentUploads" onclick="switchTab('documents')">
+        📄 Docs <span class="tab-count" id="tabCountDocumentUploads">0</span>
+      </button>
+      <button class="inbox-tab" id="tabTasks" onclick="switchTab('tasks')">
+        📋 Tasks <span class="tab-count" id="tabCountTasks">0</span>
+      </button>
+      <button class="inbox-tab" id="tabArchived" onclick="switchTab('archived')">
+        🗄 Archived <span class="tab-count" id="tabCountArchived">0</span>
+      </button>
+    </div>
+    <details class="sms-exception-banner" id="smsExceptionBanner">
+      <summary id="smsExceptionSummary"></summary>
+      <div id="smsExceptionList"></div>
+    </details>
+    <div class="inbox-list" id="inboxList">
+      <div style="display:flex;justify-content:center;padding:2rem;"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Thread detail -->
+  <div class="detail-panel" id="detailPanel">
+    <button class="mobile-back-btn" id="mobileBackBtn" style="display:none;" onclick="closeMobileThread()">← Back to Inbox</button>
+    <div class="no-thread-selected" id="noThreadSelected">
+      <div class="nts-icon">💬</div>
+      <div>Select a thread to read messages</div>
+    </div>
+
+    <div id="threadView" style="display:none;flex:1;display:none;flex-direction:column;height:100%;">
+      <div class="detail-header" id="detailHeader"></div>
+      <div class="archived-thread-banner" id="archivedThreadBanner">
+        <span><strong>Archived conversation</strong> · Read-only until it is restored.</span>
+        <button class="btn btn-sm btn-outline" onclick="restoreCurrentThread()">Restore to Inbox</button>
+      </div>
+      <div class="thread-body">
+        <div class="thread-message-column">
+          <div class="date-jump-compact" id="dateJumpCompact">
+            <select id="dateJumpSelect" aria-label="Jump to message date" onchange="jumpToMessageDate(this.value)"></select>
+          </div>
+          <div class="detail-messages" id="detailMessages">
+            <div style="display:flex;justify-content:center;padding:2rem;"><div class="spinner"></div></div>
+          </div>
+          <div id="typingIndicator" style="display:none;padding:0.3rem 1rem;font-size:0.78rem;color:var(--muted);font-style:italic;"></div>
+        </div>
+        <aside class="date-navigator" id="dateNavigator" aria-label="Conversation dates">
+          <div class="date-navigator-title">Jump to date</div>
+          <div id="dateNavList"></div>
+        </aside>
+      </div>
+      <div class="reply-box" id="replyBox">
+        <div class="reply-box-controls">
+          <!-- Internal note checkbox hidden — @mentions are auto-internal on the server. -->
+          <input type="checkbox" id="internalToggle" style="display:none;">
+          <div style="flex:1;"></div>
+        </div>
+        <div id="agentDraftBanner" style="display:none;margin-bottom:0.45rem;padding:0.45rem 0.6rem;border:1px solid rgba(201,168,76,0.35);border-radius:8px;background:rgba(201,168,76,0.08);font-size:0.78rem;color:var(--muted);">
+          <span id="agentDraftLabel">Drafted by your agent</span>
+          <button class="btn btn-outline btn-sm" style="margin-left:0.5rem;padding:0.15rem 0.45rem;" onclick="discardActiveAgentDraft()">Discard</button>
+        </div>
+        <textarea id="replyBody" placeholder="Write a reply… (use @Name to loop in a colleague)" rows="3" spellcheck="true" autocorrect="on"></textarea>
+        <div id="mention-picker" style="display:none;position:absolute;z-index:500;background:var(--charcoal);border:1px solid var(--gold);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:200px;max-height:220px;overflow-y:auto;"></div>
+        <div class="attach-chips" id="attachChips"></div>
+        <input type="file" id="attachFileInput" multiple style="display:none;" onchange="handleAttachFiles(this.files)">
+        <div class="reply-box-actions">
+          <button class="btn btn-gold btn-sm" id="primaryReplyBtn" onclick="sendReply()">Send Reply</button>
+          <button class="btn btn-outline btn-sm" id="alternateReplyBtn" onclick="sendAlternateReply()">📱 Text Message</button>
+          <button class="btn btn-outline btn-sm" id="emmaDraftBtn" onclick="requestEmmaDraft()">Draft with Emma</button>
+          <button class="btn-attach" onclick="document.getElementById('attachFileInput').click()">📎 Attach</button>
+          <button class="btn-attach" onclick="openClientDocAttachPicker()">📁 Client Docs</button>
+          <button class="btn btn-outline btn-sm" onclick="archiveCurrentThread()">Archive</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- AI Summary modal -->
+<div class="summary-modal-overlay" id="inboxSummaryModal" onclick="if(event.target===this) closeInboxSummaryModal()">
+  <div class="summary-panel" id="inboxSummaryPanel">
+    <div class="summary-panel-header">
+      <h3>🤖 30-Day Summary</h3>
+      <div class="summary-panel-actions">
+        <button class="btn btn-ghost btn-xs" id="inboxSummaryRefreshBtn" onclick="loadInboxSummary(true)">↺ Refresh</button>
+        <button class="btn btn-outline btn-xs" onclick="closeInboxSummaryModal()">Close</button>
+      </div>
+    </div>
+    <div class="summary-panel-body" id="inboxSummaryBody">
+      <div style="color:var(--muted);font-style:italic;font-size:0.8rem;">Select a thread to see the summary.</div>
+    </div>
+  </div>
+</div>
+
+<!-- New Conversation Modal -->
+<div class="modal-overlay" id="newConvModal">
+  <div class="modal-box">
+    <h3>New Conversation</h3>
+    <div class="modal-field">
+      <label>Person</label>
+      <div class="modal-field-wrap">
+        <input type="text" id="personSearch" placeholder="Search by name or email…" autocomplete="off" oninput="searchPeople(this.value)">
+        <div class="person-search-results" id="personSearchResults" style="display:none;"></div>
+      </div>
+      <input type="hidden" id="selectedPersonId">
+    </div>
+    <div class="modal-field">
+      <label>Staff Member</label>
+      <select id="staffSelect"></select>
+    </div>
+    <div class="modal-field">
+      <label>Subject (optional)</label>
+      <input type="text" id="newConvSubject" placeholder="e.g. Tax planning question">
+    </div>
+    <div class="modal-field">
+      <label>First Message</label>
+      <textarea id="newConvBody" rows="3" placeholder="Type your message…" spellcheck="true" autocorrect="on"></textarea>
+    </div>
+    <div class="attach-chips" id="newConvDocChips"></div>
+    <div style="display:flex;justify-content:flex-start;">
+      <button class="btn-attach" type="button" onclick="openNewConvClientDocPicker()">📁 Attach from Client Docs</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeNewConversationModal()">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="submitNewConversation()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Thread Modal -->
+<div class="modal-overlay" id="forwardThreadModal">
+  <div class="modal-box">
+    <h3>Transfer conversation</h3>
+    <div class="modal-field">
+      <label>Transfer to</label>
+      <select id="forwardStaffSelect"></select>
+    </div>
+    <div class="modal-field">
+      <label>Handoff note (optional)</label>
+      <textarea id="forwardThreadNote" rows="3" placeholder="e.g. Please handle this client reply."></textarea>
+    </div>
+    <label style="display:flex;gap:0.45rem;align-items:center;font-size:0.8rem;color:var(--muted);margin-top:0.25rem;">
+      <input type="checkbox" id="forwardKeepMe" checked>
+      Keep me on this thread as a participant
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeForwardThreadModal()">Cancel</button>
+      <button class="btn btn-gold btn-sm" id="forwardThreadSubmitBtn" onclick="submitForwardThread()">Transfer</button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+<script src="https://js.pusher.com/8.3.0/pusher.min.js"></script>
+<script src="/realtime-config.js"></script>
+<script src="/js/realtime.js"></script>
+<script src="/js/client-doc-picker.js"></script>
+
+<script>
+const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+if (!token) window.location.href = '/login';
+
+let allThreads = [];
+let archivedThreads = [];
+let documentNotifications = [];
+let archivedDocumentNotifications = [];
+let documentNotificationTotals = { active: 0, archived: 0 };
+let documentNotificationResultTotals = { active: 0, archived: 0 };
+let documentNotificationQueries = { active: '', archived: '' };
+let documentNotificationRequestedQueries = { active: '', archived: '' };
+let documentNotificationSearchTimer = null;
+let inboxRequestGeneration = 0;
+let activeThreadId = null;
+let activeThreadArchived = false;
+let activeReplyChannel = 'portal';
+let activeDraftId = null;
+let activeDraftBody = '';
+let activeTab = 'messages'; // 'messages' | 'documents' | 'tasks' | 'archived'
+let firmUsers = [];
+let attachedFiles = [];
+let attachedClientDocs = [];
+
+const _jwtPayload = JSON.parse(atob(token.split('.')[1]));
+const _firmId = _jwtPayload.firmId || _jwtPayload.id;
+const _myUserId = _jwtPayload.userId || _jwtPayload.sub || null;
+
+// Pusher
+const _pusher = window.DLRealtime.create({
+  channelAuthorization: { endpoint: '/pusher/auth/staff', transport: 'ajax', headers: { Authorization: 'Bearer ' + token } },
+});
+const _firmChannel = _pusher.subscribe(`private-firm-${_firmId}`);
+_firmChannel.bind('pusher:subscription_succeeded', () => { console.log('[pusher] subscribed'); window.DLStability?.hideInlineUpdating(document.querySelector('.detail-panel')); });
+_pusher.connection.bind('state_change', ({ current }) => {
+  const panel = document.querySelector('.detail-panel');
+  if (!panel || current === 'connected') return window.DLStability?.hideInlineUpdating(panel);
+  if (['connecting','unavailable','disconnected'].includes(current)) window.DLStability?.showInlineUpdating(panel, current === 'connecting' ? 'Reconnecting…' : 'Offline');
+});
+_firmChannel.bind('message-new', ({ threadId, senderType }) => {
+  loadInbox();
+  if (senderType !== 'staff' && window.DLDesktop && typeof window.DLDesktop.notifyOnce === 'function') {
+    const activeAndVisible = activeThreadId === threadId && !document.hidden;
+    if (!activeAndVisible) {
+      window.DLDesktop.notifyOnce(`message-${threadId}`, {
+        title: 'New client message',
+        body: 'A client replied in Messages.',
+        route: '/messages'
+      });
+    }
+  }
+  const replyBox = document.getElementById('replyBody');
+  if (activeThreadId === threadId && !(replyBox && replyBox.value.trim()) && !_justSent && senderType !== 'staff') {
+    loadThread(threadId, true);
+  }
+});
+_firmChannel.bind('thread-new', () => loadInbox());
+_firmChannel.bind('document-upload-notification', () => loadInbox(false));
+_firmChannel.bind('sms-exception', () => loadInbox(false));
+_firmChannel.bind('agent-draft-new', ({ threadId }) => {
+  loadInbox();
+  const replyBody = document.getElementById('replyBody');
+  if (activeThreadId === threadId && replyBody && !replyBody.value.trim()) {
+    loadPendingAgentDraft(threadId);
+  }
+});
+
+// Typing emit
+let _staffTypingTimer = null;
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'replyBody' || !activeThreadId) return;
+  clearTimeout(_staffTypingTimer);
+  _staffTypingTimer = setTimeout(() => {
+    if (window._activePersonId) {
+      const portalCh = _pusher.channel(`private-portal-${_firmId}-${window._activePersonId}`);
+      if (portalCh) portalCh.trigger('client-typing', { threadId: activeThreadId, name: 'Advisor' });
+    }
+  }, 300);
+});
+
+const _replyBox = document.getElementById('replyBox');
+if (_replyBox) {
+  _replyBox.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    _replyBox.classList.add('drag-over');
+  });
+  _replyBox.addEventListener('dragleave', (e) => {
+    if (!_replyBox.contains(e.relatedTarget)) _replyBox.classList.remove('drag-over');
+  });
+  _replyBox.addEventListener('drop', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    _replyBox.classList.remove('drag-over');
+    handleAttachFiles(e.dataTransfer.files);
+    document.getElementById('replyBody')?.focus();
+  });
+}
+
+// Quiet reconciliation fallback — Pusher is the primary realtime path.
+setInterval(() => { if (!document.hidden) loadInbox(false); }, 90000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) window.DLStability?.quietRefresh('messages-visible', () => loadInbox(false), 150); });
+
+async function apiFetch(url, opts = {}) {
+  const isFormData = opts.body instanceof FormData;
+  return fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(opts.headers || {}),
+    },
+  });
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function safeLinkHref(raw) {
+  const value = String(raw || '').trim();
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^www\./i.test(value)) return 'https://' + value;
+  return '';
+}
+function splitTrailingUrlPunctuation(url) {
+  let core = String(url || '');
+  let tail = '';
+  while (/[.,!?;:]$/.test(core) || (/[)]$/.test(core) && (core.match(/\(/g) || []).length < (core.match(/\)/g) || []).length)) {
+    tail = core.slice(-1) + tail;
+    core = core.slice(0, -1);
+  }
+  return { core, tail };
+}
+function linkAnchor(label, href) {
+  const safeHref = safeLinkHref(href);
+  if (!safeHref) return esc(label);
+  return '<a href="' + escAttr(safeHref) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>';
+}
+function renderBody(body) {
+  const text = String(body || '');
+  const linkPattern = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)|(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+  let html = '';
+  let lastIndex = 0;
+  let match;
+  while ((match = linkPattern.exec(text)) !== null) {
+    html += esc(text.slice(lastIndex, match.index));
+    if (match[1] && match[2]) {
+      html += linkAnchor(match[1], match[2]);
+    } else {
+      const parts = splitTrailingUrlPunctuation(match[3]);
+      html += linkAnchor(parts.core, parts.core) + esc(parts.tail);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  html += esc(text.slice(lastIndex));
+  return html;
+}
+
+function attachmentMimeType(att) {
+  return String(att?.mimeType || att?.mime_type || att?.contentType || att?.content_type || '').toLowerCase();
+}
+function attachmentName(att) {
+  return att?.displayName || att?.display_name || att?.fileName || att?.file_name || 'Attachment';
+}
+function isImageAttachment(att) {
+  const mime = attachmentMimeType(att);
+  const name = attachmentName(att).toLowerCase();
+  return mime.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(name);
+}
+const messageAttachmentPreviewUrlCache = {};
+const messageAttachmentObjectUrls = new Set();
+function cachedMessageAttachmentPreviewUrl(documentId) {
+  return documentId ? messageAttachmentPreviewUrlCache[String(documentId)] || '' : '';
+}
+function rememberMessageAttachmentObjectUrl(documentId, url) {
+  const key = String(documentId);
+  const previous = messageAttachmentPreviewUrlCache[key];
+  if (previous && previous.startsWith('blob:') && previous !== url) {
+    try { URL.revokeObjectURL(previous); } catch (_) {}
+    messageAttachmentObjectUrls.delete(previous);
+  }
+  messageAttachmentPreviewUrlCache[key] = url;
+  messageAttachmentObjectUrls.add(url);
+}
+function renderMessageAttachment(att) {
+  const documentId = att.documentId || att.document_id;
+  const name = attachmentName(att);
+  const size = att.sizeBytes ? ' <span class="att-size">(' + formatBytes(att.sizeBytes) + ')</span>' : '';
+  const chip = `<span class="attachment-chip">📎 ${esc(name)}${size}</span>`;
+  if (!documentId) return chip;
+  if (isImageAttachment(att)) {
+    const cachedUrl = cachedMessageAttachmentPreviewUrl(documentId);
+    return `<a class="attachment-image-card" href="#" onclick="downloadAttachment(${documentId});return false;"><img data-message-attachment-preview-id="${documentId}"${cachedUrl ? ` data-preview-loaded="1" src="${esc(cachedUrl)}"` : ''} alt="${esc(name)}" loading="lazy">${chip}</a>`;
+  }
+  return `<a class="attachment-chip" href="#" onclick="downloadAttachment(${documentId});return false;">📎 ${esc(name)}${size}</a>`;
+}
+
+function buildInboxMessageBubble(m) {
+  const side = m.senderType === 'staff' ? 'staff' : 'client';
+  const isTask = m.messageType === 'task';
+  const bubbleClass = isTask ? 'task' : (m.isInternal ? 'internal' : side);
+  const attachmentsHtml = (m.attachments || []).length > 0
+    ? `<div class="msg-attachments">${m.attachments.map(renderMessageAttachment).join('')}</div>` : '';
+  const canDelete = m.senderType === 'staff' && m.senderId === _myUserId && !String(m.id || '').startsWith('local-');
+  const deleteBtn = canDelete ? `<button class="msg-delete-btn" data-msg-id="${m.id}" title="Delete message" onclick="deleteMessage(${m.id}, this)">✕</button>` : '';
+  const smsStatus = m.senderType === 'staff' && m.providerStatus ? ` · ${esc(m.providerStatus)}` : '';
+  const labelHtml = isTask
+    ? '<div class="msg-task-label">📋 Staff Task</div>'
+    : (m.isInternal
+        ? '<div class="msg-internal-label">🔒 Internal note</div>'
+        : (m.channel === 'sms' ? `<div class="msg-task-label">📱 Text message${smsStatus}</div>` : ''));
+  const failedActions = m.failed ? `<div class="msg-failed-actions"><button class="btn btn-outline btn-sm" onclick="restoreFailedReply('${esc(m.id)}')">Retry</button><button class="btn btn-outline btn-sm" onclick="document.querySelector('[data-msg-id=&quot;${esc(m.id)}&quot;]')?.remove()">Remove</button></div>` : '';
+  return `<div class="msg-bubble-wrap ${side}${m.pending ? ' pending' : ''}${m.failed ? ' failed' : ''}" data-msg-id="${esc(m.id)}" data-created-at="${escAttr(m.createdAt || '')}" data-body="${esc(m.body || '')}" data-internal="${m.isInternal ? '1' : '0'}">
+    ${labelHtml}
+    <div class="msg-bubble-row"><div class="msg-bubble ${bubbleClass}">${m.body ? renderBody(m.body, isTask) : ''}${attachmentsHtml}</div>${deleteBtn}</div>
+    <div class="msg-meta">${esc(m.senderName || 'You')} · ${m.pending ? 'Sending…' : (m.failed ? 'Failed to send' : relTime(m.createdAt))}</div>
+    ${failedActions}
+  </div>`;
+}
+
+function messageDateKey(ts) {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function formatMessageDate(ts, options) {
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', options);
+}
+
+function buildMessageDateDivider(m) {
+  const key = messageDateKey(m.createdAt);
+  if (!key) return '';
+  const label = formatMessageDate(m.createdAt, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  return `<div class="message-date-divider" id="message-date-${key}" data-message-date="${key}"><span>${esc(label)}</span></div>`;
+}
+
+function buildInboxMessageTimeline(messages) {
+  let lastDate = '';
+  return messages.map(m => {
+    const key = messageDateKey(m.createdAt);
+    const divider = key && key !== lastDate ? buildMessageDateDivider(m) : '';
+    lastDate = key || lastDate;
+    return divider + buildInboxMessageBubble(m);
+  }).join('');
+}
+
+function appendInboxTimelineMessage(container, m) {
+  const key = messageDateKey(m.createdAt);
+  if (key && !container.querySelector(`[data-message-date="${key}"]`)) {
+    container.insertAdjacentHTML('beforeend', buildMessageDateDivider(m));
+  }
+  container.insertAdjacentHTML('beforeend', buildInboxMessageBubble(m));
+}
+
+function renderDateNavigation(messages) {
+  const groups = [];
+  const byDate = new Map();
+  for (const m of messages) {
+    const key = messageDateKey(m.createdAt);
+    if (!key) continue;
+    if (!byDate.has(key)) {
+      const group = {
+        key,
+        count: 0,
+        dateLabel: formatMessageDate(m.createdAt, { month: 'short', day: 'numeric' }),
+        fullLabel: formatMessageDate(m.createdAt, { month: 'long', day: 'numeric', year: 'numeric' }),
+        monthLabel: formatMessageDate(m.createdAt, { month: 'long', year: 'numeric' }),
+      };
+      byDate.set(key, group);
+      groups.push(group);
+    }
+    byDate.get(key).count += 1;
+  }
+
+  const nav = document.getElementById('dateNavigator');
+  const list = document.getElementById('dateNavList');
+  const compact = document.getElementById('dateJumpCompact');
+  const select = document.getElementById('dateJumpSelect');
+  if (!nav || !list || !compact || !select) return;
+
+  nav.style.display = groups.length ? '' : 'none';
+  compact.classList.toggle('has-dates', groups.length > 0);
+  select.innerHTML = groups.length
+    ? '<option value="">Jump to date…</option>' + groups.map(g => `<option value="${g.key}">${esc(g.fullLabel)} (${g.count})</option>`).join('')
+    : '<option value="">No dated messages</option>';
+
+  let currentMonth = '';
+  let html = '';
+  for (const group of groups) {
+    if (group.monthLabel !== currentMonth) {
+      if (currentMonth) html += '</div>';
+      currentMonth = group.monthLabel;
+      html += `<div class="date-nav-month"><div class="date-nav-month-label">${esc(currentMonth)}</div>`;
+    }
+    html += `<button class="date-nav-item" data-date-nav="${group.key}" onclick="jumpToMessageDate('${group.key}')">
+      <span>${esc(group.dateLabel)}</span><span class="date-nav-count">${group.count}</span>
+    </button>`;
+  }
+  if (currentMonth) html += '</div>';
+  list.innerHTML = html;
+  updateActiveMessageDate();
+}
+
+function jumpToMessageDate(key) {
+  if (!key) return;
+  const target = document.getElementById(`message-date-${key}`);
+  if (!target) return;
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setActiveMessageDate(key);
+}
+
+function setActiveMessageDate(key) {
+  document.querySelectorAll('[data-date-nav]').forEach(item => item.classList.toggle('active', item.dataset.dateNav === key));
+  const select = document.getElementById('dateJumpSelect');
+  if (select && key) select.value = key;
+}
+
+function updateActiveMessageDate() {
+  const container = document.getElementById('detailMessages');
+  if (!container) return;
+  const dividers = [...container.querySelectorAll('[data-message-date]')];
+  if (!dividers.length) return;
+  const threshold = container.getBoundingClientRect().top + 90;
+  let active = dividers[0].dataset.messageDate;
+  for (const divider of dividers) {
+    if (divider.getBoundingClientRect().top <= threshold) active = divider.dataset.messageDate;
+    else break;
+  }
+  setActiveMessageDate(active);
+}
+
+function appendInboxMessage(m) {
+  const msgContainer = document.getElementById('detailMessages');
+  if (!msgContainer) return;
+  const near = window.DLStability?.nearBottom(msgContainer) !== false;
+  appendInboxTimelineMessage(msgContainer, m);
+  hydrateMessageAttachmentPreviews(msgContainer);
+  renderDateNavigation([...msgContainer.querySelectorAll('.msg-bubble-wrap')].map(node => ({
+    createdAt: node.dataset.createdAt,
+  })).filter(m => m.createdAt));
+  if (near || m.senderType === 'staff') msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+function settleInboxPending(tempId, message) {
+  const node = document.querySelector(`.msg-bubble-wrap[data-msg-id="${tempId}"]`);
+  if (!node || !message) return;
+  node.outerHTML = buildInboxMessageBubble(message);
+  hydrateMessageAttachmentPreviews(document.getElementById('detailMessages'));
+}
+function failInboxPending(tempId) {
+  const node = document.querySelector(`.msg-bubble-wrap[data-msg-id="${tempId}"]`);
+  if (!node) return;
+  node.classList.remove('pending');
+  node.classList.add('failed');
+  const meta = node.querySelector('.msg-meta');
+  if (meta) meta.textContent = 'You · Failed to send';
+  if (!node.querySelector('.msg-failed-actions')) node.insertAdjacentHTML('beforeend', `<div class="msg-failed-actions"><button class="btn btn-outline btn-sm" onclick="restoreFailedReply('${tempId}')">Retry</button><button class="btn btn-outline btn-sm" onclick="this.closest('.msg-bubble-wrap')?.remove()">Remove</button></div>`);
+}
+function restoreFailedReply(tempId) {
+  const node = document.querySelector(`.msg-bubble-wrap[data-msg-id="${tempId}"]`);
+  const body = node?.dataset.body || '';
+  const internal = node?.dataset.internal === '1';
+  const ta = document.getElementById('replyBody');
+  if (ta) { ta.value = body; ta.focus(); }
+  const toggle = document.getElementById('internalToggle');
+  if (toggle) toggle.checked = internal;
+  node?.remove();
+}
+async function hydrateMessageAttachmentPreviews(root) {
+  const scope = root || document;
+  const nodes = [...scope.querySelectorAll('[data-message-attachment-preview-id]:not([data-preview-loaded])')];
+  await Promise.all(nodes.map(async img => {
+    const documentId = img.dataset.messageAttachmentPreviewId;
+    if (!documentId) return;
+    img.dataset.previewLoaded = '1';
+    try {
+      const res = await apiFetch(`/api/messages/attachments/${documentId}/preview`);
+      if (!res.ok) throw new Error('Preview request failed');
+      const blob = await res.blob();
+      if (!blob || !blob.size) throw new Error('Empty preview');
+      const url = URL.createObjectURL(blob);
+      rememberMessageAttachmentObjectUrl(documentId, url);
+      img.src = url;
+    } catch(e) {
+      img.alt = 'Preview unavailable';
+      img.classList.add('preview-error');
+    }
+  }));
+}
+
+function relTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts), diff = Date.now() - d;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 604800000) return Math.floor(diff/86400000) + 'd ago';
+  return d.toLocaleDateString();
+}
+
+async function loadInbox(showSpinner = false) {
+  const requestGeneration = ++inboxRequestGeneration;
+  clearTimeout(documentNotificationSearchTimer);
+  const visibleSearch = (document.getElementById('searchBox').value || '').trim().slice(0, 100);
+  const refreshQueries = {
+    active: activeTab === 'documents' ? visibleSearch : documentNotificationQueries.active,
+    archived: activeTab === 'archived' ? visibleSearch : documentNotificationQueries.archived,
+  };
+  documentNotificationRequestedQueries = { ...refreshQueries };
+  try {
+    if (showSpinner) {
+      document.getElementById('inboxList').innerHTML = '<div style="display:flex;justify-content:center;padding:2rem;"><div class="spinner"></div></div>';
+    }
+    const [activeRes, archivedRes, documentRes, archivedDocumentRes, smsExceptionRes] = await Promise.all([
+      apiFetch('/api/messages'),
+      apiFetch('/api/messages?view=archived'),
+      refreshQueries.active
+        ? apiFetch(`/api/document-notifications?search=${encodeURIComponent(refreshQueries.active)}`)
+        : apiFetch('/api/document-notifications'),
+      refreshQueries.archived
+        ? apiFetch(`/api/document-notifications?archived=true&search=${encodeURIComponent(refreshQueries.archived)}`)
+        : apiFetch('/api/document-notifications?archived=true'),
+      apiFetch('/api/messages/sms-exceptions'),
+    ]);
+    if (!activeRes.ok || !archivedRes.ok || !documentRes.ok || !archivedDocumentRes.ok) throw new Error('Failed to load inbox');
+    const freshThreads = await activeRes.json();
+    const freshArchivedThreads = await archivedRes.json();
+    const documentData = await documentRes.json();
+    const archivedDocumentData = await archivedDocumentRes.json();
+    const smsExceptions = smsExceptionRes.ok ? await smsExceptionRes.json() : [];
+    if (requestGeneration !== inboxRequestGeneration) return;
+    if (documentNotificationRequestedQueries.active !== refreshQueries.active
+        || documentNotificationRequestedQueries.archived !== refreshQueries.archived) return;
+    const freshDocuments = documentData.notifications || [];
+    const freshArchivedDocuments = archivedDocumentData.notifications || [];
+    if (!refreshQueries.active) documentNotificationTotals.active = Number(documentData.total || 0);
+    if (!refreshQueries.archived) documentNotificationTotals.archived = Number(archivedDocumentData.total || 0);
+    documentNotificationResultTotals = {
+      active: Number(documentData.total || 0),
+      archived: Number(archivedDocumentData.total || 0),
+    };
+    documentNotificationQueries = { ...refreshQueries };
+    renderSmsExceptions(smsExceptions);
+    const changed = JSON.stringify(freshThreads) !== JSON.stringify(allThreads)
+      || JSON.stringify(freshArchivedThreads) !== JSON.stringify(archivedThreads)
+      || JSON.stringify(freshDocuments) !== JSON.stringify(documentNotifications)
+      || JSON.stringify(freshArchivedDocuments) !== JSON.stringify(archivedDocumentNotifications);
+    if (changed) {
+      allThreads = freshThreads;
+      archivedThreads = freshArchivedThreads;
+      documentNotifications = freshDocuments;
+      archivedDocumentNotifications = freshArchivedDocuments;
+      renderInbox();
+      // Auto-open first thread of the active tab if none selected yet
+      if (!activeThreadId && activeTab !== 'documents') {
+        const tabFirst = threadsForActiveTab()[0];
+        if (tabFirst) loadThread(tabFirst.id);
+      }
+    }
+    // firmUsers loaded separately at init
+  } catch(e) {
+    if (showSpinner && requestGeneration === inboxRequestGeneration) {
+      document.getElementById('inboxList').innerHTML = '<div style="color:var(--muted);padding:1rem;font-size:0.85rem;">Failed to load inbox.</div>';
+    }
+  } finally {
+    if (requestGeneration === inboxRequestGeneration
+        && typeof window.updateBrowserUnreadIndicator === 'function') {
+      window.updateBrowserUnreadIndicator();
+    }
+  }
+}
+
+function renderSmsExceptions(items) {
+  const banner = document.getElementById('smsExceptionBanner');
+  const summary = document.getElementById('smsExceptionSummary');
+  const list = document.getElementById('smsExceptionList');
+  if (!banner || !summary || !list) return;
+  const rows = Array.isArray(items) ? items : [];
+  banner.style.display = rows.length ? 'block' : 'none';
+  if (!rows.length) {
+    banner.open = false;
+    list.innerHTML = '';
+    return;
+  }
+  summary.textContent = `${rows.length} unmatched client text${rows.length === 1 ? '' : 's'} need attention`;
+  list.innerHTML = rows.slice(0, 10).map(item => `
+    <div class="sms-exception-item">
+      <div class="sms-exception-meta">${esc(item.fromPhone || 'Unknown number')} · ${esc(item.matchStatus || 'unmatched')} · ${relTime(item.createdAt)}</div>
+      <div>${esc(item.body || '[Empty text]')}</div>
+      <button class="sms-exception-resolve" onclick="resolveSmsException(${Number(item.id)})">Mark handled</button>
+    </div>
+  `).join('');
+}
+
+async function resolveSmsException(eventId) {
+  const res = await apiFetch(`/api/messages/sms-exceptions/${eventId}/resolve`, { method: 'PUT' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    window.toast ? window.toast(data.error || 'Could not mark text handled', 'error') : alert(data.error || 'Could not mark text handled');
+    return;
+  }
+  await loadInbox(false);
+}
+
+function filterThreads() {
+  if (activeTab !== 'documents' && activeTab !== 'archived') {
+    renderInbox();
+    return;
+  }
+  clearTimeout(documentNotificationSearchTimer);
+  const archived = activeTab === 'archived';
+  const key = archived ? 'archived' : 'active';
+  const search = (document.getElementById('searchBox').value || '').trim().slice(0, 100);
+  documentNotificationRequestedQueries[key] = search;
+  ++inboxRequestGeneration;
+  documentNotificationSearchTimer = setTimeout(() => {
+    loadDocumentNotificationPage(archived, { reset: true, search }).catch(() => {});
+  }, 250);
+}
+
+function switchTab(tab, preferredThreadId = null) {
+  activeTab = tab;
+  const msgBtn = document.getElementById('tabMessages');
+  const documentBtn = document.getElementById('tabDocumentUploads');
+  const taskBtn = document.getElementById('tabTasks');
+  const archivedBtn = document.getElementById('tabArchived');
+  msgBtn.classList.toggle('active', tab === 'messages');
+  documentBtn.classList.toggle('active', tab === 'documents');
+  taskBtn.classList.toggle('active', tab === 'tasks');
+  taskBtn.classList.toggle('active-task', tab === 'tasks');
+  archivedBtn.classList.toggle('active', tab === 'archived');
+  activeThreadId = null;
+  activeThreadArchived = false;
+  renderInbox();
+  if (tab === 'documents') {
+    clearThreadPanel();
+    document.getElementById('noThreadSelected').innerHTML = '<div class="nts-icon">📄</div><div>Open an upload alert to view the client documents.</div>';
+    filterThreads();
+    return;
+  }
+  if (tab === 'archived') filterThreads();
+  const tabThreads = threadsForActiveTab();
+  const preferred = preferredThreadId && tabThreads.find(t => t.id === preferredThreadId);
+  if (preferred || tabThreads.length) loadThread((preferred || tabThreads[0]).id);
+}
+
+function threadsForActiveTab() {
+  if (activeTab === 'archived') {
+    return archivedThreads.filter(t => !(t.hasTaskMessages && t.category === 'internal'));
+  }
+  if (activeTab === 'tasks') {
+    return allThreads.filter(t => t.hasTaskMessages && t.category === 'internal');
+  }
+  return allThreads.filter(t => !(t.hasTaskMessages && t.category === 'internal'));
+}
+
+function updateTabCounts() {
+  const msgCount = allThreads.filter(t => !t.hasTaskMessages || t.category !== 'internal').length;
+  const taskCount = allThreads.filter(t => t.hasTaskMessages && t.category === 'internal').length;
+  const archivedCount = archivedThreads.filter(t => !(t.hasTaskMessages && t.category === 'internal')).length + documentNotificationTotals.archived;
+  const msgEl = document.getElementById('tabCountMessages');
+  const documentEl = document.getElementById('tabCountDocumentUploads');
+  const taskEl = document.getElementById('tabCountTasks');
+  const archivedEl = document.getElementById('tabCountArchived');
+  if (msgEl) msgEl.textContent = msgCount;
+  if (documentEl) documentEl.textContent = documentNotificationTotals.active;
+  if (taskEl) taskEl.textContent = taskCount;
+  if (archivedEl) archivedEl.textContent = archivedCount;
+}
+
+function documentNotificationCard(notification, archived = false) {
+  const names = (notification.documents || []).map(doc => doc.displayName).filter(Boolean);
+  const files = names.length ? names.join(', ') : notification.summary;
+  const action = archived ? 'restoreDocumentNotification' : 'archiveDocumentNotification';
+  const actionLabel = archived ? 'Restore' : 'Archive';
+  return `<div class="thread-card document-upload-card${notification.isRead ? '' : ' unread'}" onclick="openDocumentNotification(${notification.id})">
+    <div class="thread-card-name"><span>${esc(notification.ownerName || notification.uploaderName || 'Client')}</span><span style="font-size:0.7rem;color:var(--muted);">${relTime(notification.updatedAt)}</span></div>
+    <div class="document-upload-label">DOCUMENT UPLOAD</div>
+    <div class="thread-card-subject">${esc(notification.category || 'other')}${notification.folderSubcategory ? ' · ' + esc(notification.folderSubcategory) : ''}${notification.year ? ' · ' + esc(notification.year) : ''}</div>
+    <div class="thread-card-preview document-upload-files">${esc(files || `${notification.fileCount} files uploaded`)}</div>
+    <div class="thread-card-meta">${notification.isRead ? '' : '<span class="unread-count-badge">New</span>'}<span>${notification.fileCount} file${notification.fileCount === 1 ? '' : 's'}</span></div>
+    <div class="thread-card-actions" onclick="event.stopPropagation();"><button class="archive-btn" onclick="${action}(${notification.id})">${actionLabel}</button><button class="archive-btn" onclick="openDocumentNotification(${notification.id})">Open Documents</button></div>
+  </div>`;
+}
+
+async function openDocumentNotification(notificationId) {
+  const notification = documentNotifications.concat(archivedDocumentNotifications).find(item => Number(item.id) === Number(notificationId));
+  if (!notification) return;
+  if (!notification.isRead) await apiFetch(`/api/document-notifications/${notification.id}/read`, { method: 'PUT' });
+  window.location.href = notification.target;
+}
+
+async function archiveDocumentNotification(notificationId) {
+  const res = await apiFetch(`/api/document-notifications/${notificationId}/archive`, { method: 'PUT' });
+  if (res.ok) await loadInbox(false);
+}
+
+async function restoreDocumentNotification(notificationId) {
+  const res = await apiFetch(`/api/document-notifications/${notificationId}/restore`, { method: 'PUT' });
+  if (res.ok) await loadInbox(false);
+}
+
+async function loadDocumentNotificationPage(archived = false, { reset = false, search: requestedSearch } = {}) {
+  const key = archived ? 'archived' : 'active';
+  const search = requestedSearch == null ? documentNotificationQueries[key] : requestedSearch;
+  const loadedCount = reset ? 0 : (archived ? archivedDocumentNotifications.length : documentNotifications.length);
+  const requestGeneration = ++inboxRequestGeneration;
+  documentNotificationRequestedQueries[key] = search;
+  const params = new URLSearchParams();
+  if (archived) params.set('archived', 'true');
+  if (search) params.set('search', search);
+  params.set('offset', String(loadedCount));
+  const res = await apiFetch(`/api/document-notifications?${params.toString()}`);
+  if (!res.ok
+      || requestGeneration !== inboxRequestGeneration
+      || documentNotificationRequestedQueries[key] !== search) return;
+  const data = await res.json();
+  if (requestGeneration !== inboxRequestGeneration
+      || documentNotificationRequestedQueries[key] !== search) return;
+  const incoming = data.notifications || [];
+  const currentNotifications = archived ? archivedDocumentNotifications : documentNotifications;
+  const existingIds = new Set((reset ? [] : currentNotifications).map(item => Number(item.id)));
+  const nextNotifications = (reset ? [] : currentNotifications).concat(
+    incoming.filter(item => !existingIds.has(Number(item.id)))
+  );
+  if (archived) archivedDocumentNotifications = nextNotifications;
+  else documentNotifications = nextNotifications;
+  documentNotificationQueries[key] = search;
+  documentNotificationResultTotals[key] = Number(data.total || 0);
+  if (!search) documentNotificationTotals[key] = Number(data.total || 0);
+  renderInbox();
+}
+
+async function loadMoreDocumentNotifications(archived = false) {
+  await loadDocumentNotificationPage(archived);
+}
+
+function documentNotificationLoadMore(archived = false) {
+  const key = archived ? 'archived' : 'active';
+  const loaded = archived ? archivedDocumentNotifications.length : documentNotifications.length;
+  const total = documentNotificationResultTotals[key];
+  if (loaded >= total) return '';
+  const ariaLabel = archived
+    ? 'aria-label="Load more archived document upload notifications"'
+    : 'aria-label="Load more active document upload notifications"';
+  return `<div style="padding:0.75rem 1rem;text-align:center;"><button type="button" class="btn btn-outline btn-sm" ${ariaLabel} onclick="loadMoreDocumentNotifications(${archived})">Load more uploads (${loaded} of ${total})</button></div>`;
+}
+
+function renderInbox() {
+  updateTabCounts();
+  const q = (document.getElementById('searchBox').value || '').toLowerCase();
+
+  if (activeTab === 'documents') {
+    const notifications = documentNotifications;
+    document.getElementById('inboxList').innerHTML = notifications.length
+      ? notifications.map(item => documentNotificationCard(item)).join('') + documentNotificationLoadMore(false)
+      : '<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">No client document uploads.</div>';
+    return;
+  }
+
+  let threads = threadsForActiveTab();
+  if (q) threads = threads.filter(t => {
+    const name = ((t.person?.firstName || '') + ' ' + (t.person?.lastName || '')).toLowerCase();
+    return name.includes(q) || (t.subject || '').toLowerCase().includes(q);
+  });
+  const archivedUploads = activeTab === 'archived' ? archivedDocumentNotifications : [];
+
+  if (activeTab === 'archived' && !threads.length && archivedUploads.length) {
+    clearThreadPanel();
+    document.getElementById('noThreadSelected').innerHTML = '<div class="nts-icon">📄</div><div>Archived upload alerts open the related client documents.</div>';
+  }
+
+  if (!threads.length && !archivedUploads.length) {
+    const emptyText = activeTab === 'archived' ? 'No archived conversations or uploads.' : 'No active threads.';
+    document.getElementById('inboxList').innerHTML = `<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">${emptyText}</div>`;
+    clearThreadPanel();
+    return;
+  }
+
+  document.getElementById('inboxList').innerHTML = threads.map(t => {
+    const isTaskThread = t.hasTaskMessages && t.category === 'internal';
+    const personName = esc((t.person?.firstName || '') + ' ' + (t.person?.lastName || ''));
+    const name = isTaskThread ? esc(t.subject || 'Task') : personName;
+    const sharedBadge = t.isParticipant
+      ? `<span style="font-size:0.65rem;background:rgba(138,99,241,0.15);color:#a78bfa;border:1px solid rgba(138,99,241,0.3);border-radius:4px;padding:0.1rem 0.4rem;font-weight:600;">Shared${t.sharedByName ? ' by ' + esc(t.sharedByName.split(' ')[0]) : ''}</span>`
+      : '';
+    const forwardedBadge = t.forwardedByName
+      ? `<span style="font-size:0.65rem;background:rgba(201,168,76,0.14);color:var(--gold);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:0.1rem 0.4rem;font-weight:700;">Transferred by ${esc(t.forwardedByName.split(' ')[0])}</span>`
+      : '';
+    const taskBadge = t.hasTaskMessages ? `<span class="task-badge">📋 Task</span>` : '';
+    const archiveLabel = activeTab === 'archived' ? 'Restore' : (t.isParticipant ? 'Remove' : 'Archive');
+    const archiveTitle = activeTab === 'archived' ? 'Restore to your inbox' : (t.isParticipant ? 'Remove from your inbox' : 'Archive this thread');
+    const archiveAction = activeTab === 'archived' ? `restoreThread(${t.id})` : `archiveThread(${t.id})`;
+    const extraClass = (t.id === activeThreadId ? ' active' : '') + (t.hasTaskMessages ? ' has-task' : '');
+    return `<div class="thread-card${extraClass}" onclick="loadThread(${t.id})">
+      <div class="thread-card-name">
+        <span>${name} ${forwardedBadge}${sharedBadge}${taskBadge}</span>
+        <span style="font-size:0.7rem;color:var(--muted);">${relTime(t.lastMessageAt)}</span>
+      </div>
+      ${!isTaskThread ? `<div class="thread-card-subject">${esc(t.subject || '(no subject)')}</div>` : ''}
+      <div class="thread-card-preview">${esc(t.lastPreview || '')}</div>
+      <div class="thread-card-meta">
+        ${t.unreadCount > 0 ? `<span class="unread-count-badge">${t.unreadCount} new</span>` : ''}
+        ${t.pendingDraftCount > 0 ? `<span class="draft-count-badge">${t.pendingDraftCount} draft${t.pendingDraftCount === 1 ? '' : 's'}</span>` : ''}
+      </div>
+      <div class="thread-card-actions" onclick="event.stopPropagation();">
+        <button class="archive-btn" onclick="${archiveAction}" title="${archiveTitle}">${archiveLabel}</button>
+      </div>
+    </div>`;
+  }).join('') + archivedUploads.map(item => documentNotificationCard(item, true)).join('')
+    + (activeTab === 'archived' ? documentNotificationLoadMore(true) : '');
+}
+
+async function archiveThread(threadId) {
+  try {
+    const res = await apiFetch(`/api/messages/${threadId}/archive`, { method: 'PUT' });
+    if (!res.ok) throw new Error('Failed to archive thread');
+    allThreads = allThreads.filter(t => t.id !== threadId);
+    if (activeThreadId === threadId) {
+      activeThreadId = null;
+      document.getElementById('threadView').style.display = 'none';
+      document.getElementById('noThreadSelected').style.display = '';
+    }
+    renderInbox();
+    await loadInbox(false);
+  } catch(e) { window.toast && window.toast(e.message, 'error'); }
+}
+
+async function restoreThread(threadId) {
+  try {
+    const res = await apiFetch(`/api/messages/${threadId}/restore`, { method: 'PUT' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to restore thread');
+    archivedThreads = archivedThreads.filter(t => t.id !== threadId);
+    activeThreadId = threadId;
+    activeThreadArchived = false;
+    await loadInbox(false);
+    switchTab('messages', threadId);
+    window.toast && window.toast('Conversation restored to your inbox');
+  } catch(e) {
+    window.toast ? window.toast(e.message, 'error') : alert(e.message);
+  }
+}
+
+async function restoreCurrentThread() {
+  if (activeThreadId) await restoreThread(activeThreadId);
+}
+
+async function archiveCurrentThread() {
+  if (!activeThreadId) return;
+  const t = allThreads.find(x => x.id === activeThreadId);
+  const msg = t?.isParticipant
+    ? 'Remove this thread from your inbox? The original owner\'s thread is unaffected.'
+    : 'Archive this thread? It will be removed from your inbox.';
+  if (!confirm(msg)) return;
+  await archiveThread(activeThreadId);
+}
+
+let _inboxSummaryPersonId = null;
+
+function openInboxSummaryModal() {
+  if (!_inboxSummaryPersonId) return window.toast && window.toast('Select a client thread first.', 'error');
+  document.getElementById('inboxSummaryModal')?.classList.add('open');
+  loadInboxSummary(false);
+}
+
+function closeInboxSummaryModal() {
+  document.getElementById('inboxSummaryModal')?.classList.remove('open');
+}
+
+async function loadInboxSummary(force = false) {
+  const personId = _inboxSummaryPersonId;
+  if (!personId) return;
+  const modal = document.getElementById('inboxSummaryModal');
+  const body = document.getElementById('inboxSummaryBody');
+  const btn = document.getElementById('inboxSummaryRefreshBtn');
+  if (!modal || !body) return;
+  modal.classList.add('open');
+  body.innerHTML = '<div style="display:flex;align-items:center;gap:0.5rem;color:var(--muted);"><div class="loading-spinner" style="width:16px;height:16px;border-width:2px;margin-bottom:0;"></div> Generating…</div>';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const res = await apiFetch(`/api/messages/person/${personId}/summary`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    if (!data.summary) {
+      body.innerHTML = `<div style="color:var(--muted);font-style:italic;">${data.message || 'No messages in the last 30 days.'}</div>`;
+    } else {
+      const html = data.summary
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+      body.innerHTML = `<div>${html}</div>
+        <div style="margin-top:1rem;font-size:0.72rem;color:var(--muted);border-top:1px solid var(--border);padding-top:0.5rem;">
+          Based on ${data.messageCount} message${data.messageCount !== 1 ? 's' : ''} · ${new Date(data.generatedAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
+        </div>`;
+    }
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--red);font-size:0.8rem;">Failed: ${e.message}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↺ Refresh'; }
+  }
+}
+
+function clearThreadPanel() {
+  activeThreadId = null;
+  activeThreadArchived = false;
+  activeReplyChannel = 'portal';
+  updateReplyChannelControls();
+  document.getElementById('threadView').style.display = 'none';
+  document.getElementById('noThreadSelected').style.display = '';
+}
+
+async function loadThread(threadId, silent = false) {
+  activeThreadId = threadId;
+  renderInbox();
+
+  document.getElementById('noThreadSelected').style.display = 'none';
+  const tv = document.getElementById('threadView');
+  tv.style.display = 'flex';
+  tv.style.flexDirection = 'column';
+  tv.style.flex = '1';
+  tv.style.height = '100%';
+
+  if (!silent) {
+    document.getElementById('detailMessages').innerHTML = '<div style="display:flex;justify-content:center;padding:2rem;"><div class="spinner"></div></div>';
+    document.getElementById('detailHeader').innerHTML = '';
+  }
+
+  try {
+    const res = await apiFetch(`/api/messages/${threadId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load thread');
+    activeThreadArchived = data.isArchived === true;
+    activeReplyChannel = data.preferredReplyChannel === 'sms' ? 'sms' : 'portal';
+    updateReplyChannelControls();
+
+    if (data.person?.id && data.person.id !== window._activePersonId) {
+      window._activePersonId = data.person.id;
+      const portalChName = `private-portal-${_firmId}-${data.person.id}`;
+      if (!_pusher.channel(portalChName)) {
+        const ch = _pusher.subscribe(portalChName);
+        ch.bind('client-typing', ({ name }) => {
+          const el = document.getElementById('typingIndicator');
+          if (el) { el.textContent = `${name || 'Client'} is typing…`; el.style.display = 'block'; }
+          clearTimeout(window._typingTimer);
+          window._typingTimer = setTimeout(() => { if (el) el.style.display = 'none'; }, 3000);
+        });
+      }
+    }
+
+    // Set summary target for the on-demand 30-Day Summary modal.
+    if (data.person?.id) _inboxSummaryPersonId = data.person.id;
+
+    const _isTaskThread = data.category === 'internal' && data.hasTaskMessages;
+    document.getElementById('detailHeader').innerHTML = _isTaskThread ? `
+      <div class="detail-header-left">
+        <div class="detail-header-person" style="color:#60a5fa;">📋 Staff Task</div>
+        <div class="detail-header-subject">${esc(data.subject || 'Task')}</div>
+      </div>
+      <div class="detail-header-controls">
+        ${data.isArchived
+          ? '<button class="btn btn-sm btn-outline" onclick="restoreCurrentThread()">Restore</button>'
+          : '<button class="btn btn-sm btn-outline" onclick="archiveCurrentThread()">Archive</button>'}
+      </div>
+    ` : `
+      <div class="detail-header-left">
+        <div class="detail-header-person">
+          <a href="/crm/person/${data.person?.id}" style="font-size:1.05rem;font-weight:700;color:var(--text);">
+            ${esc((data.person?.firstName||'')+' '+(data.person?.lastName||''))}
+          </a>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+          ${data.person?.email ? `<span>${esc(data.person.email)}</span>` : ''}
+          ${data.person?.phone ? `<span style="color:var(--gold);">${esc(data.person.phone)}</span>` : ''}
+          ${data.person?.relationshipName ? `<span style="color:var(--muted);">· ${esc(data.person.relationshipName)}</span>` : ''}
+        </div>
+      </div>
+      <div class="detail-header-controls">
+        ${data.forwardedByName ? `<span style="font-size:0.72rem;background:rgba(201,168,76,0.14);color:var(--gold);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:0.2rem 0.6rem;font-weight:700;">Transferred by ${esc(data.forwardedByName.split(' ')[0])}</span>` : ''}
+        ${data.isParticipant ? `<span style="font-size:0.72rem;background:rgba(138,99,241,0.15);color:#a78bfa;border:1px solid rgba(138,99,241,0.3);border-radius:4px;padding:0.2rem 0.6rem;font-weight:600;">Shared</span>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="openInboxSummaryModal()">30-Day Summary</button>
+        ${data.isArchived
+          ? '<button class="btn btn-sm btn-outline" onclick="restoreCurrentThread()">Restore to Inbox</button>'
+          : `<button class="btn btn-sm btn-outline" onclick="openForwardThreadModal()">Transfer</button>
+             <button class="btn btn-sm btn-outline" onclick="archiveCurrentThread()">${data.isParticipant ? 'Remove' : 'Archive'}</button>`}
+      </div>
+    `;
+    const archivedBanner = document.getElementById('archivedThreadBanner');
+    if (archivedBanner) archivedBanner.style.display = data.isArchived ? 'flex' : 'none';
+
+    // Task threads and archived conversations are read-only.
+    const isTaskThread = data.category === 'internal' && data.hasTaskMessages;
+    const replyBoxEl = document.getElementById('replyBox');
+    if (replyBoxEl) replyBoxEl.style.display = (isTaskThread || data.isArchived) ? 'none' : '';
+
+    // Participants can reply to the client in shared threads; @mentions still become internal on the server.
+    const internalToggle = document.getElementById('internalToggle');
+    if (internalToggle) {
+      internalToggle.checked = false;
+      internalToggle.disabled = false;
+    }
+
+    const msgs = data.messages || [];
+    const msgContainer = document.getElementById('detailMessages');
+    if (!msgs.length) {
+      if (!silent) msgContainer.innerHTML = '<div style="color:var(--muted);padding:1rem;font-size:0.85rem;">No messages yet.</div>';
+    } else if (silent) {
+      const existingIds = new Set([...msgContainer.querySelectorAll('[data-msg-id]')].map(el => parseInt(el.dataset.msgId)));
+      let appended = false;
+      for (const m of msgs) {
+        if (!existingIds.has(m.id)) {
+          appendInboxTimelineMessage(msgContainer, m);
+          appended = true;
+        }
+      }
+      if (appended) {
+        hydrateMessageAttachmentPreviews(msgContainer);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+      }
+    } else {
+      msgContainer.innerHTML = buildInboxMessageTimeline(msgs);
+      hydrateMessageAttachmentPreviews(msgContainer);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+    renderDateNavigation(msgs);
+    updateActiveMessageDate();
+
+    if (!silent) {
+      document.getElementById('replyBody').value = '';
+      activeDraftId = null;
+      activeDraftBody = '';
+      const draftBanner = document.getElementById('agentDraftBanner');
+      if (draftBanner) draftBanner.style.display = 'none';
+      attachedFiles = [];
+      attachedClientDocs = [];
+      renderAttachChips();
+      await loadPendingAgentDraft(threadId, data.pendingDrafts || null);
+    }
+  } catch(e) {
+    document.getElementById('detailMessages').innerHTML = '<div style="color:var(--muted);padding:1rem;">Failed to load thread.</div>';
+  } finally {
+    if (typeof window.updateBrowserUnreadIndicator === 'function') window.updateBrowserUnreadIndicator();
+  }
+}
+
+document.getElementById('detailMessages')?.addEventListener('scroll', () => {
+  window.requestAnimationFrame(updateActiveMessageDate);
+}, { passive: true });
+
+function handleAttachFiles(fileList) {
+  for (const f of Array.from(fileList)) {
+    if (attachedFiles.length >= 8) { alert('Maximum 8 files per message'); break; }
+    attachedFiles.push(f);
+  }
+  document.getElementById('attachFileInput').value = '';
+  renderAttachChips();
+}
+
+function removeAttachFile(idx) {
+  attachedFiles.splice(idx, 1);
+  renderAttachChips();
+}
+
+function removeAttachClientDoc(idx) {
+  attachedClientDocs.splice(idx, 1);
+  renderAttachChips();
+}
+
+function renderAttachChips() {
+  const el = document.getElementById('attachChips');
+  if (!el) return;
+  const fileChips = attachedFiles.map((f, i) =>
+    `<span class="attach-chip-input">📎 ${esc(f.name)} <button onclick="removeAttachFile(${i})">×</button></span>`
+  );
+  const docChips = attachedClientDocs.map((d, i) =>
+    `<span class="attach-chip-input">📁 ${esc(d.displayName)} <button onclick="removeAttachClientDoc(${i})">×</button></span>`
+  );
+  el.innerHTML = fileChips.concat(docChips).join('');
+}
+
+function openClientDocAttachPicker() {
+  if (!activeThreadId) return alert('Select a message thread first.');
+  ClientDocPicker.open({
+    apiFetch,
+    scope: { threadId: activeThreadId },
+    selected: attachedClientDocs,
+    onApply: docs => { attachedClientDocs = docs; renderAttachChips(); },
+  });
+}
+
+function formatBytes(b) {
+  if (!b) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+async function deleteMessage(messageId, btn) {
+  if (!btn.classList.contains('confirm')) {
+    btn.classList.add('confirm');
+    btn.textContent = 'Delete?';
+    setTimeout(() => { if (btn.classList.contains('confirm')) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 3000);
+    return;
+  }
+  try {
+    const res = await apiFetch(`/api/messages/message/${messageId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed');
+    // Remove the bubble from the DOM
+    const wrap = document.querySelector(`.msg-bubble-wrap[data-msg-id="${messageId}"]`);
+    if (wrap) wrap.remove();
+  } catch(e) {
+    alert('Could not delete message. Please try again.');
+  }
+}
+
+async function downloadAttachment(documentId) {
+  try {
+    const res = await apiFetch(`/api/messages/attachments/${documentId}/download`);
+    const data = await res.json();
+    if (data.url) {
+      const downloadLink = document.createElement('a');
+      downloadLink.href = data.url;
+      if (data.file_name) downloadLink.download = data.file_name;
+      downloadLink.rel = 'noopener';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+    }
+    else alert('Download failed');
+  } catch(e) { alert('Failed to download attachment'); }
+}
+
+async function loadPendingAgentDraft(threadId, suppliedDrafts = null) {
+  try {
+    let drafts = suppliedDrafts;
+    if (!drafts) {
+      const res = await apiFetch(`/api/agent-connections/drafts/${threadId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      drafts = data.drafts || [];
+    }
+    const draft = (drafts || [])[0];
+    if (!draft) return;
+    const replyBody = document.getElementById('replyBody');
+    if (!replyBody || replyBody.value.trim()) return;
+    activeDraftId = draft.id;
+    activeDraftBody = draft.draftBody || draft.draft_body || '';
+    replyBody.value = activeDraftBody;
+    autoSizeReplyTextarea();
+    const label = document.getElementById('agentDraftLabel');
+    if (label) label.textContent = `Drafted by ${draft.agentName || draft.agent_name || 'your agent'} — review before sending`;
+    const banner = document.getElementById('agentDraftBanner');
+    if (banner) banner.style.display = 'block';
+  } catch(e) {
+    console.warn('[agent-draft] failed to load draft', e);
+  }
+}
+
+async function requestEmmaDraft() {
+  if (!activeThreadId) return;
+  const btn = document.getElementById('emmaDraftBtn');
+  const original = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Emma drafting…'; }
+  try {
+    const res = await apiFetch(`/api/agent-connections/drafts/${activeThreadId}/generate`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to queue draft');
+    const label = document.getElementById('agentDraftLabel');
+    if (label) label.textContent = 'Emma is reading the client context and drafting…';
+    const banner = document.getElementById('agentDraftBanner');
+    if (banner) banner.style.display = 'block';
+  } catch(e) {
+    alert('Could not ask Emma to draft. Please try again.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original || 'Draft with Emma'; }
+  }
+}
+
+async function discardActiveAgentDraft() {
+  if (!activeDraftId) return;
+  try {
+    const res = await apiFetch(`/api/agent-connections/drafts/${activeDraftId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'discarded' })
+    });
+    if (!res.ok) throw new Error('Failed to discard draft');
+  } catch(e) {
+    alert('Could not discard draft. Please try again.');
+    return;
+  }
+  activeDraftId = null;
+  activeDraftBody = '';
+  document.getElementById('replyBody').value = '';
+  autoSizeReplyTextarea();
+  const banner = document.getElementById('agentDraftBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+function autoSizeReplyTextarea() {
+  const el = document.getElementById('replyBody');
+  if (!el) return;
+  const cssMaxHeight = parseFloat(window.getComputedStyle(el).maxHeight);
+  const maxHeight = Number.isFinite(cssMaxHeight) ? cssMaxHeight : Math.min(Math.floor(window.innerHeight * 0.4), 240);
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
+  el.style.overflowY = el.scrollHeight > el.clientHeight ? 'auto' : 'hidden';
+}
+
+function updateReplyChannelControls() {
+  const primary = document.getElementById('primaryReplyBtn');
+  const alternate = document.getElementById('alternateReplyBtn');
+  const isSms = activeReplyChannel === 'sms';
+  if (primary) primary.textContent = isSms ? '📱 Send Text' : 'Send Reply';
+  if (alternate) alternate.textContent = isSms ? 'Send via Portal' : '📱 Text Message';
+}
+
+function sendAlternateReply() {
+  return activeReplyChannel === 'sms'
+    ? sendReply({ forceChannel: 'portal' })
+    : sendReplyAsSms();
+}
+
+async function sendReply(options = {}) {
+  if (!activeThreadId) return;
+  const replyEl = document.getElementById('replyBody');
+  const body = replyEl.value.replace(/^\n+|\n+$/g, '');
+  if (!body && attachedFiles.length === 0 && attachedClientDocs.length === 0) return;
+  const isInternal = document.getElementById('internalToggle').checked;
+  const draftIdToMark = activeDraftId;
+  const originalDraftBody = activeDraftBody;
+  const filesToSend = attachedFiles.slice();
+  const docsToSend = attachedClientDocs.slice();
+  const replyChannel = options.forceChannel || activeReplyChannel;
+  if (replyChannel === 'sms' && !isInternal && filesToSend.length === 0 && docsToSend.length === 0) {
+    return sendReplyAsSms();
+  }
+  const tempId = 'local-' + Date.now();
+  appendInboxMessage({ id:tempId, senderType:'staff', senderId:_myUserId, senderName:'You', body, isInternal, createdAt:new Date().toISOString(), pending:true,
+    attachments: filesToSend.map((f, i) => ({ displayName:f.name, sizeBytes:f.size, mimeType:f.type, id:'local-file-' + i })).concat(docsToSend.map(d => ({ displayName:d.displayName, sizeBytes:d.sizeBytes, mimeType:d.mimeType, documentId:d.id }))) });
+  try {
+    const fd = new FormData();
+    fd.append('body', body);
+    fd.append('is_internal', isInternal ? 'true' : 'false');
+    if (draftIdToMark && !isInternal) {
+      fd.append('agent_draft_id', String(draftIdToMark));
+      fd.append('agent_draft_status', body === originalDraftBody.trim() ? 'accepted' : 'edited_sent');
+    }
+    filesToSend.forEach(f => fd.append('files', f));
+    docsToSend.forEach(d => fd.append('document_ids', String(d.id)));
+    replyEl.value = '';
+    autoSizeReplyTextarea();
+    document.getElementById('internalToggle').checked = false;
+    attachedFiles = [];
+    attachedClientDocs = [];
+    renderAttachChips();
+    const replyRes = await apiFetch(`/api/messages/${activeThreadId}/reply`, { method: 'POST', body: fd });
+    const data = await replyRes.json().catch(() => ({}));
+    if (!replyRes.ok) throw new Error(data.error || 'Failed to send reply');
+    activeDraftId = null;
+    activeDraftBody = '';
+    const draftBanner = document.getElementById('agentDraftBanner');
+    if (draftBanner) draftBanner.style.display = 'none';
+    const settled = data.message || { id:data.messageId, senderType:'staff', senderId:_myUserId, senderName:'You', body, isInternal, createdAt:new Date().toISOString(), attachments:docsToSend.map(d => ({ displayName:d.displayName, sizeBytes:d.sizeBytes, mimeType:d.mimeType, documentId:d.id })) };
+    settleInboxPending(tempId, settled);
+    _justSent = true;
+    setTimeout(() => { _justSent = false; }, 3000);
+    window.DLStability?.quietRefresh('messages-inbox-after-send', () => loadInbox(false), 250);
+  } catch(e) { failInboxPending(tempId); window.toast ? window.toast(e.message || 'Failed to send reply', 'error') : alert('Failed to send reply'); }
+}
+async function sendReplyAsSms() {
+  if (!activeThreadId) return;
+  if (attachedFiles.length || attachedClientDocs.length) {
+    alert('Attachments and client documents must be sent through the secure portal, not by text.');
+    return;
+  }
+  const body = document.getElementById('replyBody').value.replace(/^\n+|\n+$/g, '');
+  if (!body) { alert('Write a message first'); return; }
+  const thread = allThreads.find(t => t.id === activeThreadId);
+  const personId = thread?.person?.id;
+  if (!personId) { alert('No person linked to this thread'); return; }
+  try {
+    // Send SMS
+    const smsRes = await apiFetch('/api/messages/sms', {
+      method: 'POST',
+      body: JSON.stringify({
+        person_id: personId,
+        body,
+        thread_id: activeThreadId,
+        ...(activeDraftId ? {
+          agent_draft_id: activeDraftId,
+          agent_draft_status: body === activeDraftBody.trim() ? 'accepted' : 'edited_sent',
+        } : {}),
+      })
+    });
+    const smsData = await smsRes.json();
+    if (!smsRes.ok) throw new Error(smsData.error || 'SMS failed');
+    document.getElementById('replyBody').value = '';
+    activeDraftId = null;
+    activeDraftBody = '';
+    const draftBanner = document.getElementById('agentDraftBanner');
+    if (draftBanner) draftBanner.style.display = 'none';
+    autoSizeReplyTextarea();
+    attachedFiles = []; attachedClientDocs = []; renderAttachChips();
+    await loadThread(activeThreadId, true);
+    await loadInbox();
+    window.toast && window.toast('Text message sent');
+  } catch(e) {
+    await loadThread(activeThreadId, true);
+    alert('Failed to send text: ' + e.message);
+  }
+}
+
+let _justSent = false;
+
+// ── NEW CONVERSATION MODAL ─────────────────────────────────────────────────
+let _staffListCache = [];
+let _personSearchTimer = null;
+let newConvClientDocs = [];
+
+async function openNewConversationModal() {
+  // Load staff list
+  if (!_staffListCache.length) {
+    try {
+      const res = await apiFetch('/api/messages/staff-list');
+      _staffListCache = await res.json();
+    } catch(e) { _staffListCache = []; }
+  }
+
+  const staffSelect = document.getElementById('staffSelect');
+  staffSelect.innerHTML = _staffListCache.map(s =>
+    `<option value="${s.id}">${esc(s.name)}</option>`
+  ).join('');
+
+  // Default to current user if possible
+  if (_myUserId) {
+    const myOpt = [...staffSelect.options].find(o => parseInt(o.value) === _myUserId);
+    if (myOpt) myOpt.selected = true;
+  }
+
+  document.getElementById('selectedPersonId').value = '';
+  document.getElementById('personSearch').value = '';
+  document.getElementById('personSearchResults').style.display = 'none';
+  document.getElementById('newConvSubject').value = '';
+  document.getElementById('newConvBody').value = '';
+  newConvClientDocs = [];
+  renderNewConvDocChips();
+  document.getElementById('newConvModal').classList.add('open');
+}
+
+function closeNewConversationModal() {
+  document.getElementById('newConvModal').classList.remove('open');
+}
+
+async function ensureStaffListLoaded() {
+  if (_staffListCache.length) return _staffListCache;
+  try {
+    const res = await apiFetch('/api/messages/staff-list');
+    _staffListCache = await res.json();
+  } catch(e) { _staffListCache = []; }
+  return _staffListCache;
+}
+
+async function openForwardThreadModal() {
+  if (!activeThreadId) return window.toast && window.toast('Select a thread first.', 'error');
+  const staff = await ensureStaffListLoaded();
+  const select = document.getElementById('forwardStaffSelect');
+  select.innerHTML = staff
+    .filter(s => parseInt(s.id, 10) !== parseInt(_myUserId || 0, 10))
+    .map(s => `<option value="${s.id}">${esc(s.name)}</option>`)
+    .join('');
+  if (!select.innerHTML) {
+    select.innerHTML = '<option value="">No other staff found</option>';
+  }
+  document.getElementById('forwardThreadNote').value = '';
+  document.getElementById('forwardKeepMe').checked = true;
+  document.getElementById('forwardThreadModal').classList.add('open');
+}
+
+function closeForwardThreadModal() {
+  document.getElementById('forwardThreadModal').classList.remove('open');
+}
+
+async function submitForwardThread() {
+  if (!activeThreadId) return;
+  const staffUserId = document.getElementById('forwardStaffSelect').value;
+  if (!staffUserId) return window.toast && window.toast('Choose a staff member.', 'error');
+  const btn = document.getElementById('forwardThreadSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Transferring…';
+  try {
+    const res = await apiFetch(`/api/messages/${activeThreadId}/forward`, {
+      method: 'POST',
+      body: JSON.stringify({
+        staff_user_id: parseInt(staffUserId, 10),
+        note: document.getElementById('forwardThreadNote').value.trim(),
+        keep_forwarder_as_participant: document.getElementById('forwardKeepMe').checked,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to transfer thread');
+    closeForwardThreadModal();
+    window.toast && window.toast(`Transferred to ${data.forwardedToName || 'staff'}`);
+    await loadInbox(true);
+    await loadThread(activeThreadId, true);
+  } catch(e) {
+    window.toast ? window.toast(e.message, 'error') : alert(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Transfer';
+  }
+}
+
+async function searchPeople(q) {
+  clearTimeout(_personSearchTimer);
+  document.getElementById('selectedPersonId').value = '';
+  if (!q || q.length < 2) {
+    document.getElementById('personSearchResults').style.display = 'none';
+    return;
+  }
+  _personSearchTimer = setTimeout(async () => {
+    try {
+      const res = await apiFetch(`/api/people?search=${encodeURIComponent(q)}&limit=8`);
+      const data = await res.json();
+      const people = Array.isArray(data) ? data : (data.rows || data.people || []);
+      const el = document.getElementById('personSearchResults');
+      if (!people.length) {
+        el.innerHTML = '<div class="person-search-item" style="color:var(--muted);">No results</div>';
+        el.style.display = 'block';
+        return;
+      }
+      el.innerHTML = people.map(p => {
+        const name = esc(formatPersonDisplayName({ first_name: p.first_name||p.firstName, last_name: p.last_name||p.lastName, spouse_name: p.spouse_name||p.spouseName }));
+        const email = esc(p.email || '');
+        return `<div class="person-search-item" onclick="selectPerson(${p.id}, '${name}')">${name}${email ? ` <span style="color:var(--muted);font-size:0.78rem;">${email}</span>` : ''}</div>`;
+      }).join('');
+      el.style.display = 'block';
+    } catch(e) { /* silent */ }
+  }, 300);
+}
+
+function selectPerson(id, name) {
+  document.getElementById('selectedPersonId').value = id;
+  document.getElementById('personSearch').value = name.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  document.getElementById('personSearchResults').style.display = 'none';
+  newConvClientDocs = [];
+  renderNewConvDocChips();
+}
+
+function removeNewConvClientDoc(idx) {
+  newConvClientDocs.splice(idx, 1);
+  renderNewConvDocChips();
+}
+
+function renderNewConvDocChips() {
+  const el = document.getElementById('newConvDocChips');
+  if (!el) return;
+  el.innerHTML = newConvClientDocs.map((d, i) =>
+    `<span class="attach-chip-input">📁 ${esc(d.displayName)} <button onclick="removeNewConvClientDoc(${i})">×</button></span>`
+  ).join('');
+}
+
+function openNewConvClientDocPicker() {
+  const personId = document.getElementById('selectedPersonId').value;
+  if (!personId) return alert('Select a person first.');
+  ClientDocPicker.open({
+    apiFetch,
+    scope: { personId: parseInt(personId, 10) },
+    selected: newConvClientDocs,
+    onApply: docs => { newConvClientDocs = docs; renderNewConvDocChips(); },
+  });
+}
+
+async function submitNewConversation() {
+  const personId = document.getElementById('selectedPersonId').value;
+  const staffUserId = document.getElementById('staffSelect').value;
+  const subject = document.getElementById('newConvSubject').value.trim();
+  const body = document.getElementById('newConvBody').value.replace(/^\n+|\n+$/g, '');
+
+  if (!personId) { alert('Please select a person'); return; }
+  if (!body && newConvClientDocs.length === 0) { alert('Please enter a message or attach a client document'); return; }
+
+  try {
+    const res = await apiFetch('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify({ person_id: parseInt(personId), staff_user_id: parseInt(staffUserId), subject, body, document_ids: newConvClientDocs.map(d => d.id) }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Failed to create thread'); return; }
+    closeNewConversationModal();
+    await loadInbox(false);
+    if (data.threadId) loadThread(data.threadId);
+  } catch(e) { alert('Failed to create conversation'); }
+}
+
+// Close modal on overlay click
+document.getElementById('newConvModal').addEventListener('click', function(e) {
+  if (e.target === this) closeNewConversationModal();
+});
+
+// Close person search on outside click
+document.addEventListener('click', function(e) {
+  const wrap = document.querySelector('.modal-field-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('personSearchResults').style.display = 'none';
+  }
+});
+
+// ── MOBILE ────────────────────────────────────────────────────────────────────
+const _isMobile = () => window.innerWidth <= 600;
+
+function openMobileThread() {
+  if (!_isMobile()) return;
+  document.getElementById('inboxPanel').classList.add('mobile-hidden');
+  document.getElementById('detailPanel').classList.add('mobile-visible');
+  document.getElementById('mobileBackBtn').style.display = 'flex';
+  window.scrollTo(0, 0);
+}
+
+function closeMobileThread() {
+  document.getElementById('inboxPanel').classList.remove('mobile-hidden');
+  document.getElementById('detailPanel').classList.remove('mobile-visible');
+  document.getElementById('mobileBackBtn').style.display = 'none';
+  activeThreadId = null;
+  renderInbox();
+  window.scrollTo(0, 0);
+}
+
+const _origLoadThread = loadThread;
+window.loadThread = async (threadId, silent = false) => {
+  await _origLoadThread(threadId, silent);
+  if (!silent) openMobileThread();
+};
+
+// ── @ MENTION PICKER ──────────────────────────────────────────────────────────
+(function() {
+  const textarea = document.getElementById('replyBody');
+  const picker = document.getElementById('mention-picker');
+  let mentionStart = -1;
+
+  textarea.addEventListener('keyup', function(e) {
+    const val = textarea.value;
+    const pos = textarea.selectionStart;
+    const textBefore = val.slice(0, pos);
+    const atIdx = textBefore.lastIndexOf('@');
+
+    if (atIdx === -1 || (atIdx > 0 && /\S/.test(val[atIdx - 1]))) { hidePicker(); return; }
+
+    const query = textBefore.slice(atIdx + 1).toLowerCase();
+    if (query.includes(' ') && query.split(' ').length > 2) { hidePicker(); return; }
+
+    mentionStart = atIdx;
+    const matches = firmUsers.filter(u => {
+      const name = (u.name || u.email || '').toLowerCase();
+      return name.includes(query);
+    }).slice(0, 8);
+
+    if (!matches.length) { hidePicker(); return; }
+
+    picker.innerHTML = matches.map(u => {
+      const name = u.name || u.email;
+      const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      return `<div class="mention-item" data-name="${name.replace(/"/g,'')}" style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;transition:background 0.1s;">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(201,168,76,0.15);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">${initials}</div>
+        <span>${name}</span>
+      </div>`;
+    }).join('');
+
+    // Position above the textarea, anchored to its bottom edge via fixed coords
+    const taRect = textarea.getBoundingClientRect();
+    picker.style.position = 'fixed';
+    picker.style.left = taRect.left + 'px';
+    picker.style.width = taRect.width + 'px';
+    picker.style.display = 'block';
+    // Place above — after display so we know picker height
+    requestAnimationFrame(() => {
+      const ph = picker.offsetHeight;
+      picker.style.top = (taRect.top - ph - 6) + 'px';
+    });
+
+    picker.querySelectorAll('.mention-item').forEach(item => {
+      item.addEventListener('mouseenter', () => item.style.background = 'rgba(201,168,76,0.1)');
+      item.addEventListener('mouseleave', () => item.style.background = '');
+      item.addEventListener('mousedown', (ev) => { ev.preventDefault(); insertMention(item.dataset.name); });
+    });
+  });
+
+  textarea.addEventListener('keydown', function(e) {
+    if (picker.style.display === 'none') return;
+    if (e.key === 'Escape') { hidePicker(); e.preventDefault(); }
+  });
+
+  textarea.addEventListener('blur', function() { setTimeout(hidePicker, 150); });
+
+  function hidePicker() { picker.style.display = 'none'; mentionStart = -1; }
+
+  function insertMention(name) {
+    const val = textarea.value;
+    const pos = textarea.selectionStart;
+    const before = val.slice(0, mentionStart);
+    const after = val.slice(pos);
+    textarea.value = before + '@' + name + ' ' + after;
+    const newPos = mentionStart + name.length + 2;
+    textarea.setSelectionRange(newPos, newPos);
+    autoSizeReplyTextarea();
+    textarea.focus();
+    hidePicker();
+  }
+})();
+
+// ── Enter to send, Shift+Enter for newline ───────────────────────────────────
+document.getElementById('replyBody').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
+    e.preventDefault();
+    sendReply();
+  }
+});
+document.getElementById('replyBody').addEventListener('input', autoSizeReplyTextarea);
+window.addEventListener('resize', autoSizeReplyTextarea);
+autoSizeReplyTextarea();
+
+// ── Service Worker ─────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// Load firm users for @mention picker immediately
+apiFetch('/firms/team').then(r => r.json()).then(users => { firmUsers = users || []; }).catch(() => {});
+
+// Show empty state immediately — no spinner on initial load
+document.getElementById('inboxList').innerHTML = '<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">No active threads.</div>';
+loadInbox(false);
+</script>
+
+<%- include('partials/shell-close') %>

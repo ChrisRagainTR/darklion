@@ -1,0 +1,140 @@
+// ══ EMMA AI CHAT ══════════════════════════════════════════════════════
+
+  var dashAssistantMessages = [];
+
+  async function initEmma() {
+    const messagesEl = document.getElementById('dash-ai-messages');
+    const titleEl = document.getElementById('dash-ai-title');
+    if (titleEl) titleEl.textContent = 'DarkLion AI';
+    setEmmaStatus('Loading…', false);
+    try {
+      const res = await apiFetch('/api/emma-chat/session');
+      if (!res.ok) throw new Error('DarkLion AI session unavailable');
+      const data = await res.json();
+      dashAssistantMessages = Array.isArray(data.messages) ? data.messages : [];
+      setEmmaStatus('Ready', true);
+      renderEmmaMessages(dashAssistantMessages.length ? dashAssistantMessages : [{ role:'assistant', content:'Hi, I’m DarkLion AI. Ask me anything about clients, tasks, messages, bookkeeping, or pipeline work.' }]);
+      enableEmmaInput();
+    } catch(e) {
+      console.error('DarkLion AI init error:', e);
+      setEmmaStatus('Unavailable', false);
+      if (messagesEl) messagesEl.innerHTML = '<div class="dash-ai-bubble agent" style="color:var(--muted);">DarkLion AI is unavailable right now. Please try again.</div>';
+      disableAssistantInput('DarkLion AI unavailable');
+    }
+  }
+
+  function setEmmaStatus(text, online) {
+    const el = document.getElementById('emma-status');
+    if (el) {
+      el.textContent = text;
+      el.style.color = online ? 'var(--green,#3ecf8e)' : 'var(--muted)';
+    }
+  }
+
+  function enableEmmaInput() {
+    const inputEl = document.getElementById('dash-ai-input');
+    const sendBtn = document.getElementById('dash-ai-send-btn');
+    if (inputEl) { inputEl.disabled = false; inputEl.style.opacity = '1'; inputEl.placeholder = 'Ask DarkLion AI…'; }
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
+  }
+
+  function disableAssistantInput(placeholder) {
+    const inputEl = document.getElementById('dash-ai-input');
+    const sendBtn = document.getElementById('dash-ai-send-btn');
+    if (inputEl) { inputEl.disabled = true; inputEl.style.opacity = '0.55'; inputEl.placeholder = placeholder || 'DarkLion AI unavailable'; }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.5'; }
+  }
+
+  function renderEmmaMessages(messages) {
+    const el = document.getElementById('dash-ai-messages');
+    if (!el) return;
+    el.innerHTML = messages.map(function(m) {
+      const isUser = m.role === 'user';
+      const text = m.content || '';
+      const rendered = esc(text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+      return '<div class="dash-ai-bubble ' + (isUser ? 'user' : 'agent') + '">' + rendered + '</div>';
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function appendEmmaMessage(role, content) {
+    const el = document.getElementById('dash-ai-messages');
+    if (!el) return;
+    const rendered = esc(content).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    const div = document.createElement('div');
+    div.className = 'dash-ai-bubble ' + (role === 'user' ? 'user' : 'agent');
+    div.innerHTML = rendered;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  async function sendEmmaMessage() {
+    const inputEl = document.getElementById('dash-ai-input');
+    const sendBtn = document.getElementById('dash-ai-send-btn');
+    const text = inputEl ? inputEl.value.trim() : '';
+    if (!text) return;
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    appendEmmaMessage('user', text);
+
+    const thinkingId = 'emma-thinking-' + Date.now();
+    const msgsEl = document.getElementById('dash-ai-messages');
+    if (msgsEl) {
+      const thinking = document.createElement('div');
+      thinking.className = 'dash-ai-bubble agent';
+      thinking.id = thinkingId;
+      thinking.style.cssText = 'opacity:0.7;font-size:0.8rem;color:var(--muted);';
+      thinking.textContent = 'DarkLion AI is thinking…';
+      msgsEl.appendChild(thinking);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+
+    if (inputEl) inputEl.disabled = true;
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.5'; }
+
+    try {
+      const res = await apiFetch('/api/emma-chat/message', {
+        method: 'POST',
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json().catch(() => ({}));
+      const t = document.getElementById(thinkingId); if (t) t.remove();
+      if (!res.ok) {
+        appendEmmaMessage('assistant', data.error || 'DarkLion AI could not answer that.');
+      } else if (data.reply) {
+        appendEmmaMessage('assistant', data.reply);
+      } else if (Array.isArray(data.messages)) {
+        dashAssistantMessages = data.messages;
+        renderEmmaMessages(dashAssistantMessages);
+      } else {
+        appendEmmaMessage('assistant', 'Got it.');
+      }
+    } catch(e) {
+      const t = document.getElementById(thinkingId); if (t) t.remove();
+      appendEmmaMessage('assistant', 'Connection error. Please try again.');
+    } finally {
+      if (inputEl) { inputEl.disabled = false; inputEl.focus(); }
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
+    }
+  }
+
+  // Wire up send button and Enter key
+  document.addEventListener('DOMContentLoaded', function() {
+    const sendBtn = document.getElementById('dash-ai-send-btn');
+    const inputEl = document.getElementById('dash-ai-input');
+    if (sendBtn) sendBtn.addEventListener('click', sendEmmaMessage);
+    if (inputEl) {
+      inputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendEmmaMessage();
+        }
+      });
+      // Auto-resize textarea
+      inputEl.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      });
+    }
+  });

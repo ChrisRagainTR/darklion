@@ -1,0 +1,363 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .detail-wrap { padding: 1.5rem 2rem; max-width: 900px; }
+  .detail-header { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+  .detail-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .detail-client { font-size: 1.3rem; font-weight: 800; }
+  .detail-title { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+  .detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .detail-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.35rem; }
+  .detail-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+  .link-bar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+  .link-bar input { flex: 1; background: var(--charcoal); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.6rem; border-radius: 5px; font-size: 0.8rem; outline: none; }
+
+  .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; }
+
+  /* Timeline */
+  .timeline { display: flex; align-items: flex-start; gap: 0; position: relative; }
+  .timeline::before { content: ''; position: absolute; top: 12px; left: 12px; right: 12px; height: 2px; background: var(--border); z-index: 0; }
+  .tl-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; position: relative; z-index: 1; }
+  .tl-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); background: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--muted); }
+  .tl-dot.done { background: var(--gold); border-color: var(--gold); color: var(--navy); font-weight: 800; }
+  .tl-label { font-size: 0.7rem; font-weight: 600; color: var(--muted); text-align: center; }
+  .tl-label.done { color: var(--text); }
+  .tl-time { font-size: 0.65rem; color: var(--muted); text-align: center; }
+
+  /* Tier cards */
+  .tiers-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .tier-card { border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem; }
+  .tier-card.recommended { border-color: var(--gold); }
+  .tier-name { font-size: 0.9rem; font-weight: 700; }
+  .tier-subtitle { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+  .tier-price { font-size: 1.1rem; font-weight: 800; color: var(--gold); margin: 0.5rem 0; }
+  .tier-bullets { list-style: none; padding: 0; margin: 0; }
+  .tier-bullets li { font-size: 0.78rem; color: var(--muted); padding: 0.15rem 0; padding-left: 1rem; position: relative; }
+  .tier-bullets li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-size: 0.7rem; }
+
+  /* Info grid */
+  .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .info-item { }
+  .info-label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .info-value { font-size: 0.88rem; margin-top: 0.15rem; }
+
+  /* Sig status */
+  .sig-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .sig-row:last-child { border-bottom: none; }
+  .sig-icon { font-size: 1.1rem; }
+  .sig-info { flex: 1; }
+  .sig-name { font-size: 0.88rem; font-weight: 600; }
+  .sig-meta { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+
+  @media (max-width: 700px) {
+    .detail-wrap { padding: 1rem; }
+    .tiers-row { grid-template-columns: 1fr; }
+    .info-grid { grid-template-columns: 1fr; }
+    .timeline { flex-direction: column; }
+    .timeline::before { display: none; }
+  }
+</style>
+
+<div class="detail-wrap" id="detail-wrap">
+  <div class="loading-state"><div class="loading-spinner"></div><span>Loading…</span></div>
+</div>
+
+<script>
+const proposalId = window.location.pathname.split('/')[2];
+let _proposalToken = null;
+const API = '/api/proposals';
+
+function showToast(msg, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(d) { if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}); }
+function fmtDateShort(d) { if(!d) return null; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function formatAumFee(value) {
+  const num = value != null ? parseFloat(value) : 0.69;
+  if (!Number.isFinite(num)) return '0.69';
+  return num.toFixed(2).replace(/\.?0+$/, '');
+}
+function tierPriceLabel(tier, proposal) {
+  const price = parseFloat(tier.price) || 0;
+  if (price > 0) return '$' + price.toFixed(0) + '/mo';
+  return formatAumFee(proposal.aum_fee_percent) + '% AUM';
+}
+function portalStatus(p) {
+  const d = p.portal_deployment;
+  if (d && d.ok) {
+    if (d.status === 'active') return { label: 'Portal Active', cls: 'badge-green', detail: 'Client has accepted invite and set a portal password.' };
+    if (d.status === 'reactivated') return { label: 'Portal Reactivated', cls: 'badge-green', detail: 'Existing portal password was re-enabled after signing.' };
+    if (d.status === 'invite_pending') {
+      const exp = d.inviteExpiresAt ? ' · expires ' + fmtDateShort(d.inviteExpiresAt) : '';
+      return { label: 'Portal Invited', cls: 'badge-orange', detail: 'Invite is pending' + exp + '.' };
+    }
+    if (d.status === 'invite_sent') return { label: 'Portal Invite Sent', cls: 'badge-orange', detail: 'Invite was generated and emailed after signing.' };
+    if (d.status === 'invite_expired') return { label: 'Portal Invite Expired', cls: 'badge-orange', detail: 'Existing invite has expired; resend from the person record.' };
+    if (d.status === 'not_deployed') return { label: 'Portal Not Deployed', cls: 'badge-muted', detail: 'Portal invite has not been sent yet.' };
+  }
+  if (d && !d.ok) return { label: 'Portal Not Deployed', cls: 'badge-muted', detail: d.reason || 'Portal deployment could not resolve a primary person.' };
+  if (!p.primary_person_id) return { label: 'No primary person linked', cls: 'badge-muted', detail: 'Create/link a person under this relationship to deploy portal access.' };
+  if (p.primary_person_portal_enabled && p.primary_person_portal_has_password) return { label: 'Portal Active', cls: 'badge-green', detail: 'Client has accepted invite and set a portal password.' };
+  if (p.primary_person_portal_invite_token) {
+    const exp = p.primary_person_portal_invite_expires_at ? ' · expires ' + fmtDateShort(p.primary_person_portal_invite_expires_at) : '';
+    return { label: 'Portal Invited', cls: 'badge-orange', detail: 'Invite has been sent' + exp + '.' };
+  }
+  return { label: 'Portal Not Deployed', cls: 'badge-muted', detail: 'Portal invite has not been sent yet.' };
+}
+
+const STATUS_BADGE = {
+  draft: '<span class="badge badge-muted">Draft</span>',
+  sent: '<span class="badge badge-sent" style="background:rgba(66,153,225,0.12);color:#63b3ed">Sent</span>',
+  viewed: '<span class="badge badge-orange">Viewed</span>',
+  accepted: '<span class="badge badge-green">Accepted</span>',
+  signed: '<span class="badge badge-gold">Signed</span>',
+};
+const TYPE_BADGE = {
+  tax: '<span class="badge" style="background:rgba(66,153,225,0.12);color:#63b3ed">Tax</span>',
+  wealth: '<span class="badge" style="background:rgba(159,122,234,0.12);color:#b794f4">Wealth Mgmt</span>',
+};
+
+async function load() {
+  try {
+    const r = await fetch(API + '/' + proposalId, {
+      headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) }
+    });
+    if (!r.ok) throw new Error('Not found');
+    const p = await r.json();
+    render(p);
+  } catch(e) {
+    document.getElementById('detail-wrap').innerHTML = '<div class="empty-state">⚠️ Failed to load proposal.</div>';
+  }
+}
+
+function render(p) {
+  _proposalToken = p.public_token || null;
+  const origin = window.location.origin;
+  const link = p.custom_domain ? 'https://' + p.custom_domain + '/p/' + p.public_token : origin + '/p/' + p.public_token;
+  const canShowLink = ['sent','viewed','accepted','signed'].includes(p.status);
+
+  const tiers = p.tiers || [];
+  const eng = p.engagement;
+  const acc = p.acceptance;
+
+  // Timeline
+  const tlSteps = [
+    { label: 'Created', time: p.created_at, done: true },
+    { label: 'Sent', time: ['sent','viewed','accepted','signed'].includes(p.status) ? (p.updated_at) : null, done: ['sent','viewed','accepted','signed'].includes(p.status) },
+    { label: 'Viewed', time: p.viewed_at, done: !!p.viewed_at },
+    { label: 'Accepted', time: p.accepted_at, done: !!p.accepted_at },
+    { label: 'Signed', time: eng && eng.signed_at ? eng.signed_at : null, done: p.status === 'signed' },
+  ];
+
+  const canSaveCRM = p.status === 'signed' && p.relationship_id && eng && !eng.saved_to_crm;
+  const ps = portalStatus(p);
+  const personName = [p.primary_person_first_name, p.primary_person_last_name].filter(Boolean).join(' ');
+  const loeStatus = eng && eng.saved_to_crm
+    ? { label: 'Filed to CRM', cls: 'badge-green', detail: 'Signed PDF is saved under Delivered by Advisor → Engagement Letters.' }
+    : (p.status === 'signed'
+      ? { label: 'Not Filed', cls: 'badge-orange', detail: 'Use Save to CRM, or complete automatic filing after final signature.' }
+      : { label: 'Pending Signature', cls: 'badge-muted', detail: 'The LOE will file after the proposal is fully signed.' });
+
+  const html = `
+    <a href="/proposals" style="font-size:0.82rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:1rem;">← Back to Proposals</a>
+
+    <div class="detail-header">
+      <div class="detail-header-top">
+        <div>
+          <div class="detail-client">${escHtml(p.client_name||'—')}</div>
+          <div class="detail-title">${escHtml(p.title)}</div>
+          <div class="detail-badges">
+            ${TYPE_BADGE[p.engagement_type]||''}
+            ${STATUS_BADGE[p.status]||''}
+            ${p.relationship_name ? `<span class="badge badge-muted">🔗 ${escHtml(p.relationship_name)}</span>` : ''}
+          </div>
+          <div class="detail-meta">Created ${fmtDate(p.created_at)}</div>
+        </div>
+        <div class="detail-actions">
+          ${p.status !== 'signed' ? `<a href="/proposals/${p.id}/edit" class="btn btn-outline btn-sm">Edit</a>` : `<span title="Signed proposals cannot be edited — create a new proposal instead" style="font-size:0.78rem;color:var(--muted);font-style:italic;">🔒 Signed — cannot edit</span>`}
+          ${p.public_token ? `<button class="btn btn-outline btn-sm" onclick="previewLOE()" title="Preview the engagement letter as PDF">👁 Preview PDF</button>` : ''}
+          ${p.status === 'signed' && p.public_token ? `<button class="btn btn-gold btn-sm" onclick="downloadSignedLOE()">⬇ Download Signed LOE</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteProposal()">Delete</button>
+          ${canSaveCRM ? `<button class="btn btn-gold btn-sm" onclick="saveToCRM()">💾 Save to CRM</button>` : ''}
+        </div>
+      </div>
+      ${canShowLink ? `
+      <div class="link-bar">
+        <span style="font-size:0.78rem;color:var(--muted);flex-shrink:0;">Proposal Link:</span>
+        <input type="text" value="${escHtml(link)}" readonly>
+        <button class="btn btn-outline btn-sm" onclick="copyLink('${escHtml(link)}')">🔗 Copy</button>
+      </div>` : ''}
+    </div>
+
+    <!-- Timeline -->
+    <div class="section-card">
+      <div class="section-title">Timeline</div>
+      <div class="timeline">
+        ${tlSteps.map(s => `
+          <div class="tl-step">
+            <div class="tl-dot ${s.done ? 'done' : ''}">${s.done ? '✓' : ''}</div>
+            <div class="tl-label ${s.done ? 'done' : ''}">${s.label}</div>
+            <div class="tl-time">${s.time ? fmtDateShort(s.time) : ''}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">CRM / Portal Filing Status</div>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Relationship</div><div class="info-value">${p.relationship_id ? `<a href="/crm/relationship/${p.relationship_id}" style="color:var(--gold);text-decoration:none;">${escHtml(p.relationship_name || ('Relationship #' + p.relationship_id))}</a>` : '<span style="color:var(--red);">Not linked</span>'}</div></div>
+        <div class="info-item"><div class="info-label">Primary Person</div><div class="info-value">${p.primary_person_id ? `<a href="/crm/person/${p.primary_person_id}" style="color:var(--gold);text-decoration:none;">${escHtml(personName || p.primary_person_email || ('Person #' + p.primary_person_id))}</a>` : '—'}</div></div>
+        <div class="info-item"><div class="info-label">LOE Filing Status</div><div class="info-value"><span class="badge ${loeStatus.cls}">${escHtml(loeStatus.label)}</span><div style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;">${escHtml(loeStatus.detail)}</div></div></div>
+        <div class="info-item"><div class="info-label">Portal Invite / Deployment</div><div class="info-value"><span class="badge ${ps.cls}">${escHtml(ps.label)}</span><div style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;">${escHtml(ps.detail)}</div></div></div>
+      </div>
+    </div>
+
+    <!-- Tiers -->
+    ${tiers.length ? `
+    <div class="section-card">
+      <div class="section-title">Service Packages</div>
+      <div class="tiers-row">
+        ${tiers.map(t => `
+          <div class="tier-card ${t.recommended ? 'recommended' : ''}">
+            ${t.recommended ? '<div style="font-size:0.65rem;font-weight:800;color:var(--gold);margin-bottom:0.3rem;">⭐ RECOMMENDED</div>' : ''}
+            <div class="tier-name">${escHtml(t.name||'')}</div>
+            <div class="tier-subtitle">${escHtml(t.subtitle||'')}</div>
+            <div class="tier-price">${tierPriceLabel(t, p)}</div>
+            <ul class="tier-bullets">${(t.bullets||[]).map(b => `<li>${escHtml(b)}</li>`).join('')}</ul>
+          </div>`).join('')}
+      </div>
+      ${(p.add_ons||[]).length ? `
+      <div style="margin-top:1rem;">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">ADD-ONS</div>
+        ${p.add_ons.map(a => `<div style="font-size:0.82rem;display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.04)"><span>${escHtml(a.description)}</span><span style="color:var(--gold)">+$${a.monthlyPrice}/mo</span></div>`).join('')}
+      </div>` : ''}
+      ${(p.backwork||[]).length ? `
+      <div style="margin-top:1rem;">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">ONE-TIME FEES</div>
+        ${p.backwork.map(b => `<div style="font-size:0.82rem;display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.04)"><span>${escHtml(b.description)}</span><span style="color:#ed8936;">$${(b.flatFee||0).toLocaleString()} one-time</span></div>`).join('')}
+      </div>` : ''}
+    </div>` : ''}
+
+    <!-- Acceptance Details -->
+    ${acc ? `
+    <div class="section-card">
+      <div class="section-title">Client's Acceptance</div>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Company Name</div><div class="info-value">${escHtml(acc.company_name||'—')}</div></div>
+        <div class="info-item"><div class="info-label">Contact Name</div><div class="info-value">${escHtml(acc.contact_name||'—')}</div></div>
+        <div class="info-item"><div class="info-label">Entity Type</div><div class="info-value">${escHtml(acc.entity_type||'—')}</div></div>
+        <div class="info-item"><div class="info-label">Owners / Principals</div><div class="info-value">${escHtml(acc.owners||'—')}</div></div>
+        <div class="info-item"><div class="info-label">Selected Package(s)</div><div class="info-value">${Array.isArray(acc.selected_tier_names) && acc.selected_tier_names.length ? acc.selected_tier_names.map(n=>escHtml(n)).join(', ') : (tiers[acc.selected_tier_index] ? escHtml(tiers[acc.selected_tier_index].name) : '—')}</div></div>
+        <div class="info-item"><div class="info-label">Accepted</div><div class="info-value">${fmtDate(acc.accepted_at)}</div></div>
+      </div>
+      ${acc.additional_notes ? `<div style="margin-top:0.75rem;"><div class="info-label">Notes from Client</div><div class="info-value" style="margin-top:0.25rem;">${escHtml(acc.additional_notes)}</div></div>` : ''}
+    </div>` : ''}
+
+    <!-- Engagement / Signatures -->
+    ${eng ? `
+    <div class="section-card">
+      <div class="section-title">Engagement Letter & Signatures</div>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+        <span style="font-size:0.88rem;">Status:</span>
+        ${eng.status === 'signed' ? '<span class="badge badge-gold">✓ Fully Signed</span>' : '<span class="badge badge-orange">Pending Signature</span>'}
+        ${eng.monthly_price > 0 ? `<span style="font-size:0.82rem;color:var(--gold);font-weight:700;margin-left:auto;">$${parseFloat(eng.monthly_price).toFixed(0)}/mo</span>` : ''}
+      </div>
+      <div class="sig-row">
+        <div class="sig-icon">${eng.signed_at ? '✅' : '⏳'}</div>
+        <div class="sig-info">
+          <div class="sig-name">${eng.signed_by_name ? escHtml(eng.signed_by_name) : 'Awaiting signer 1'}</div>
+          ${eng.signed_at ? `<div class="sig-meta">${fmtDate(eng.signed_at)} · IP: ${escHtml(eng.signer_ip||'unknown')}</div>` : ''}
+        </div>
+      </div>
+      ${p.require_dual_signature ? `
+      <div class="sig-row">
+        <div class="sig-icon">${eng.signed2_at ? '✅' : '⏳'}</div>
+        <div class="sig-info">
+          <div class="sig-name">${eng.signed2_by_name ? escHtml(eng.signed2_by_name) : 'Awaiting signer 2'}</div>
+          ${eng.signed2_at ? `<div class="sig-meta">${fmtDate(eng.signed2_at)} · IP: ${escHtml(eng.signer2_ip||'unknown')}</div>` : ''}
+        </div>
+      </div>` : ''}
+      ${eng.saved_to_crm ? '<div style="margin-top:0.75rem;font-size:0.82rem;color:var(--green);">✓ Saved to CRM</div>' : ''}
+    </div>` : ''}
+
+    ${p.notes ? `
+    <div class="section-card">
+      <div class="section-title">Internal Notes</div>
+      <p style="font-size:0.85rem;color:var(--muted);white-space:pre-wrap;">${escHtml(p.notes)}</p>
+    </div>` : ''}
+  `;
+
+  document.getElementById('detail-wrap').innerHTML = html;
+}
+
+async function deleteProposal() {
+  if (!confirm('Delete this proposal? This cannot be undone.')) return;
+  try {
+    const r = await fetch(API + '/' + proposalId, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) }
+    });
+    if (!r.ok) throw new Error('Failed');
+    showToast('Deleted');
+    setTimeout(() => window.location = '/proposals', 800);
+  } catch(e) {
+    showToast('Failed to delete', true);
+  }
+}
+
+async function saveToCRM() {
+  try {
+    const r = await fetch(API + '/' + proposalId + '/save-to-crm', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) }
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+    showToast('Saved to CRM engagement letters!');
+    setTimeout(() => load(), 1000);
+  } catch(e) {
+    showToast(e.message || 'Failed to save to CRM', true);
+  }
+}
+
+function copyLink(url) {
+  navigator.clipboard.writeText(url).then(() => showToast('Copied!')).catch(() => showToast('Copy failed', true));
+}
+
+function downloadSignedLOE() {
+  if (!_proposalToken) { showToast('No token available', true); return; }
+  const btn = document.querySelector('[onclick="downloadSignedLOE()"]');
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF…'; }
+  showToast('Generating PDF — this takes about 15 seconds…');
+  // Use a hidden link so the page doesn't navigate away
+  const a = document.createElement('a');
+  a.href = '/api/proposals/public/' + _proposalToken + '/pdf';
+  a.download = 'Engagement-Letter.pdf';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Re-enable button after delay
+  setTimeout(() => {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+  }, 20000);
+}
+
+function previewLOE() {
+  if (!_proposalToken) { showToast('No token available', true); return; }
+  // Open the sign page in preview mode — shows LOE without requiring auth
+  window.open('/p/' + _proposalToken + '/sign?pdf=1', '_blank');
+}
+
+load();
+</script>
+
+<%- include('partials/shell-globals') %>
+<%- include('partials/shell-close') %>

@@ -1,0 +1,265 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .page-wrap { padding: 1.5rem 2rem; max-width: 1100px; }
+  .page-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .page-top h1 { font-size: 1.3rem; font-weight: 800; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+  .stat-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.35rem; }
+  .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--text); line-height: 1; }
+  .stat-value.gold { color: var(--gold); }
+
+  .filter-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; overflow-x: auto; scrollbar-width: none; }
+  .filter-tabs::-webkit-scrollbar { display: none; }
+  .filter-tab { padding: 0.55rem 1rem; font-size: 0.82rem; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none; }
+  .filter-tab:hover { color: var(--text); }
+  .filter-tab.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
+
+  .proposal-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .proposal-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.15s; }
+  .proposal-card:hover { border-color: rgba(201,168,76,0.4); }
+  .proposal-main { flex: 1; min-width: 0; }
+  .proposal-client { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proposal-title { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+  .proposal-meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.45rem; flex-wrap: wrap; }
+  .proposal-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+
+  .badge-tax { background: rgba(66,153,225,0.15); color: #63b3ed; }
+  .badge-wealth { background: rgba(159,122,234,0.15); color: #b794f4; }
+  .badge-draft { background: rgba(143,163,184,0.12); color: var(--muted); }
+  .badge-sent { background: rgba(66,153,225,0.12); color: #63b3ed; }
+  .badge-viewed { background: rgba(237,137,54,0.12); color: #f6ad55; }
+  .badge-accepted { background: rgba(62,207,142,0.12); color: var(--green); }
+  .badge-signed { background: rgba(201,168,76,0.14); color: var(--gold); }
+
+  .icon-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 0.3rem 0.5rem; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+  .icon-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .icon-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+
+  @media (max-width: 700px) {
+    .page-wrap { padding: 1rem; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="page-wrap">
+  <div class="page-top">
+    <h1>Proposals</h1>
+    <a href="/proposals/new" class="btn btn-gold">+ New Proposal</a>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="stat-total">—</div></div>
+    <div class="stat-card"><div class="stat-label">Sent</div><div class="stat-value" id="stat-sent">—</div></div>
+    <div class="stat-card"><div class="stat-label">Accepted / Signed</div><div class="stat-value" id="stat-accepted">—</div></div>
+    <div class="stat-card"><div class="stat-label">Signed MRR</div><div class="stat-value gold" id="stat-mrr">—</div></div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="filter-tabs">
+    <button class="filter-tab active" data-filter="all">All</button>
+    <button class="filter-tab" data-filter="draft">Draft</button>
+    <button class="filter-tab" data-filter="sent">Sent</button>
+    <button class="filter-tab" data-filter="viewed">Viewed</button>
+    <button class="filter-tab" data-filter="accepted">Accepted</button>
+    <button class="filter-tab" data-filter="signed">Signed</button>
+  </div>
+
+  <!-- Proposal List -->
+  <div id="proposals-list" class="proposal-list">
+    <div class="loading-state"><div class="loading-spinner"></div><span>Loading proposals…</span></div>
+  </div>
+</div>
+
+<!-- Copy Link Modal -->
+<div class="modal-overlay" id="copy-modal">
+  <div class="modal">
+    <h2>📄 Proposal Link</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.75rem;">Share this link with your client:</p>
+    <div style="display:flex;gap:0.5rem;">
+      <input id="copy-link-input" type="text" class="form-control" readonly style="font-size:0.8rem;">
+      <button class="btn btn-gold btn-sm" onclick="doCopy()">Copy</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('copy-modal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h2>Delete Proposal?</h2>
+    <p id="delete-modal-warning" style="font-size:0.85rem;color:var(--muted);">This cannot be undone. All acceptance and signature data will be lost.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('delete-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="delete-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/proposals';
+let allProposals = [];
+let currentFilter = 'all';
+let deleteId = null;
+
+function showToast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+function statusBadge(s) {
+  const map = { draft:'Draft',sent:'Sent',viewed:'Viewed',accepted:'Accepted',signed:'Signed' };
+  return `<span class="badge badge-${s}">${map[s]||s}</span>`;
+}
+function typeBadge(t) {
+  return `<span class="badge badge-${t}">${t==='tax'?'Tax':'Wealth Mgmt'}</span>`;
+}
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) } });
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('stat-total').textContent = d.total || 0;
+    document.getElementById('stat-sent').textContent = d.sent || 0;
+    document.getElementById('stat-accepted').textContent = d.accepted_signed || 0;
+    const mrr = parseFloat(d.mrr) || 0;
+    document.getElementById('stat-mrr').textContent = mrr > 0 ? '$' + mrr.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}) + '/mo' : '—';
+  } catch(e) {}
+}
+
+async function loadProposals() {
+  try {
+    const r = await fetch(API, { headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) } });
+    if (!r.ok) throw new Error('Failed');
+    allProposals = await r.json();
+    renderList();
+  } catch(e) {
+    document.getElementById('proposals-list').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load proposals.</p></div>';
+  }
+}
+
+function renderList() {
+  const list = document.getElementById('proposals-list');
+  const filtered = currentFilter === 'all' ? allProposals : allProposals.filter(p => p.status === currentFilter);
+
+  if (!filtered.length) {
+    const isEmpty = allProposals.length === 0;
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📄</div>
+      <h3>${isEmpty ? 'No proposals yet' : 'No ' + currentFilter + ' proposals'}</h3>
+      <p>${isEmpty ? 'Create your first proposal to send to a client.' : 'Change the filter to see other proposals.'}</p>
+      ${isEmpty ? '<a href="/proposals/new" class="btn btn-gold" style="margin-top:1rem;">+ New Proposal</a>' : ''}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(p => {
+    const origin = window.location.origin;
+    const link = p.custom_domain ? 'https://' + p.custom_domain + '/p/' + p.public_token : origin + '/p/' + p.public_token;
+    const canCopyLink = ['sent','viewed','accepted'].includes(p.status);
+    return `<div class="proposal-card" data-status="${p.status}" onclick="window.location='/proposals/${p.id}'" style="cursor:pointer;">
+      <div class="proposal-main">
+        <div class="proposal-client">${escHtml(p.client_name || '—')}</div>
+        <div class="proposal-title">${escHtml(p.title)}</div>
+        <div class="proposal-meta">
+          ${typeBadge(p.engagement_type)}
+          ${statusBadge(p.status)}
+          <span style="font-size:0.75rem;color:var(--muted)">${fmtDate(p.created_at)}</span>
+          ${p.relationship_name ? `<span style="font-size:0.75rem;color:var(--muted)">· ${escHtml(p.relationship_name)}</span>` : ''}
+        </div>
+      </div>
+      <div class="proposal-actions" onclick="event.stopPropagation()">
+        ${canCopyLink ? `<button class="btn btn-outline btn-sm" onclick="copyLink('${escAttr(link)}')" style="font-size:0.75rem;padding:0.25rem 0.65rem;">Copy Link</button>` : ''}
+        ${p.status === 'signed' ? `<button class="btn btn-gold btn-sm" onclick="event.stopPropagation();window.location='/proposals/${p.id}'" style="font-size:0.75rem;padding:0.25rem 0.65rem;">📄 Review Signed Docs</button>` : ''}
+        <button class="icon-btn danger" title="Delete" onclick="confirmDelete(${p.id})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+function copyLink(url) {
+  document.getElementById('copy-link-input').value = url;
+  document.getElementById('copy-modal').classList.add('open');
+}
+
+function doCopy() {
+  const inp = document.getElementById('copy-link-input');
+  inp.select();
+  navigator.clipboard.writeText(inp.value).then(() => showToast('Link copied!')).catch(() => {
+    document.execCommand('copy');
+    showToast('Link copied!');
+  });
+}
+
+function confirmDelete(id) {
+  deleteId = id;
+  const proposal = allProposals.find(p => p.id === id);
+  const isSigned = proposal && proposal.status === 'signed';
+  const warningEl = document.getElementById('delete-modal-warning');
+  if (warningEl) {
+    warningEl.textContent = isSigned
+      ? '⚠️ This proposal has been signed. Deleting it will permanently remove the engagement letter and all signature data.'
+      : 'This cannot be undone. All acceptance and signature data will be lost.';
+    warningEl.style.color = isSigned ? 'var(--red)' : 'var(--muted)';
+  }
+  document.getElementById('delete-modal').classList.add('open');
+}
+
+document.getElementById('delete-confirm-btn').addEventListener('click', async () => {
+  if (!deleteId) return;
+  try {
+    const r = await fetch(API + '/' + deleteId, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) },
+    });
+    if (!r.ok) throw new Error('Failed');
+    allProposals = allProposals.filter(p => p.id !== deleteId);
+    renderList();
+    loadStats();
+    showToast('Proposal deleted');
+  } catch(e) {
+    showToast('Failed to delete', true);
+  }
+  deleteId = null;
+  document.getElementById('delete-modal').classList.remove('open');
+});
+
+document.querySelectorAll('.filter-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderList();
+  });
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+loadStats();
+loadProposals();
+</script>
+
+<%- include('partials/shell-globals') %>
+<%- include('partials/shell-close') %>

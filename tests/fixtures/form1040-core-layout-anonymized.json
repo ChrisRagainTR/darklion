@@ -1,0 +1,57 @@
+{
+  "text": "Form 1040 (2025) U.S. Individual Income Tax Return",
+  "pages": [
+    {
+      "number": 1,
+      "width": 612,
+      "height": 792,
+      "items": [
+        { "x": 42, "y": 754, "text": "Form" },
+        { "x": 70, "y": 754, "text": "1040" },
+        { "x": 220, "y": 752, "text": "U.S. Individual Income Tax Return" },
+        { "x": 510, "y": 754, "text": "2025" },
+        { "x": 96, "y": 180, "text": "11a" },
+        { "x": 120, "y": 180, "text": "Adjusted gross income" },
+        { "x": 492, "y": 180, "text": "11a" },
+        { "x": 540, "y": 179.5, "text": "100,000" },
+        { "x": 96, "y": 120, "text": "15" },
+        { "x": 120, "y": 120, "text": "Taxable income" },
+        { "x": 492, "y": 120, "text": "15" },
+        { "x": 548, "y": 119.5, "text": "80,000" }
+      ]
+    },
+    {
+      "number": 2,
+      "width": 612,
+      "height": 792,
+      "items": [
+        { "x": 42, "y": 764, "text": "Form 1040 (2025)" },
+        { "x": 570, "y": 764, "text": "2" },
+        { "x": 96, "y": 535.5, "text": "24" },
+        { "x": 120, "y": 535.5, "text": "Total tax" },
+        { "x": 492, "y": 535.5, "text": "24" },
+        { "x": 547, "y": 535, "text": "66,693" },
+        { "x": 96, "y": 319.5, "text": "33" },
+        { "x": 120, "y": 319.5, "text": "Total payments" },
+        { "x": 492, "y": 319.5, "text": "33" },
+        { "x": 547, "y": 319, "text": "11,960" },
+        { "x": 96, "y": 307.5, "text": "34" },
+        { "x": 120, "y": 307.5, "text": "If line 33 is more than line 24, subtract line 24 from line 33. This is the amount you overpaid" },
+        { "x": 492, "y": 307.5, "text": "34" },
+        { "x": 575, "y": 307, "text": "0" },
+        { "x": 96, "y": 295.5, "text": "35a" },
+        { "x": 120, "y": 295.5, "text": "Amount of line 34 you want refunded to you" },
+        { "x": 492, "y": 295.5, "text": "35a" },
+        { "x": 575, "y": 295, "text": "0" },
+        { "x": 96, "y": 245, "text": "37" },
+        { "x": 120, "y": 245, "text": "Amount you owe" },
+        { "x": 492, "y": 235.5, "text": "37" },
+        { "x": 547, "y": 235, "text": "56,415" },
+        { "x": 96, "y": 223.5, "text": "38" },
+        { "x": 120, "y": 223.5, "text": "Estimated tax penalty" },
+        { "x": 399, "y": 223.5, "text": "38" },
+        { "x": 455, "y": 223, "text": "1,682" }
+      ]
+    }
+  ]
+}

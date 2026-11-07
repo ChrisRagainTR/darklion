@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="same-origin">
+  <title>Tax Organizer</title>
+  <script src="/js/portal-session.js?v=s3c-20261009"></script>
+  <link rel="icon" type="image/png" href="/lion-logo.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0f1923; --shell: #141d26; --card: #1a2535; --charcoal: #1c2b3a;
+      --gold: #c9a84c; --gold-light: #e2c068;
+      --text: #e8edf2; --muted: #8fa3b8;
+      --border: rgba(201,168,76,0.22);
+      --green: #3ecf8e; --red: #f56565; --orange: #ed8936; --blue: #4299e1;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--navy); color: var(--text); min-height: 100vh;
+    }
+
+    /* === TOP HEADER === */
+    .top-header {
+      background: var(--shell);
+      border-bottom: 2px solid var(--gold);
+      padding: 0 1.5rem;
+      height: 58px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .header-logo img { width: 30px; height: 30px; border-radius: 6px; }
+    .header-logo span { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .header-logo span em { color: var(--gold); font-style: normal; }
+    .header-back {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem;
+      display: flex; align-items: center; gap: 0.4rem;
+      transition: color 0.15s;
+    }
+    .header-back:hover { color: var(--text); }
+
+    /* === MAIN LAYOUT === */
+    .org-wrap {
+      max-width: 1400px; margin: 0 auto;
+      padding: 2rem 2.5rem 4rem;
+    }
+    /* Constrain non-checklist steps to readable width */
+    #step-1 .section-content,
+    #step-2 .section-content {
+      max-width: 720px;
+    }
+
+    /* === PROGRESS BAR === */
+    .progress-bar-wrap {
+      margin-bottom: 2rem;
+    }
+    .progress-steps {
+      display: flex; gap: 0; margin-bottom: 0.6rem;
+    }
+    .progress-step {
+      flex: 1; text-align: center;
+      font-size: 0.78rem; color: var(--muted);
+      padding-bottom: 0.5rem;
+      border-bottom: 3px solid rgba(201,168,76,0.15);
+      transition: all 0.2s;
+    }
+    .progress-step.active { color: var(--gold); border-color: var(--gold); font-weight: 600; }
+    .progress-step.done { color: var(--green); border-color: var(--green); }
+
+    /* === SECTION TITLE === */
+    .section-title {
+      font-size: 1.4rem; font-weight: 700; color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    .section-sub {
+      font-size: 0.9rem; color: var(--muted); margin-bottom: 1.75rem;
+      line-height: 1.5;
+    }
+
+    /* === CARDS === */
+    .org-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .org-card-title {
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--gold); margin-bottom: 1rem;
+    }
+
+    /* === FORM FIELDS === */
+    .field-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem;
+    }
+    .field-grid.cols-1 { grid-template-columns: 1fr; }
+    .field-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .field-wrap { display: flex; flex-direction: column; gap: 0.3rem; }
+    .field-wrap.span-2 { grid-column: span 2; }
+    .field-label {
+      font-size: 0.78rem; color: var(--muted); font-weight: 500;
+    }
+    .field-input {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text);
+      padding: 0.5rem 0.75rem; font-size: 0.88rem;
+      outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .field-input:focus { border-color: var(--gold); }
+    .field-input.prefilled { border-color: rgba(62,207,142,0.3); background: rgba(62,207,142,0.04); }
+
+    /* === DEPENDENT ROWS === */
+    .dep-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 0.5rem 0.75rem; align-items: end;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .dep-row:last-child { border-bottom: none; }
+    .add-dep-btn {
+      background: none; border: 1px dashed var(--border);
+      color: var(--muted); border-radius: 7px;
+      padding: 0.5rem 1rem; font-size: 0.82rem;
+      cursor: pointer; margin-top: 0.75rem;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .add-dep-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* === YES/NO QUESTIONS === */
+    .question-row {
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .question-row:last-child { border-bottom: none; }
+    .question-text {
+      font-size: 0.92rem; color: var(--text);
+      margin-bottom: 0.6rem; line-height: 1.45;
+    }
+    .question-text .q-tag {
+      display: inline-block; font-size: 0.7rem;
+      background: rgba(201,168,76,0.15); color: var(--gold);
+      border-radius: 4px; padding: 0.1em 0.4em;
+      margin-left: 0.4rem; font-weight: 600; vertical-align: middle;
+    }
+    .yn-btns { display: flex; gap: 0.5rem; }
+    .yn-btn {
+      padding: 0.35rem 1.1rem; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted); cursor: pointer;
+      font-size: 0.85rem; font-weight: 500;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .yn-btn.selected-yes { background: rgba(62,207,142,0.15); border-color: var(--green); color: var(--green); }
+    .yn-btn.selected-no { background: rgba(143,163,184,0.12); border-color: var(--muted); color: var(--text); }
+    .yn-followup {
+      margin-top: 0.75rem; padding: 0.75rem 1rem;
+      background: rgba(201,168,76,0.06);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 8px 8px 0;
+      font-size: 0.85rem; color: var(--muted);
+      display: none;
+    }
+    .yn-followup.visible { display: block; }
+    .yn-followup textarea, .yn-followup input {
+      width: 100%; margin-top: 0.5rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      padding: 0.5rem 0.75rem; font-size: 0.85rem;
+      font-family: inherit; outline: none; resize: vertical;
+    }
+
+    /* === CHECKLIST === */
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0 1.25rem;
+      align-items: start;
+    }
+    .checklist-grid > div { min-width: 0; }
+    @media (max-width: 900px) {
+      .checklist-grid { grid-template-columns: 1fr; }
+    }
+    .checklist-section { margin-bottom: 1.5rem; }
+    .checklist-section-title {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--gold); margin-bottom: 0.6rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .checklist-item {
+      display: flex; align-items: center; gap: 0.45rem;
+      padding: 0.55rem 0.55rem;
+      border-radius: 8px;
+      transition: background 0.15s;
+      margin-bottom: 0.2rem;
+      min-width: 0;
+    }
+    .checklist-item:hover { background: rgba(255,255,255,0.03); }
+    .ci-check {
+      width: 20px; height: 20px; flex-shrink: 0;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s;
+      font-size: 0.7rem; color: transparent;
+    }
+    .ci-check.uploaded { background: var(--green); border-color: var(--green); color: white; }
+    .ci-check.na { background: rgba(245,101,101,0.2); border-color: rgba(245,101,101,0.5); color: var(--red); }
+    .ci-info { flex: 1; min-width: 0; overflow: hidden; }
+    .ci-payer {
+      font-size: 0.88rem; font-weight: 500; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ci-type {
+      font-size: 0.73rem; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ci-status { font-size: 0.73rem; white-space: nowrap; flex-shrink: 0; }
+    .ci-status.uploaded { color: var(--green); }
+    .ci-status.pending { color: var(--muted); }
+    .ci-status.na { color: var(--red); text-decoration: line-through; opacity: 0.75; }
+    .checklist-item.na { opacity: 0.7; }
+    .ci-info.na { text-decoration: line-through; opacity: 0.7; }
+    .ci-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; min-width: 0; }
+    .ci-btn {
+      font-size: 0.72rem; padding: 0.28rem 0.55rem;
+      border-radius: 5px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04); color: var(--muted);
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+      white-space: nowrap;
+    }
+    .ci-btn.upload { border-color: rgba(201,168,76,0.4); color: var(--gold); }
+    .ci-btn.upload:hover { background: rgba(201,168,76,0.12); }
+    .ci-btn.nty-btn { border-color: #f56565; color: white; background: #f56565; }
+    .ci-btn.nty-btn:hover { background: #e74c3c; border-color: #e74c3c; }
+    .ci-btn.na-btn { border-color: rgba(201,168,76,0.35); color: var(--gold); display: none; }
+    .ci-btn.na-btn:hover { background: rgba(201,168,76,0.09); }
+    body.bulk-ready .ci-btn.na-btn { display: inline-flex; }
+    .ci-btn.undo { color: var(--muted); }
+    .ci-status.na-item { color: var(--green); }
+    .checklist-item.na-item { opacity: 0.9; }
+    .ci-check.na-item { background: var(--green); border-color: var(--green); color: white; }
+
+    /* === SENTINEL PROVIDES === */
+    .checklist-item.sentinel-provides { opacity: 0.75; }
+    .ci-sentinel-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--gold); background: rgba(201,168,76,0.1);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 5px; padding: 0.25rem 0.6rem;
+      white-space: nowrap;
+    }
+
+    /* === PROGRESS SUMMARY === */
+    .progress-summary {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.25rem;
+      display: flex; align-items: center; gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .ps-bar-wrap { flex: 1; }
+    .ps-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.4rem; }
+    .ps-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+    .ps-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s; }
+    .ps-count { font-size: 1.1rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .ps-count span { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+
+    /* === BIG UPLOAD === */
+    .bulk-upload-card {
+      background: rgba(201,168,76,0.06);
+      border: 1px dashed rgba(201,168,76,0.35);
+      border-radius: 12px; padding: 1.25rem 1.5rem;
+      text-align: center; margin-bottom: 1.5rem;
+      cursor: pointer; transition: all 0.2s;
+      position: relative;
+    }
+    .bulk-upload-card:hover:not(.bulk-done):not(.bulk-uploading) { background: rgba(201,168,76,0.1); border-color: var(--gold); }
+    .bulk-upload-card.drag-over { background: rgba(201,168,76,0.14); border-color: var(--gold); border-style: solid; }
+    .bulk-upload-card.bulk-uploading { cursor: default; opacity: 0.9; }
+    .bulk-upload-card.bulk-done { background: rgba(62,207,142,0.07); border-color: rgba(62,207,142,0.5); border-style: solid; cursor: default; }
+    .bulk-upload-card.bulk-error { background: rgba(245,101,101,0.07); border-color: rgba(245,101,101,0.4); border-style: solid; cursor: pointer; }
+    .bulk-upload-card .bu-icon { font-size: 1.6rem; margin-bottom: 0.4rem; }
+    .bulk-upload-card .bu-title { font-size: 0.95rem; font-weight: 600; color: var(--gold); }
+    .bulk-upload-card .bu-title.done { color: var(--green); }
+    .bulk-upload-card .bu-title.error { color: var(--red); }
+    .bulk-upload-card .bu-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+    .bulk-progress {
+      height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px;
+      margin-top: 0.75rem; overflow: hidden;
+    }
+    .bulk-progress-fill {
+      height: 100%; background: var(--gold); border-radius: 2px;
+      width: 0%; transition: width 0.4s ease;
+    }
+
+    /* === NAV BUTTONS === */
+    .org-nav {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 2rem; padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .btn-primary {
+      background: var(--gold); color: #0f1923;
+      border: none; border-radius: 8px;
+      padding: 0.65rem 1.6rem; font-size: 0.92rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s; font-family: inherit;
+    }
+    .btn-primary:hover { background: var(--gold-light); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.05); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.65rem 1.25rem; font-size: 0.88rem;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+    .btn-submit {
+      background: var(--green); color: #0f1923;
+      border: none; border-radius: 8px;
+      padding: 0.75rem 2rem; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s; font-family: inherit;
+    }
+    .btn-submit:hover { background: #5fdfa6; }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* === STEP PANELS === */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* === SUBMIT SCREEN === */
+    .submit-screen {
+      text-align: center; padding: 3rem 1rem;
+    }
+    .submit-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .submit-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .submit-sub { font-size: 0.92rem; color: var(--muted); line-height: 1.6; }
+
+    .banner-note {
+      background: rgba(66,153,225,0.1); border: 1px solid rgba(66,153,225,0.3);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      font-size: 0.82rem; color: #90cdf4; margin-bottom: 1.5rem;
+      display: flex; gap: 0.5rem; align-items: flex-start;
+    }
+
+    @media (max-width: 700px) {
+      .org-wrap { padding: 1.25rem 1rem 3rem; }
+      .ci-actions { flex-wrap: wrap; justify-content: flex-end; }
+    }
+
+    @media (max-width: 600px) {
+      .field-grid { grid-template-columns: 1fr; }
+      .field-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+      .dep-row { grid-template-columns: 1fr 1fr; }
+      .field-wrap.span-2 { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-header">
+  <a class="header-logo" href="/portal">
+    <img src="/lion-logo.png" alt="">
+    <span>Client <em>Portal</em></span>
+  </a>
+  <a class="header-back" href="/portal">← Back to Portal</a>
+</div>
+
+<div class="org-wrap">
+
+  <!-- PROGRESS STEPS — constrained width for readability -->
+  <div class="progress-bar-wrap">
+    <div class="progress-steps">
+      <div class="progress-step active" id="pstep-1">1 · Confirm Info</div>
+      <div class="progress-step" id="pstep-2">2 · Organizer Questions</div>
+      <div class="progress-step" id="pstep-3">3 · Your Documents</div>
+      <div class="progress-step" id="pstep-4">4 · Submit</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- STEP 1 — CONFIRM YOUR INFO                      -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="step-panel active" id="step-1">
+    <div class="section-title">Confirm Your Information</div>
+    <div class="section-sub">We've pre-filled this from your file. Please review and correct anything that's changed.</div>
+
+    <!-- Contact Info -->
+    <div class="org-card">
+      <div class="org-card-title">Contact Information</div>
+      <div class="field-grid">
+        <div class="field-wrap">
+          <label class="field-label">First Name</label>
+          <input class="field-input" type="text" id="field-first-name" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Last Name</label>
+          <input class="field-input" type="text" id="field-last-name" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Your Email</label>
+          <input class="field-input" type="email" id="field-email" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Phone</label>
+          <input class="field-input" type="tel" id="field-phone" value="">
+        </div>
+        <div class="field-wrap span-2">
+          <label class="field-label">Home Address</label>
+          <input class="field-input" type="text" id="field-address" value="">
+        </div>
+      </div>
+    </div>
+
+    <!-- Spouse -->
+    <div class="org-card">
+      <div class="org-card-title">Spouse / Filing Partner</div>
+      <div class="field-grid">
+        <div class="field-wrap">
+          <label class="field-label">Spouse First Name</label>
+          <input class="field-input" type="text" id="field-spouse-first" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Spouse Last Name</label>
+          <input class="field-input" type="text" id="field-spouse-last" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Spouse Email</label>
+          <input class="field-input" type="email" id="field-spouse-email" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Spouse Phone</label>
+          <input class="field-input" type="tel" id="field-spouse-phone" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Spouse Occupation</label>
+          <input class="field-input" type="text" id="field-spouse-occupation" value="">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Your Occupation</label>
+          <input class="field-input" type="text" id="field-occupation" value="">
+        </div>
+      </div>
+    </div>
+
+    <!-- Dependents -->
+    <div class="org-card">
+      <div class="org-card-title">Dependents</div>
+      <div id="dep-list"></div>
+      <button class="add-dep-btn" onclick="addDependent()">+ Add Dependent</button>
+      <div id="profile-save-error" role="alert" style="display:none;color:#e05a5a"></div>
+    </div>
+
+    <div class="org-nav">
+      <div></div>
+      <button class="btn-primary" onclick="saveProfileAndNext(this)">Everything looks right → Next</button>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- STEP 2 — QUICK QUESTIONS                        -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="step-panel" id="step-2">
+    <div class="section-title">A Few Quick Questions</div>
+    <div class="section-sub">These help us make sure we're asking for the right documents. Answer honestly — no wrong answers.</div>
+
+    <div class="org-card">
+      <div class="org-card-title">Life Changes</div>
+
+      <div class="question-row">
+        <div class="question-text">Did anything major change this year — marriage, divorce, new baby, or death in the family?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qlife')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qlife')">No</button>
+        </div>
+        <div class="yn-followup" id="qlife-followup">
+          Please briefly describe the change so we can make sure we capture everything correctly.
+          <textarea rows="2" placeholder="e.g. Had our third child in March, name is Oliver…"></textarea>
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did your address change during 2025?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qaddr')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qaddr')">No</button>
+        </div>
+        <div class="yn-followup" id="qaddr-followup">
+          <input type="text" placeholder="New address">
+        </div>
+      </div>
+    </div>
+
+    <div class="org-card">
+      <div class="org-card-title">Income & Investments</div>
+
+      <div class="question-row">
+        <div class="question-text">Did you sell any stocks, bonds, or other investments during 2025?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qinv')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qinv')">No</button>
+        </div>
+        <div class="yn-followup" id="qinv-followup">
+          Your brokerage will issue a 1099-B — make sure to include all brokerage statements in your documents.
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did you have any cryptocurrency transactions in 2025? <span class="q-tag">Required</span></div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qcrypto')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qcrypto')">No</button>
+        </div>
+        <div class="yn-followup" id="qcrypto-followup">
+          Please upload your complete transaction history from each exchange (Coinbase, Kraken, etc.) or from a crypto tax tool like Koinly or CoinTracker.
+          <textarea rows="2" placeholder="List any exchanges or platforms you used…"></textarea>
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did you start, close, or sell a business during 2025?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qbiz')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qbiz')">No</button>
+        </div>
+        <div class="yn-followup" id="qbiz-followup">
+          Please describe the business and what happened — we'll follow up with specific questions.
+          <textarea rows="2" placeholder="e.g. Closed my LLC in June, sold the assets…"></textarea>
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did you receive any income from freelancing, consulting, or side work not reported on a W-2?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qfreelance')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qfreelance')">No</button>
+        </div>
+        <div class="yn-followup" id="qfreelance-followup">
+          Please provide any 1099-NEC or 1099-MISC forms, and an estimate of total income if no 1099 was issued.
+        </div>
+      </div>
+    </div>
+
+    <div class="org-card">
+      <div class="org-card-title">Property & Real Estate</div>
+
+      <div class="question-row">
+        <div class="question-text">Did you buy, sell, or refinance any real estate during 2025?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qre')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qre')">No</button>
+        </div>
+        <div class="yn-followup" id="qre-followup">
+          Please provide the closing disclosure / HUD-1 settlement statement for any purchase or sale.
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did you rent out any property during 2025?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qrent')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qrent')">No</button>
+        </div>
+        <div class="yn-followup" id="qrent-followup">
+          Please provide a summary of rental income and expenses (or a P&amp;L if you use property management software).
+        </div>
+      </div>
+    </div>
+
+    <div class="org-card">
+      <div class="org-card-title">Foreign &amp; Other</div>
+
+      <div class="question-row">
+        <div class="question-text">Did you have any foreign bank accounts or financial assets exceeding $10,000 at any point in 2025? <span class="q-tag">Required</span></div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qfbar')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qfbar')">No</button>
+        </div>
+        <div class="yn-followup" id="qfbar-followup">
+          You may be required to file an FBAR (FinCEN 114). Please list the institutions and countries involved.
+          <textarea rows="2" placeholder="e.g. HSBC Canada, account held all year…"></textarea>
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did you receive any income from, or pay taxes to, a foreign country?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qforeigninc')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qforeigninc')">No</button>
+        </div>
+        <div class="yn-followup" id="qforeigninc-followup">
+          Please provide any foreign tax statements or details about the income source.
+        </div>
+      </div>
+
+      <div class="question-row">
+        <div class="question-text">Did you receive any IRS or state tax notices in 2025?</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="selectYN(this,'yes','qnotice')">Yes</button>
+          <button class="yn-btn" onclick="selectYN(this,'no','qnotice')">No</button>
+        </div>
+        <div class="yn-followup" id="qnotice-followup">
+          Please upload or forward the notice — we'll review and advise.
+        </div>
+      </div>
+    </div>
+
+    <div id="custom-questions-card" style="display:none;" class="org-card">
+      <div class="org-card-title">Additional Questions from Your Advisor</div>
+      <div id="custom-questions-rows"></div>
+    </div>
+
+    <div class="org-nav">
+      <button class="btn-secondary" onclick="goStep(1)">← Back</button>
+      <button class="btn-primary" onclick="saveAnswersAndNext()">Next: Your Documents →</button>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- STEP 3 — DOCUMENT CHECKLIST                     -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="step-panel" id="step-3">
+    <div class="section-title">Your 2025 Documents</div>
+    <div class="section-sub">Based on your 2024 return, here's what we're expecting. Upload each document individually, or mark it "Not This Year" if it no longer applies. If you uploaded a bulk PDF above, click "In Bulk Upload" on each item it covers. Every item must be resolved before you can submit.</div>
+
+    <!-- Combined status bar -->
+    <div class="progress-summary" id="progress-summary-card" style="align-items:center; gap:1.5rem; flex-wrap:wrap;">
+      <div id="checklist-banner" style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:var(--muted); flex-shrink:0; max-width:420px;">
+        ℹ️ <span>Every item must be <strong>uploaded</strong>, marked <strong>Not This Year</strong>, or marked <strong>Not applicable</strong> before you can submit. <strong id="remaining-count">13 remaining.</strong></span>
+      </div>
+      <div class="ps-bar-wrap" style="min-width:160px;">
+        <div class="ps-label" id="progress-label" style="font-size:0.73rem; color:var(--muted); margin-bottom:0.3rem;">Items resolved</div>
+        <div class="ps-bar"><div class="ps-fill" id="progress-fill" style="width:0%"></div></div>
+      </div>
+      <div class="ps-count" id="progress-count" style="flex-shrink:0;">0 <span>of 13 resolved</span></div>
+    </div>
+
+    <!-- Bulk Upload Option -->
+    <div class="bulk-upload-card" id="bulk-upload-card" onclick="bulkCardClick(event)">
+      <input type="file" id="bulk-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="bulkFileSelected(this.files[0])">
+      <div class="bu-icon" id="bulk-icon">📦</div>
+      <div class="bu-title" id="bulk-title">Have everything in one PDF?</div>
+      <div class="bu-sub" id="bulk-sub">Click to browse or drag &amp; drop — upload one file containing all your documents.</div>
+      <div class="bulk-progress" id="bulk-progress" style="display:none">
+        <div class="bulk-progress-fill" id="bulk-progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="checklist-grid">
+    <!-- LEFT COLUMN -->
+    <div></div>
+    <!-- RIGHT COLUMN -->
+    <div></div>
+    </div><!-- /checklist-grid -->
+
+    <div class="org-nav">
+      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
+      <button class="btn-primary" id="go-submit-btn" onclick="goStep(4);updateSummary();" disabled style="opacity:0.4;cursor:not-allowed;" title="Resolve all items to continue">Review &amp; Submit →</button>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- STEP 4 — SUBMIT                                 -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="step-panel" id="step-4">
+    <div class="section-title">Review &amp; Submit</div>
+    <div class="section-sub">Here's a summary of what you're sending us. You can go back and add more if needed.</div>
+
+    <div class="org-card">
+      <div class="org-card-title">Summary</div>
+      <div style="display:flex; gap:2rem; flex-wrap:wrap; padding:0.5rem 0;">
+        <div>
+          <div style="font-size:1.8rem; font-weight:700; color:var(--green)" id="summary-uploaded">0</div>
+          <div style="font-size:0.8rem; color:var(--muted)">Documents Uploaded</div>
+        </div>
+        <div>
+          <div style="font-size:1.8rem; font-weight:700; color:var(--muted)" id="summary-nty">0</div>
+          <div style="font-size:0.8rem; color:var(--muted)">Not This Year</div>
+        </div>
+        <div>
+          <div style="font-size:1.8rem; font-weight:700; color:var(--gold)" id="summary-sentinel">0</div>
+          <div style="font-size:0.8rem; color:var(--muted)">Firm provides</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="org-card">
+      <div class="org-card-title">Questions Answered</div>
+      <div style="font-size:0.88rem; color:var(--muted); line-height:1.8;">
+        ✓ No major life changes &nbsp;·&nbsp; ✓ Address unchanged &nbsp;·&nbsp; ✓ No crypto transactions<br>
+        ✓ No real estate transactions &nbsp;·&nbsp; ✓ No foreign accounts &nbsp;·&nbsp; ⚠️ Freelance income (Jennifer) — 1099-NEC from Amherst uploaded
+      </div>
+    </div>
+
+    <div id="submit-error" style="display:none;color:#e05a5a;font-size:0.85rem;margin-bottom:0.75rem;padding:0.5rem 0.75rem;background:rgba(224,90,90,0.1);border-radius:6px;border:1px solid rgba(224,90,90,0.3);"></div>
+    <div class="org-nav">
+      <button class="btn-secondary" onclick="goStep(3)">← Back to Documents</button>
+      <button class="btn-submit" onclick="submitOrg()">✓ Send to your firm</button>
+    </div>
+  </div>
+
+</div><!-- /org-wrap -->
+
+<script>
+  // === STEP NAVIGATION ===
+  function goStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+    document.querySelectorAll('.progress-step').forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i + 1 < n) s.classList.add('done');
+      if (i + 1 === n) s.classList.add('active');
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // === YES/NO QUESTIONS ===
+  // Maps short UI key → DB question key
+  const Q_KEY_MAP = {
+    qlife: 'life_change', qaddr: 'address_change', qinv: 'investments_sold',
+    qcrypto: 'crypto', qbiz: 'new_business', qfreelance: 'freelance',
+    qre: 'real_estate', qrent: 'rental', qfbar: 'foreign_accounts',
+    qforeigninc: 'foreign_income', qnotice: 'irs_notice',
+  };
+
+  // Store answers in memory as user clicks — don't rely on DOM attribute selectors
+  const _answers = {};
+
+  // Pre-populate from any hardcoded/no defaults in HTML
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.yn-btn.selected-yes, .yn-btn.selected-no').forEach(btn => {
+      const match = btn.getAttribute('onclick').match(/'(q[a-z]+)'\)/);
+      if (match) {
+        const dbKey = Q_KEY_MAP[match[1]];
+        if (dbKey) _answers[dbKey] = btn.classList.contains('selected-yes');
+      }
+    });
+  });
+
+  function selectYN(btn, val, key) {
+    const row = btn.closest('.question-row');
+    row.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected-yes', 'selected-no'));
+    btn.classList.add(val === 'yes' ? 'selected-yes' : 'selected-no');
+    const followup = document.getElementById(key + '-followup');
+    if (followup) followup.classList.toggle('visible', val === 'yes');
+    // Store in memory
+    const dbKey = Q_KEY_MAP[key];
+    if (dbKey) _answers[dbKey] = (val === 'yes');
+  }
+
+  async function saveAnswersAndNext() {
+    if (portalLive && Object.keys(_answers).length) {
+      try {
+        const r = await fetch(`/portal/organizer/client/${YEAR}/answers`, {
+          method: 'POST',
+          headers: portalHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ answers: _answers }),
+        });
+        if (!r.ok) throw new Error('Answers save failed (' + r.status + ')');
+      } catch(e) { console.warn('Could not save answers:', e.message); }
+    }
+    goStep(3);
+  }
+
+  // === CHECKLIST ITEMS ===
+  let TOTAL_ITEMS = 17;
+  let itemStates = {};
+
+  function fakeUpload(id) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.jpg,.jpeg,.png,.heic';
+    input.onchange = () => {
+      if (!input.files.length) return;
+      const fname = input.files[0].name;
+      _setUploaded(id, fname);
+    };
+    input.click();
+  }
+
+  function _setUploaded(id, fname) {
+    const item = document.getElementById(id);
+    item.className = 'checklist-item uploaded';
+    const check = item.querySelector('.ci-check');
+    check.className = 'ci-check uploaded';
+    check.textContent = '✓';
+    const status = document.getElementById(id + '-status');
+    status.className = 'ci-status uploaded';
+    status.textContent = '✓ ' + (fname || 'Uploaded');
+    const actions = item.querySelector('.ci-actions');
+    actions.innerHTML = `<button class="ci-btn undo" onclick="undoItem('${id}')">Remove</button>`;
+    itemStates[id] = 'uploaded';
+    updateProgress();
+  }
+
+  function markNTY(id) {
+    const item = document.getElementById(id);
+    item.className = 'checklist-item na';
+    const check = item.querySelector('.ci-check');
+    check.className = 'ci-check na';
+    check.textContent = '–';
+    const info = item.querySelector('.ci-info');
+    if (info) info.className = 'ci-info na';
+    const status = document.getElementById(id + '-status');
+    status.className = 'ci-status na';
+    status.textContent = 'Not This Year';
+    const actions = item.querySelector('.ci-actions');
+    actions.innerHTML = `<button class="ci-btn undo" onclick="undoItem('${id}')">Undo</button>`;
+    itemStates[id] = 'nty';
+    updateProgress();
+  }
+
+  function markNA(id) {
+    const item = document.getElementById(id);
+    item.className = 'checklist-item na-item';
+    const check = item.querySelector('.ci-check');
+    check.className = 'ci-check na-item';
+    check.textContent = '✓';
+    const info = item.querySelector('.ci-info');
+    if (info) info.className = 'ci-info';
+    const status = document.getElementById(id + '-status');
+    status.className = 'ci-status na-item';
+    status.textContent = '✓ In Bulk Upload';
+    const actions = item.querySelector('.ci-actions');
+    actions.innerHTML = `<button class="ci-btn undo" onclick="undoItem('${id}')">Undo</button>`;
+    itemStates[id] = 'na';
+    updateProgress();
+  }
+
+  function undoItem(id) {
+    const item = document.getElementById(id);
+    item.className = 'checklist-item';
+    const check = item.querySelector('.ci-check');
+    check.className = 'ci-check';
+    check.textContent = '';
+    const info = item.querySelector('.ci-info');
+    if (info) info.className = 'ci-info';
+    const status = document.getElementById(id + '-status');
+    status.className = 'ci-status pending';
+    status.textContent = 'Pending';
+    const actions = item.querySelector('.ci-actions');
+    actions.innerHTML = `<button class="ci-btn upload" onclick="fakeUpload('${id}')">⬆ Upload</button><button class="ci-btn nty-btn" onclick="markNTY('${id}')">Not This Year</button><button class="ci-btn na-btn" onclick="markNA('${id}')">In Bulk Upload</button>`;
+    delete itemStates[id];
+    updateProgress();
+  }
+
+  function cycleItem(id) {
+    if (itemStates[id]) undoItem(id);
+    else fakeUpload(id);
+  }
+
+  function updateProgress() {
+    if (window.TOTAL_ITEMS_LIVE != null) TOTAL_ITEMS = window.TOTAL_ITEMS_LIVE;
+    const resolved = Object.keys(itemStates).length;
+    const remaining = TOTAL_ITEMS - resolved;
+    const pct = Math.round((resolved / TOTAL_ITEMS) * 100);
+    const fill = document.getElementById('progress-fill');
+    const count = document.getElementById('progress-count');
+    const label = document.getElementById('progress-label');
+    const remainingEl = document.getElementById('remaining-count');
+    const submitBtn = document.getElementById('go-submit-btn');
+    const summaryCard = document.getElementById('progress-summary-card');
+
+    fill.style.width = pct + '%';
+    count.innerHTML = `${resolved} <span>of ${TOTAL_ITEMS} resolved</span>`;
+    const allDone = resolved >= TOTAL_ITEMS;
+
+    if (allDone) {
+      label.textContent = '✓ All resolved!';
+      label.style.color = 'var(--green)';
+      count.style.color = 'var(--green)';
+      fill.style.background = 'var(--green)';
+      summaryCard.style.borderColor = 'rgba(62,207,142,0.4)';
+      summaryCard.style.background = 'rgba(62,207,142,0.06)';
+      const banner = document.getElementById('checklist-banner');
+      if (banner) banner.innerHTML = '<span style=\"color:var(--green); font-size:0.83rem;\">✓ <strong>You\'re all set!</strong> Every item resolved. Click \"Review &amp; Submit\".</span>';
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+    } else {
+      label.textContent = 'Items resolved';
+      label.style.color = 'var(--muted)';
+      count.style.color = 'var(--text)';
+      summaryCard.style.borderColor = 'var(--border)';
+      summaryCard.style.background = '';
+      if (remainingEl) remainingEl.textContent = remaining + ' remaining.';
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.4';
+      submitBtn.style.cursor = 'not-allowed';
+    }
+  }
+
+  function addDependent(dep = {}) {
+    const list = document.getElementById('dep-list');
+    const row = document.createElement('div');
+    row.className = 'dep-row';
+    if (dep.id != null) row.dataset.dependentId = String(dep.id);
+    row.innerHTML = `
+      <div class="field-wrap"><label class="field-label">Full Name</label><input class="field-input dep-name" type="text" placeholder="Full name" value="${escH(dep.full_name || dep.name || '')}"></div>
+      <div class="field-wrap"><label class="field-label">Relationship</label><input class="field-input dep-relationship" type="text" placeholder="Son / Daughter…" value="${escH(dep.relationship || '')}"></div>
+      <div class="field-wrap"><label class="field-label">Date of Birth</label><input class="field-input dep-dob" type="text" placeholder="MM/DD/YYYY or On File" value="${escH(dep.date_of_birth || dep.dob || '')}"></div>
+      <div class="field-wrap"><label class="field-label">School / Childcare</label><input class="field-input dep-school" type="text" placeholder="School name" value="${escH(dep.school_childcare || dep.school || '')}"></div>
+    `;
+    row.innerHTML += '<button type="button" class="btn-secondary" onclick="removeDependent(this)">Remove</button>';
+    list.appendChild(row);
+  }
+
+  const deletedDependentIds = new Set();
+  function removeDependent(button) {
+    const row = button.closest('.dep-row');
+    if (row.dataset.dependentId) deletedDependentIds.add(Number(row.dataset.dependentId));
+    row.remove();
+  }
+
+  async function submitOrg() {
+    if (portalLive && !organizerBootReady) { showProfileError('Organizer did not load. Refresh and try again.'); return; }
+    if (ORGANIZER_QUESTIONS.length && validateV2Questions(5).length) return;
+    try {
+      await saveAnswersLive();
+      await saveProfileIfLive();
+    } catch(e) {
+      const errEl = document.getElementById('submit-error');
+      if (errEl) { errEl.textContent = 'Could not save organizer: ' + e.message; errEl.style.display = 'block'; }
+      return;
+    }
+    const btn = document.querySelector('.btn-submit');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
+
+    if (!portalLive) {
+      // Demo mode — just show success screen
+      _showSubmitSuccess();
+      return;
+    }
+
+    try {
+      const r = await fetch(`/portal/organizer/client/${YEAR}/submit`, {
+        method: 'POST',
+        headers: portalHeaders({ 'Content-Type': 'application/json' }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Submission failed');
+      _showSubmitSuccess();
+    } catch(e) {
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Send to your firm'; }
+      const errEl = document.getElementById('submit-error');
+      if (errEl) { errEl.textContent = '❌ ' + e.message; errEl.style.display = 'block'; }
+      else alert('Submission failed: ' + e.message);
+    }
+  }
+
+  function _showSubmitSuccess() {
+    document.querySelector('.org-wrap').innerHTML = `
+      <div class="submit-screen">
+        <div class="submit-icon">✅</div>
+        <div class="submit-title">Sent to your firm!</div>
+        <div class="submit-sub">
+          Your organizer has been submitted. We'll review what you've uploaded and follow up if anything's missing.<br><br>
+          You can continue uploading documents from your <a href="/portal" style="color:var(--gold)">client portal</a> at any time.
+        </div>
+      </div>
+    `;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── LIVE API WIRE-UP ──────────────────────────────────────
+  // Pull real organizer data from the portal API and populate the page.
+  // Visitors without a portal session are sent to the client sign-in.
+
+  const YEAR = new URLSearchParams(location.search).get('year') || '2025';
+  // Signed in by the portal session cookie (js/portal-session.js); portalHeaders() adds a
+  // Bearer header only when this page load was handed a token. The no-session "demo" branches
+  // below were never reachable: visitors without a session are sent to sign in.
+  const portalLive = true;
+  function portalHeaders(extra) { return window.PortalSession ? window.PortalSession.headers(extra) : { ...(extra || {}) }; }
+
+  async function portalApi(path) {
+    const r = await fetch(path, { headers: portalHeaders() });
+    if (r.status === 401) {
+      if (window.PortalSession) window.PortalSession.toLogin('/client-login');
+      else location.replace('/client-login');
+      throw new Error('Please sign in again.');
+    }
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }
+
+  function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function populatePersonInfo(me) {
+    // Step 1 — fill in name, email, address fields from /portal/me
+    // Always overwrite (even with empty string) so hardcoded demo data is cleared
+    const setField = (sel, val) => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      el.value = val || '';
+      if (val) el.classList.add('prefilled');
+      else el.classList.remove('prefilled');
+    };
+    setField('#field-first-name', me.firstName);
+    setField('#field-last-name', me.lastName);
+    setField('#field-email', me.email);
+    setField('#field-phone', me.phone);
+    setField('#field-address', me.address);
+
+    // Spouse — always clear first, then populate if data exists
+    setField('#field-spouse-first', '');
+    setField('#field-spouse-last', '');
+    setField('#field-spouse-email', '');
+    setField('#field-spouse-phone', '');
+    setField('#field-spouse-occupation', '');
+    setField('#field-occupation', '');
+    if (me.spouseName) {
+      const parts = me.spouseName.split(' ');
+      setField('#field-spouse-first', parts[0]);
+      setField('#field-spouse-last', parts.slice(1).join(' '));
+    }
+    if (me.spouseEmail) setField('#field-spouse-email', me.spouseEmail);
+
+    // The persistent profile is authoritative for dependents; avoid replacing it with /portal/me.
+    document.getElementById('dep-list').innerHTML = '';
+  }
+
+  const SECTION_LABELS = {
+    'w2': 'Form W-2 · Wages',
+    '1099-r': 'Form 1099-R · Retirement',
+    '1099-div': 'Form 1099-DIV · Dividends',
+    '1099-int': 'Form 1099-INT · Interest',
+    '1099-nec': 'Form 1099-NEC · Non-Employee Compensation',
+    '1099-misc': 'Form 1099-MISC · Miscellaneous',
+    '1099-g': 'Form 1099-G · State Refund',
+    'k1': 'Schedule K-1',
+    'schedule-c': 'Schedule C · Business',
+    '1098': 'Form 1098 · Mortgage Interest',
+    'childcare': 'Childcare / Tuition',
+    'questionnaire': 'Questionnaire Triggered Items',
+    'other': 'Other',
+  };
+
+  const SECTION_ORDER_LIST = ['w2','1099-r','1099-div','1099-int','1099-nec','1099-misc','1099-g','k1','schedule-c','1098','childcare','questionnaire','other'];
+
+  function buildChecklistFromItems(items) {
+    // Group by section
+    const groups = {};
+    for (const item of items) {
+      if (!groups[item.section]) groups[item.section] = [];
+      groups[item.section].push(item);
+    }
+
+    // Build left and right column sections
+    const leftSections = ['w2','1099-r','1099-div','1099-int','1099-nec','1099-misc','1099-g'];
+    const rightSections = ['k1','schedule-c','1098','childcare','questionnaire','other'];
+    // Add any unknown sections to rightSections so no items are dropped
+    Object.keys(groups).forEach(key => {
+      if (!leftSections.includes(key) && !rightSections.includes(key)) {
+        rightSections.push(key);
+        if (!SECTION_LABELS[key]) SECTION_LABELS[key] = key.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      }
+    });
+
+    function renderSection(sectionKey) {
+      const sectionItems = groups[sectionKey];
+      if (!sectionItems || !sectionItems.length) return '';
+      const title = SECTION_LABELS[sectionKey] || sectionKey;
+      const rows = sectionItems.map(item => {
+        const id = `ci-${item.id}`;
+        const acct = item.account_number ? ` (acct ···${item.account_number.replace(/\*/g,'').slice(-4)})` : '';
+        const amt = item.prior_year_amount ? ` · $${Number(item.prior_year_amount).toLocaleString()} in 2024` : '';
+        const ein = item.ein ? ` · EIN ${item.ein}` : '';
+        const ownerLabel = item.owner === 'taxpayer' ? ' · Taxpayer' : item.owner === 'spouse' ? ' · Spouse' : '';
+        const typeLabel = escH(`${SECTION_LABELS[item.section] || item.section}${ownerLabel}${ein}${amt}`);
+
+        if (item.sentinel_provides) {
+          return `<div class="checklist-item sentinel-provides">
+            <div class="ci-check uploaded" style="background:var(--gold);border-color:var(--gold);">🏢</div>
+            <div class="ci-info">
+              <div class="ci-payer">${escH(item.payer_name)}${acct}</div>
+              <div class="ci-type">${typeLabel}</div>
+            </div>
+            <div class="ci-actions"><span class="ci-sentinel-badge">🏢 Firm provides</span></div>
+          </div>`;
+        }
+
+        const isUploaded = item.status === 'uploaded';
+        const isNTY = item.status === 'not_this_year';
+        const isNA = item.status === 'not_applicable';
+        const itemClass = isUploaded ? 'checklist-item uploaded' : isNTY ? 'checklist-item na' : isNA ? 'checklist-item na-item' : 'checklist-item';
+        const checkClass = isUploaded ? 'ci-check uploaded' : isNTY ? 'ci-check na' : isNA ? 'ci-check na-item' : 'ci-check';
+        const checkText = isUploaded ? '✓' : isNTY ? '–' : isNA ? '✓' : '';
+        const statusClass = isUploaded ? 'ci-status uploaded' : isNTY ? 'ci-status na' : isNA ? 'ci-status na-item' : 'ci-status pending';
+        const statusText = isUploaded ? '✓ Uploaded' : isNTY ? 'Not This Year' : isNA ? '✓ In Bulk Upload' : 'Pending';
+        const actions = (isUploaded || isNTY || isNA)
+          ? `<button class="ci-btn undo" onclick="undoItemById(${item.id},'${id}')">Undo</button>`
+          : `<button class="ci-btn upload" onclick="fakeUploadById(${item.id},'${id}')">⬆ Upload</button>
+             <button class="ci-btn nty-btn" onclick="markNTYById(${item.id},'${id}')">Not This Year</button>
+             <button class="ci-btn na-btn" onclick="markNAById(${item.id},'${id}')">In Bulk Upload</button>`;
+
+        if (isUploaded) itemStates[id] = 'uploaded';
+        if (isNTY) itemStates[id] = 'nty';
+        if (isNA) itemStates[id] = 'na';
+
+        return `<div class="checklist-item ${isUploaded?'uploaded':isNTY?'na':isNA?'na-item':''}" id="${id}">
+          <div class="${checkClass}" onclick="cycleItemById(${item.id},'${id}')">${checkText}</div>
+          <div class="ci-info${isNTY?' na':''}">
+            <div class="ci-payer">${escH(item.payer_name)}${acct}</div>
+            <div class="ci-type">${typeLabel}</div>
+          </div>
+          <div class="${statusClass}" id="${id}-status">${statusText}</div>
+          <div class="ci-actions">${actions}</div>
+        </div>`;
+      }).join('');
+
+      return `<div class="checklist-section">
+        <div class="checklist-section-title">${escH(title)}</div>
+        ${rows}
+      </div>`;
+    }
+
+    const leftHtml = leftSections.map(renderSection).join('');
+    const rightHtml = rightSections.map(renderSection).join('');
+
+    // Replace the checklist grid content
+    const leftCol = document.querySelector('.checklist-grid > div:first-child');
+    const rightCol = document.querySelector('.checklist-grid > div:last-child');
+    if (leftCol) leftCol.innerHTML = leftHtml;
+    if (rightCol) rightCol.innerHTML = rightHtml;
+
+    // Update total item count and refresh progress counter
+    const actionable = items.filter(i => !i.sentinel_provides);
+    window.TOTAL_ITEMS_LIVE = actionable.length;
+    updateProgressLive();
+  }
+
+  // API-backed item actions
+  async function apiUpdateItem(itemId, status) {
+    if (!portalLive) return;
+    try {
+      await fetch(`/portal/organizer/client/${YEAR}/item/${itemId}`, {
+        method: 'PUT',
+        headers: portalHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ status }),
+      });
+    } catch(e) { console.warn('Item update failed:', e); }
+  }
+
+  function fakeUploadById(itemId, domId) {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png,.heic';
+    input.onchange = async () => {
+      if (!input.files.length) return;
+      const item = document.getElementById(domId);
+      if (!item) return;
+      const fname = input.files[0].name;
+
+      // Show uploading state
+      document.getElementById(domId+'-status').className = 'ci-status pending';
+      document.getElementById(domId+'-status').textContent = '⏳ Uploading…';
+      item.querySelector('.ci-actions').innerHTML = '';
+
+      if (portalLive) {
+        // Real upload via portal API
+        try {
+          const fd = new FormData();
+          fd.append('file', input.files[0]);
+          const r = await fetch(`/portal/organizer/client/${YEAR}/upload-item/${itemId}`, {
+            method: 'POST',
+            headers: portalHeaders(),
+            body: fd,
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Upload failed');
+        } catch(e) {
+          document.getElementById(domId+'-status').className = 'ci-status pending';
+          document.getElementById(domId+'-status').textContent = '❌ ' + e.message;
+          item.querySelector('.ci-actions').innerHTML = `<button class="ci-btn upload" onclick="fakeUploadById(${itemId},'${domId}')">⬆ Try Again</button><button class="ci-btn nty-btn" onclick="markNTYById(${itemId},'${domId}')">Not This Year</button><button class="ci-btn na-btn" onclick="markNAById(${itemId},'${domId}')">In Bulk Upload</button>`;
+          return;
+        }
+      } else {
+        // Demo mode — just update status locally
+        await apiUpdateItem(itemId, 'uploaded');
+      }
+
+      item.className = 'checklist-item uploaded';
+      item.querySelector('.ci-check').className = 'ci-check uploaded';
+      item.querySelector('.ci-check').textContent = '✓';
+      document.getElementById(domId+'-status').className = 'ci-status uploaded';
+      document.getElementById(domId+'-status').textContent = '✓ ' + fname;
+      item.querySelector('.ci-actions').innerHTML = `<button class="ci-btn undo" onclick="undoItemById(${itemId},'${domId}')">Remove</button>`;
+      itemStates[domId] = 'uploaded';
+      updateProgressLive();
+    };
+    input.click();
+  }
+
+  function markNTYById(itemId, domId) {
+    const item = document.getElementById(domId);
+    if (!item) return;
+    item.className = 'checklist-item na';
+    item.querySelector('.ci-check').className = 'ci-check na';
+    item.querySelector('.ci-check').textContent = '–';
+    const info = item.querySelector('.ci-info');
+    if (info) info.className = 'ci-info na';
+    document.getElementById(domId+'-status').className = 'ci-status na';
+    document.getElementById(domId+'-status').textContent = 'Not This Year';
+    item.querySelector('.ci-actions').innerHTML = `<button class="ci-btn undo" onclick="undoItemById(${itemId},'${domId}')">Undo</button>`;
+    itemStates[domId] = 'nty';
+    apiUpdateItem(itemId, 'not_this_year');
+    updateProgressLive();
+  }
+
+  function markNAById(itemId, domId) {
+    const item = document.getElementById(domId);
+    if (!item) return;
+    item.className = 'checklist-item na-item';
+    item.querySelector('.ci-check').className = 'ci-check na-item';
+    item.querySelector('.ci-check').textContent = '✓';
+    const info = item.querySelector('.ci-info');
+    if (info) info.className = 'ci-info';
+    document.getElementById(domId+'-status').className = 'ci-status na-item';
+    document.getElementById(domId+'-status').textContent = '✓ In Bulk Upload';
+    item.querySelector('.ci-actions').innerHTML = `<button class="ci-btn undo" onclick="undoItemById(${itemId},'${domId}')">Undo</button>`;
+    itemStates[domId] = 'na';
+    apiUpdateItem(itemId, 'not_applicable');
+    updateProgressLive();
+  }
+
+  function undoItemById(itemId, domId) {
+    const item = document.getElementById(domId);
+    if (!item) return;
+    item.className = 'checklist-item';
+    item.querySelector('.ci-check').className = 'ci-check';
+    item.querySelector('.ci-check').textContent = '';
+    const info = item.querySelector('.ci-info');
+    if (info) info.className = 'ci-info';
+    document.getElementById(domId+'-status').className = 'ci-status pending';
+    document.getElementById(domId+'-status').textContent = 'Pending';
+    item.querySelector('.ci-actions').innerHTML = `<button class="ci-btn upload" onclick="fakeUploadById(${itemId},'${domId}')">⬆ Upload</button><button class="ci-btn nty-btn" onclick="markNTYById(${itemId},'${domId}')">Not This Year</button><button class="ci-btn na-btn" onclick="markNAById(${itemId},'${domId}')">In Bulk Upload</button>`;
+    delete itemStates[domId];
+    apiUpdateItem(itemId, 'pending');
+    updateProgressLive();
+  }
+
+  function cycleItemById(itemId, domId) {
+    if (itemStates[domId]) undoItemById(itemId, domId);
+    else fakeUploadById(itemId, domId);
+  }
+
+  function updateSummary() {
+    let uploaded = 0, nty = 0;
+    for (const state of Object.values(itemStates)) {
+      if (state === 'uploaded' || state === 'na') uploaded++;
+      else if (state === 'nty') nty++;
+    }
+    const sentinel = document.querySelectorAll('.ci-sentinel-badge').length;
+    const elUploaded = document.getElementById('summary-uploaded');
+    const elNty = document.getElementById('summary-nty');
+    const elSentinel = document.getElementById('summary-sentinel');
+    if (elUploaded) elUploaded.textContent = uploaded;
+    if (elNty) elNty.textContent = nty;
+    if (elSentinel) elSentinel.textContent = sentinel;
+  }
+
+  function updateProgressLive() {
+    // Override TOTAL_ITEMS with live count if available
+    if (window.TOTAL_ITEMS_LIVE !== undefined && window.TOTAL_ITEMS_LIVE !== null) {
+      TOTAL_ITEMS = window.TOTAL_ITEMS_LIVE;
+    }
+    updateProgress();
+  }
+
+  // ── BULK PDF UPLOADER ────────────────────────────────────
+  (function() {
+    const card = document.getElementById('bulk-upload-card');
+    if (!card) return;
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!card.classList.contains('bulk-done') && !card.classList.contains('bulk-uploading')) {
+        card.classList.add('drag-over');
+      }
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const file = e.dataTransfer?.files?.[0];
+      if (file) bulkFileSelected(file);
+    });
+  })();
+
+  function bulkCardClick(e) {
+    const card = document.getElementById('bulk-upload-card');
+    if (card.classList.contains('bulk-done') || card.classList.contains('bulk-uploading')) return;
+    document.getElementById('bulk-file-input').click();
+  }
+
+  async function bulkFileSelected(file) {
+    if (!file) return;
+
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      setBulkState('error', '❌ Please upload a PDF or image file', `Received: ${file.name}`);
+      return;
+    }
+
+    setBulkState('uploading', '⏳ Uploading…', file.name);
+    animateBulkProgress();
+
+    if (!portalLive) {
+      // Demo mode — simulate success
+      await new Promise(r => setTimeout(r, 1400));
+      setBulkState('done', '✅ PDF uploaded — we\'ll sort it out from here', file.name);
+      return;
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch(`/portal/organizer/client/${YEAR}/bulk-upload`, {
+        method: 'POST',
+        headers: portalHeaders(),
+        body: fd,
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Upload failed');
+      setBulkState('done', '✅ PDF uploaded — we\'ll sort it out from here', file.name);
+    } catch(e) {
+      setBulkState('error', '❌ ' + e.message, 'Click to try again');
+    }
+  }
+
+  function setBulkState(state, title, sub) {
+    const card = document.getElementById('bulk-upload-card');
+    const icon = document.getElementById('bulk-icon');
+    const titleEl = document.getElementById('bulk-title');
+    const subEl = document.getElementById('bulk-sub');
+    const progress = document.getElementById('bulk-progress');
+    const progressFill = document.getElementById('bulk-progress-fill');
+
+    card.classList.remove('bulk-uploading', 'bulk-done', 'bulk-error');
+    titleEl.classList.remove('done', 'error');
+
+    if (state === 'uploading') {
+      card.classList.add('bulk-uploading');
+      icon.textContent = '📤';
+      progress.style.display = '';
+      document.body.classList.remove('bulk-ready');
+    } else if (state === 'done') {
+      card.classList.add('bulk-done');
+      icon.textContent = '✅';
+      titleEl.classList.add('done');
+      progress.style.display = 'none';
+      progressFill.style.width = '100%';
+      document.body.classList.add('bulk-ready');
+    } else if (state === 'error') {
+      card.classList.add('bulk-error');
+      icon.textContent = '❌';
+      titleEl.classList.add('error');
+      progress.style.display = 'none';
+      document.body.classList.remove('bulk-ready');
+    }
+    titleEl.textContent = title;
+    subEl.textContent = sub || '';
+  }
+
+  function animateBulkProgress() {
+    const fill = document.getElementById('bulk-progress-fill');
+    if (!fill) return;
+    fill.style.width = '0%';
+    let pct = 0;
+    const iv = setInterval(() => {
+      pct = Math.min(pct + (Math.random() * 12 + 4), 88);
+      fill.style.width = pct + '%';
+      if (pct >= 88) clearInterval(iv);
+    }, 200);
+  }
+
+  // ── ORGANIZER V2 QUESTIONS / PROFILE ──────────────────────
+  let ORGANIZER_QUESTIONS = [];
+  let ORGANIZER_ANSWERS = {};
+
+  function renderV2Questions(questions, answers) {
+    if (!Array.isArray(questions) || !questions.length) return;
+    ORGANIZER_QUESTIONS = questions;
+    ORGANIZER_ANSWERS = answers || {};
+    const step2 = document.getElementById('step-2');
+    if (step2) {
+      const grouped = questions.filter(q => q.screen !== 5).reduce((acc, q) => { (acc[q.section] ||= []).push(q); return acc; }, {});
+      step2.innerHTML = `<div class="section-title">Organizer Questions</div>
+        <div class="section-sub">Answer each question Yes or No. If you answer Yes, complete the detail box that appears.</div>
+        ${Object.entries(grouped).map(([section, qs]) => `<div class="org-card"><div class="org-card-title">${escH(section)}</div>${qs.map(renderQuestionRow).join('')}</div>`).join('')}
+        <div id="question-error" style="display:none;color:#e05a5a;font-size:0.85rem;margin:0.75rem 0;padding:0.5rem 0.75rem;background:rgba(224,90,90,0.1);border-radius:6px;border:1px solid rgba(224,90,90,0.3);"></div>
+        <div class="org-nav"><button class="btn-secondary" onclick="goStep(1)">← Back</button><button class="btn-primary" onclick="saveAnswersAndNext()">Next: Final Items & Documents →</button></div>`;
+    }
+    const step3 = document.getElementById('step-3');
+    const finalQs = questions.filter(q => q.screen === 5);
+    if (step3 && finalQs.length && !document.getElementById('final-v2-questions-card')) {
+      const card = document.createElement('div');
+      card.className = 'org-card';
+      card.id = 'final-v2-questions-card';
+      card.innerHTML = `<div class="org-card-title">Final Items</div>${finalQs.map(renderQuestionRow).join('')}`;
+      step3.insertBefore(card, step3.querySelector('.progress-summary'));
+      const navBtn = document.getElementById('go-submit-btn');
+      if (navBtn) navBtn.setAttribute('onclick', 'saveAnswersThenReview()');
+    }
+  }
+
+  function renderQuestionRow(q) {
+    const val = ORGANIZER_ANSWERS[q.id] || {};
+    if (q.id === 'q17' || q.type === 'textarea') {
+      return `<div class="question-row" data-qid="${q.id}"><div class="question-text">${escH(q.text)}</div><div class="yn-followup visible"><textarea rows="3" placeholder="${escH(q.placeholder || '')}" oninput="setQuestionDetail('${q.id}', this.value)">${escH(val.details || '')}</textarea></div></div>`;
+    }
+    const yesClass = val.answer === true ? '' : '';
+    const noClass = val.answer === false ? '' : '';
+    const detailVisible = val.answer === true ? ' visible' : '';
+    return `<div class="question-row" data-qid="${q.id}"><div class="question-text"><strong>${q.id.toUpperCase()}.</strong> ${escH(q.text)}</div>
+      <div class="yn-btns"><button class="yn-btn${yesClass}" onclick="selectV2YN(this,'${q.id}',true)">Yes</button><button class="yn-btn${noClass}" onclick="selectV2YN(this,'${q.id}',false)">No</button></div>
+      <div class="yn-followup${detailVisible}" id="${q.id}-followup"><textarea rows="2" placeholder="${escH(q.placeholder || '')}" oninput="setQuestionDetail('${q.id}', this.value)">${escH(val.details || '')}</textarea></div></div>`;
+  }
+
+  function selectV2YN(btn, qid, answer) {
+    const row = btn.closest('.question-row');
+    row.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected-yes', 'selected-no'));
+    btn.classList.add(answer ? 'selected-yes' : 'selected-no');
+    const followup = document.getElementById(qid + '-followup');
+    if (followup) followup.classList.toggle('visible', answer === true);
+    ORGANIZER_ANSWERS[qid] = ORGANIZER_ANSWERS[qid] || {};
+    ORGANIZER_ANSWERS[qid].answer = answer;
+    if (!answer) ORGANIZER_ANSWERS[qid].details = '';
+  }
+
+  function setQuestionDetail(qid, value) {
+    ORGANIZER_ANSWERS[qid] = ORGANIZER_ANSWERS[qid] || {};
+    ORGANIZER_ANSWERS[qid].details = value || '';
+  }
+
+  function validateV2Questions(throughScreen) {
+    const errors = [];
+    for (const q of ORGANIZER_QUESTIONS) {
+      if (throughScreen && q.screen > throughScreen) continue;
+      const v = ORGANIZER_ANSWERS[q.id] || {};
+      if (q.id === 'q17') continue;
+      if (typeof v.answer !== 'boolean') errors.push(`${q.id.toUpperCase()}: answer Yes or No`);
+      if (v.answer === true && q.detailRequiredOnYes && !String(v.details || '').trim()) errors.push(`${q.id.toUpperCase()}: details required for Yes`);
+    }
+    const errEl = document.getElementById('question-error') || document.getElementById('submit-error');
+    if (errEl) { errEl.textContent = errors[0] || ''; errEl.style.display = errors.length ? 'block' : 'none'; }
+    return errors;
+  }
+
+  // Rows the client actually filled in. An untouched blank row is not a dependent and is
+  // ignored; a saved dependent whose name was cleared, or a row with details but no name,
+  // must be fixed by the client so nothing is silently dropped.
+  function namedDependentRows() {
+    const named = [];
+    for (const row of Array.from(document.querySelectorAll('#dep-list .dep-row'))) {
+      const name = String(row.querySelector('.dep-name, input')?.value || '').trim();
+      if (name) { named.push(row); continue; }
+      const hasDetails = Array.from(row.querySelectorAll('input') || []).some(input => String(input.value || '').trim());
+      if (row.dataset.dependentId || hasDetails) throw new Error('Enter a name for each dependent, or tap Remove.');
+    }
+    return named;
+  }
+
+  function collectProfile() {
+    const val = id => document.getElementById(id)?.value || '';
+    const deps = namedDependentRows().map(row => ({
+      id: row.dataset.dependentId ? Number(row.dataset.dependentId) : undefined,
+      full_name: row.querySelector('.dep-name, input')?.value || '',
+      relationship: row.querySelector('.dep-relationship')?.value || row.querySelectorAll('input')[1]?.value || '',
+      date_of_birth: row.querySelector('.dep-dob')?.value || row.querySelectorAll('input')[2]?.value || '',
+      school_childcare: row.querySelector('.dep-school')?.value || row.querySelectorAll('input')[3]?.value || '',
+    }));
+    return { taxpayer: { first_name: val('field-first-name'), last_name: val('field-last-name'), email: val('field-email'), phone: val('field-phone'), address_line1: val('field-address'), occupation: val('field-occupation') }, spouse: { first_name: val('field-spouse-first'), last_name: val('field-spouse-last'), email: val('field-spouse-email'), phone: val('field-spouse-phone'), occupation: val('field-spouse-occupation') }, dependents: deps, deletedDependentIds: [...deletedDependentIds] };
+  }
+
+  function populateProfileV2(profile) {
+    const setField = (id, val) => { const el = document.getElementById(id); if (el) { el.value = val || ''; if (val) el.classList.add('prefilled'); } };
+    const t = profile.taxpayer || {}, s = profile.spouse || {};
+    setField('field-first-name', t.first_name); setField('field-last-name', t.last_name); setField('field-email', t.email); setField('field-phone', t.phone);
+    setField('field-address', t.address_line1); setField('field-occupation', t.occupation);
+    setField('field-spouse-first', s.first_name); setField('field-spouse-last', s.last_name); setField('field-spouse-email', s.email); setField('field-spouse-phone', s.phone); setField('field-spouse-occupation', s.occupation);
+    const depList = document.getElementById('dep-list');
+    if (depList) { depList.innerHTML = ''; deletedDependentIds.clear(); (profile.dependents || []).forEach(dep => addDependent(dep)); }
+  }
+
+  let organizerBootReady = false;
+  let profileRevision = null;
+  let profileRequiresReload = false;
+  let profileSaveQueue = Promise.resolve();
+  function showProfileError(message) {
+    const el = document.getElementById('profile-save-error');
+    if (el) { el.textContent = message; el.style.display = 'block'; }
+  }
+  async function saveProfileIfLive() {
+    if (!portalLive) return;
+    if (!organizerBootReady || profileRevision === null) throw new Error('Organizer did not load. Refresh and try again.');
+    if (profileRequiresReload) throw new Error('Profile state changed. Refresh before saving again.');
+    // Serialize requests and collect only when this request reaches the front of the queue.
+    const run = profileSaveQueue.catch(() => {}).then(async () => {
+      if (profileRequiresReload) throw new Error('Profile state changed. Refresh before saving again.');
+      const payload = collectProfile();
+      // A dropped response can follow a committed insert; never blindly retry it.
+      let r;
+      try {
+        r = await fetch(`/portal/organizer/client/${YEAR}/profile`, { method: 'PUT', headers: portalHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ profile: payload, expected_revision: profileRevision }) });
+      } catch (e) {
+        profileRequiresReload = true;
+        throw new Error('Profile save outcome unknown. Refresh before saving again.');
+      }
+      if (r.status === 409) {
+        profileRequiresReload = true;
+        throw new Error('Organizer changed in another tab. Refresh before saving again.');
+      }
+      if (!r.ok) throw new Error('Profile save failed (' + r.status + ')');
+      // Once a 2xx is received, the write may already be committed, so any
+      // malformed/lost response must force a reload before another request.
+      profileRequiresReload = true;
+      const data = await r.json();
+      if (typeof data.profile?.profile_revision !== 'string') throw new Error('Profile saved but revision unavailable. Refresh before continuing.');
+      profileRevision = data.profile.profile_revision;
+      const rows = namedDependentRows();
+      const saved = data.profile?.dependents || [];
+      // The server returns dependents ordered by display_order. Reconcile only when
+      // identities at every position agree; otherwise fail closed rather than reinsert.
+      if (rows.length !== saved.length || rows.some((row, i) =>
+        !saved[i]?.id || (row.dataset.dependentId && Number(row.dataset.dependentId) !== Number(saved[i].id)) ||
+        row.querySelector('.dep-name, input')?.value !== saved[i].full_name)) {
+        profileRequiresReload = true;
+        throw new Error('Profile saved, but dependent list changed. Refresh before continuing.');
+      }
+      rows.forEach((row, i) => { row.dataset.dependentId = String(saved[i].id); });
+      deletedDependentIds.clear();
+      profileRequiresReload = false;
+      return data;
+    });
+    profileSaveQueue = run;
+    return run;
+  }
+
+  async function saveProfileAndNext(button) {
+    if (button) button.disabled = true;
+    try {
+      await saveProfileIfLive();
+      goStep(2);
+    } catch (e) { showProfileError(e.message); }
+    finally { if (button) button.disabled = false; }
+  }
+
+  async function saveAnswersAndNext() {
+    if (validateV2Questions(4).length) return;
+    if (!(await saveAnswersOrShowError())) return;
+    goStep(3);
+  }
+
+  async function saveAnswersThenReview() {
+    if (validateV2Questions(5).length) return;
+    if (!(await saveAnswersOrShowError())) return;
+    goStep(4); updateSummary();
+  }
+
+  async function saveAnswersOrShowError() {
+    try { await saveAnswersLive(); return true; }
+    catch (e) {
+      const errEl = document.getElementById('question-error') || document.getElementById('submit-error');
+      if (errEl) { errEl.textContent = 'Your answers were not saved. Check your connection and try again.'; errEl.style.display = 'block'; }
+      console.warn('Could not save answers:', e.message);
+      return false;
+    }
+  }
+
+  async function saveAnswersLive() {
+    if (!portalLive) return;
+    const r = await fetch(`/portal/organizer/client/${YEAR}/answers`, { method: 'POST', headers: portalHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ answers: ORGANIZER_ANSWERS }) });
+    if (!r.ok) throw new Error('Answers save failed (' + r.status + ')');
+  }
+
+  // ── BOOT ──────────────────────────────────────────────────
+  async function bootOrganizer() {
+
+    try {
+      // Load person info and organizer/profile payload
+      const me = await portalApi('/portal/me');
+      const orgData = await portalApi(`/portal/organizer/client/${YEAR}`);
+      populatePersonInfo(me);
+      if (!orgData.profile) throw new Error('Organizer profile unavailable');
+      populateProfileV2(orgData.profile);
+      profileRevision = orgData.profile.profile_revision ?? null;
+      profileRequiresReload = false;
+      if (profileRevision === null) throw new Error('Organizer profile revision unavailable');
+      if (orgData.questions) renderV2Questions(orgData.questions, orgData.answers || orgData.organizer?.question_answers || {});
+
+      // Restore bulk-done state if a bulk PDF was previously uploaded
+      if (orgData.organizer?.bulk_document_id) {
+        setBulkState('done', '✅ PDF uploaded — we\'ll sort it out from here', '');
+      }
+
+      if (orgData.items && orgData.items.length) {
+        // Clear existing hardcoded itemStates
+        Object.keys(itemStates).forEach(k => delete itemStates[k]);
+        buildChecklistFromItems(orgData.items);
+
+        // Update page title with real client name
+        const nameEl = document.querySelector('.section-title');
+        if (nameEl && me.firstName) {
+          document.querySelector('#step-3 .section-title').textContent = `Your ${YEAR} Documents`;
+        }
+      }
+
+      // Append custom questions to Step 2
+      const customQs = orgData.organizer?.custom_questions || [];
+      if (customQs.length) {
+        const card = document.getElementById('custom-questions-card');
+        const rows = document.getElementById('custom-questions-rows');
+        if (card && rows) {
+          card.style.display = '';
+          rows.innerHTML = customQs.map(q => {
+            const key = q.key || ('custom_' + Math.random().toString(36).slice(2));
+            return `<div class="question-row">
+              <div class="question-text">${escH(q.label)}</div>
+              <div class="yn-btns">
+                <button class="yn-btn" onclick="selectYN(this,'yes','${key}')">Yes</button>
+                <button class="yn-btn" onclick="selectYN(this,'no','${key}')">No</button>
+              </div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // Pre-populate answers from DB into _answers and button states
+      const savedAnswers = orgData.organizer?.question_answers || {};
+      for (const [dbKey, val] of Object.entries(savedAnswers)) {
+        _answers[dbKey] = val;
+        // Find the matching button and apply selected class
+        const uiKey = Object.entries(Q_KEY_MAP).find(([k,v]) => v === dbKey)?.[0];
+        if (uiKey) {
+          const btn = document.querySelector(`.yn-btn[onclick*="${uiKey}"][onclick*="${val ? 'yes' : 'no'}"]`);
+          if (btn) {
+            btn.closest('.question-row')?.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected-yes','selected-no'));
+            btn.classList.add(val ? 'selected-yes' : 'selected-no');
+          }
+        }
+      }
+      organizerBootReady = true;
+    } catch(e) {
+      console.warn('Could not load live organizer data:', e.message);
+      organizerBootReady = false;
+      showProfileError('Could not load organizer. Refresh and try again.');
+    }
+
+    updateProgressLive();
+  }
+
+  bootOrganizer();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,299 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .ts-wrap { padding: 1.5rem 2rem; max-width: 960px; }
+  .ts-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 1rem; }
+  .ts-top-left { display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap; }
+  .ts-top h1 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+  .ts-year-select {
+    appearance: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--gold);
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.3rem 1.8rem 0.3rem 0.7rem;
+    border-radius: 7px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a84c'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.55rem center;
+    transition: border-color 0.15s;
+  }
+  .ts-year-select:focus { outline: none; border-color: var(--gold); }
+  .ts-year-saving { font-size: 0.75rem; color: var(--muted); }
+  .ts-bulk-btns { display: flex; gap: 0.5rem; flex-shrink: 0; }
+  .ts-controls { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .ts-search {
+    flex: 1; min-width: 180px; max-width: 320px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); font-size: 0.85rem;
+    padding: 0.4rem 0.75rem 0.4rem 2rem;
+    border-radius: 7px;
+  }
+  .ts-search:focus { outline: none; border-color: var(--gold); }
+  .ts-search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+  .ts-search-icon { position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.82rem; pointer-events: none; }
+  .ts-subtitle { font-size: 0.82rem; color: var(--muted); margin-bottom: 0; }
+  .ts-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .ts-table th { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0.65rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+  .ts-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+  .ts-table tbody tr:last-child td { border-bottom: none; }
+  .ts-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .ts-name-link { color: var(--gold); font-weight: 600; text-decoration: none; }
+  .ts-name-link:hover { color: var(--gold-light); text-decoration: underline; }
+  .ts-empty { text-align: center; padding: 3rem; color: var(--muted); }
+  .status-badge { display: inline-flex; align-items: center; padding: 0.18rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .status-not-sent  { background: rgba(143,163,184,0.12); color: var(--muted); }
+  .status-pending   { background: rgba(237,137,54,0.12); color: var(--orange); }
+  .status-in_progress { background: rgba(201,168,76,0.14); color: var(--gold); }
+  .status-submitted { background: rgba(62,207,142,0.12); color: var(--green); }
+  .status-closed    { background: rgba(143,163,184,0.12); color: var(--muted); }
+  .status-reviewed  { background: rgba(62,207,142,0.12); color: var(--green); }
+  .status-reopened  { background: rgba(237,137,54,0.12); color: var(--orange); }
+</style>
+
+<div class="ts-wrap">
+  <div class="ts-top">
+    <div class="ts-top-left">
+      <h1>🗓️ Tax Season</h1>
+      <select class="ts-year-select" id="ts-year-select" title="Active tax year"></select>
+      <span class="ts-year-saving" id="ts-year-saving" style="display:none;">Saving…</span>
+    </div>
+    <div class="ts-bulk-btns">
+      <button class="btn btn-gold btn-sm" id="show-all-btn">Turn All On</button>
+      <button class="btn btn-outline btn-sm" id="hide-all-btn">Turn All Off</button>
+    </div>
+  </div>
+
+  <div class="ts-controls" style="margin-top:1rem;">
+    <div class="ts-search-wrap">
+      <span class="ts-search-icon">🔍</span>
+      <input type="text" class="ts-search" id="ts-search" placeholder="Filter clients…" autocomplete="off">
+    </div>
+    <span class="ts-subtitle" id="ts-count-label"></span>
+  </div>
+
+  <div id="ts-loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <span>Loading clients…</span>
+  </div>
+
+  <table class="ts-table" id="ts-table" style="display:none;">
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>Personal Tax</th>
+        <th>Organizer Status</th>
+        <th>Portal Visibility</th>
+      </tr>
+    </thead>
+    <tbody id="ts-tbody"></tbody>
+  </table>
+
+  <div id="ts-empty" class="ts-empty" style="display:none;">No clients found.</div>
+</div>
+
+<div class="toast" id="ts-toast"></div>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+const TOKEN = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+if (!TOKEN) { window.location.href = '/login'; }
+
+function toast(msg, isError) {
+  const el = document.getElementById('ts-toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+function statusLabel(status) {
+  if (!status) return '<span class="status-badge status-not-sent">Not Sent</span>';
+  const map = {
+    pending:     '<span class="status-badge status-pending">Pending</span>',
+    in_progress: '<span class="status-badge status-in_progress">In Progress</span>',
+    submitted:   '<span class="status-badge status-submitted">Submitted</span>',
+    reviewed:    '<span class="status-badge status-reviewed">Reviewed</span>',
+    closed:      '<span class="status-badge status-closed">Closed</span>',
+    reopened:    '<span class="status-badge status-reopened">Reopened</span>',
+  };
+  return map[status] || `<span class="status-badge status-not-sent">${status}</span>`;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let clients = [];
+let currentYear = null;
+let filterQuery = '';
+
+// Build year options: 5 years back + 2 years ahead
+function buildYearOptions(activeYear) {
+  const sel = document.getElementById('ts-year-select');
+  sel.innerHTML = '';
+  const now = new Date().getFullYear();
+  const active = parseInt(activeYear) || now;
+  const start = Math.min(now - 4, active - 1);
+  const end = Math.max(now + 1, active + 1);
+  for (let y = end; y >= start; y--) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y + ' Tax Year';
+    if (String(y) === String(activeYear)) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+async function loadClients() {
+  document.getElementById('ts-loading').style.display = '';
+  document.getElementById('ts-table').style.display = 'none';
+  document.getElementById('ts-empty').style.display = 'none';
+  try {
+    const res = await fetch('/api/tax-season/clients', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    clients = data.clients || [];
+    currentYear = data.taxYear || String(new Date().getFullYear());
+    buildYearOptions(currentYear);
+    renderTable();
+  } catch (err) {
+    document.getElementById('ts-loading').style.display = 'none';
+    toast('Failed to load clients: ' + err.message, true);
+  }
+}
+
+function renderTable() {
+  document.getElementById('ts-loading').style.display = 'none';
+
+  const q = filterQuery.toLowerCase().trim();
+  const filtered = q
+    ? clients.filter(c => {
+        const name = formatPersonDisplayName(c).toLowerCase();
+        const fallback = ((c.first_name || '') + ' ' + (c.last_name || '')).toLowerCase();
+        const spouse = (c.spouse_name || '').toLowerCase();
+        return name.includes(q) || fallback.includes(q) || spouse.includes(q);
+      })
+    : clients;
+
+  const countLabel = document.getElementById('ts-count-label');
+  if (countLabel) {
+    countLabel.textContent = filtered.length !== clients.length
+      ? `${filtered.length} of ${clients.length} clients`
+      : `${clients.length} client${clients.length !== 1 ? 's' : ''}`;
+  }
+
+  const tbody = document.getElementById('ts-tbody');
+
+  if (!filtered.length) {
+    document.getElementById('ts-table').style.display = 'none';
+    document.getElementById('ts-empty').style.display = 'block';
+    document.getElementById('ts-empty').textContent = q ? `No clients matching "${q}".` : 'No clients found.';
+    return;
+  }
+
+  document.getElementById('ts-empty').style.display = 'none';
+  document.getElementById('ts-table').style.display = '';
+
+  tbody.innerHTML = filtered.map(c => {
+    const engaged = c.personal_tax_engaged !== false;
+    const engagedBadge = engaged
+      ? `<span class="status-badge" style="background:rgba(62,207,142,0.12);color:var(--green);">✓ Engaged</span>`
+      : `<span class="status-badge" style="background:rgba(229,62,62,0.1);color:var(--red);">✗ Not Engaged</span>`;
+    const visCell = engaged
+      ? `<button class="btn btn-sm ${c.organizer_visible ? 'btn-gold' : 'btn-outline'}" data-id="${c.id}" data-visible="${c.organizer_visible ? 'true' : 'false'}" onclick="togglePerson(this)">${c.organizer_visible ? 'On' : 'Off'}</button>`
+      : `<span style="font-size:0.75rem;color:var(--muted);font-style:italic;">N/A</span>`;
+    return `<tr>
+      <td><a class="ts-name-link" href="/crm/person/${c.id}">${escHtml(formatPersonDisplayName(c))}</a></td>
+      <td>${engagedBadge}</td>
+      <td>${engaged ? statusLabel(c.organizer_status) : '<span style="color:var(--muted);font-size:0.78rem;">—</span>'}</td>
+      <td>${visCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function togglePerson(btn) {
+  const personId = btn.dataset.id;
+  const currentVisible = btn.dataset.visible === 'true';
+  const newVisible = !currentVisible;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/tax-season/person/${personId}`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visible: newVisible })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const client = clients.find(c => String(c.id) === String(personId));
+    if (client) client.organizer_visible = newVisible;
+    renderTable();
+    toast(newVisible ? 'Portal visibility turned on.' : 'Portal visibility turned off.');
+  } catch (err) {
+    btn.disabled = false;
+    toast('Failed to update: ' + err.message, true);
+  }
+}
+
+async function bulkSet(visible) {
+  try {
+    const res = await fetch('/api/tax-season/bulk', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visible })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    clients.forEach(c => { if (c.personal_tax_engaged !== false) c.organizer_visible = visible; });
+    renderTable();
+    toast(visible ? 'Portal visibility turned on for all engaged clients.' : 'Portal visibility turned off for all clients.');
+  } catch (err) {
+    toast('Failed to update: ' + err.message, true);
+  }
+}
+
+async function switchYear(year) {
+  const saving = document.getElementById('ts-year-saving');
+  saving.style.display = '';
+  try {
+    const res = await fetch('/api/tax-season/year', {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    currentYear = String(year);
+    // Reload clients for the new year
+    clients = [];
+    filterQuery = '';
+    document.getElementById('ts-search').value = '';
+    await loadClients();
+    toast(`Switched to ${year} tax year.`);
+  } catch (err) {
+    toast('Failed to switch year: ' + err.message, true);
+    // Revert select
+    buildYearOptions(currentYear);
+  } finally {
+    saving.style.display = 'none';
+  }
+}
+
+// Wire up controls
+document.getElementById('show-all-btn').addEventListener('click', () => bulkSet(true));
+document.getElementById('hide-all-btn').addEventListener('click', () => bulkSet(false));
+
+document.getElementById('ts-year-select').addEventListener('change', function() {
+  switchYear(this.value);
+});
+
+document.getElementById('ts-search').addEventListener('input', function() {
+  filterQuery = this.value;
+  renderTable();
+});
+
+loadClients();
+</script>
+
+<%- include('partials/shell-close') %>

@@ -1,0 +1,78 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .docs-search-wrap { padding: 1.25rem 1.5rem 0.75rem; max-width: 600px; }
+  .docs-results { padding: 0 1.5rem; }
+  .client-result { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s; text-decoration: none; }
+  .client-result:hover { border-color: var(--gold); }
+  .client-avatar { width: 38px; height: 38px; border-radius: 50%; background: rgba(201,168,76,0.15); color: var(--gold); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+  .client-name { font-size: 0.92rem; font-weight: 600; }
+  .client-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+  .client-type { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: rgba(143,163,184,0.12); color: var(--muted); flex-shrink: 0; }
+</style>
+
+<main class="main">
+  <div class="docs-search-wrap">
+    <div class="page-header" style="padding:0 0 1rem;">
+      <h1 style="font-size:1.3rem;font-weight:800;">Documents</h1>
+    </div>
+    <div style="position:relative;">
+      <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;">🔍</span>
+      <input type="text" id="doc-search" class="form-control" placeholder="Search companies or people…"
+        style="padding-left:2.4rem;" autocomplete="off" autofocus>
+    </div>
+  </div>
+
+  <div class="docs-results" id="docs-results">
+    <div style="color:var(--muted);font-size:0.86rem;padding:0.5rem 0;">Type a name to search clients</div>
+  </div>
+</main>
+
+<%- include('partials/shell-globals') %>
+
+<script>
+  let searchTimer = null;
+
+  document.getElementById('doc-search').addEventListener('input', function() {
+    const q = this.value.trim();
+    clearTimeout(searchTimer);
+    if (q.length < 2) {
+      document.getElementById('docs-results').innerHTML = '<div style="color:var(--muted);font-size:0.86rem;padding:0.5rem 0;">Type a name to search clients</div>';
+      return;
+    }
+    searchTimer = setTimeout(() => search(q), 200);
+  });
+
+  async function search(q) {
+    const el = document.getElementById('docs-results');
+    el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
+    try {
+      const res = await window.apiFetch('/api/search?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      const results = [
+        ...(data.companies || []).map(c => ({ type: 'company', id: c.id, name: c.name || c.company_name, sub: c.entity_type || 'Company', url: '/crm/company/' + c.id })),
+        ...(data.people || []).map(p => ({ type: 'person', id: p.id, name: formatPersonDisplayName(p), sub: p.relationship_name || 'Person', url: '/crm/person/' + p.id + '?tab=docs' })),
+      ];
+      if (!results.length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:0.86rem;padding:0.5rem 0;">No clients found</div>';
+        return;
+      }
+      el.innerHTML = results.map(r => {
+        const initials = r.name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0,2);
+        const icon = r.type === 'company' ? '🏢' : '👤';
+        return '<a class="client-result" href="' + r.url + '">' +
+          '<div class="client-avatar">' + initials + '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div class="client-name">' + window.esc(r.name) + '</div>' +
+            '<div class="client-sub">' + icon + ' ' + window.esc(r.sub) + '</div>' +
+          '</div>' +
+          '<span class="client-type">' + (r.type === 'company' ? 'Docs' : 'Docs') + ' →</span>' +
+        '</a>';
+      }).join('');
+    } catch(e) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.86rem;">Search failed</div>';
+    }
+  }
+</script>
+
+<%- include('partials/shell-close') %>

@@ -1,0 +1,15 @@
+{
+  "name": "darklion-print-service",
+  "version": "1.0.0",
+  "description": "DarkLion Print Agent - Windows background service",
+  "main": "index.js",
+  "scripts": {
+    "install-service": "node service-install.js",
+    "uninstall-service": "node service-uninstall.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "node-windows": "^1.0.0-beta.8"
+  }
+}

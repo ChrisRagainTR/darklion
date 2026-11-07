@@ -1,0 +1,49 @@
+# DarkLion API Docs for Agents
+
+Base URL: https://your-darklion.example
+
+Human HTML docs: https://your-darklion.example/api-docs
+Machine-readable Markdown docs: https://your-darklion.example/api-docs.md
+OpenAPI schema: https://your-darklion.example/openapi.json
+MCP server: https://your-darklion.example/mcp
+MCP docs: https://your-darklion.example/docs/mcp.md is in the repo as docs/mcp.md
+
+Authentication:
+Use a DarkLion API key in the Authorization header:
+Authorization: Bearer <dlk_api_key>
+
+Remote MCP:
+- Endpoint: https://your-darklion.example/mcp
+- OAuth 2.1 Authorization Code flow with S256 PKCE
+- OAuth scopes: darklion:read, darklion:write, and darklion:communicate
+- OAuth access tokens are valid only for the MCP resource, not the general API
+- 62 narrow MCP tools cover supported CRM, documents, work, communications, bookkeeping records, tax records, proposals, billing configuration, investments, engagement letters, transactions, Inbox, and Team Chat operations
+- Existing MCP connections must reconnect and re-authorize to receive the communicate grant and refreshed tool catalog
+
+Primary agent endpoints:
+- GET /api/agent-work/status
+- GET /api/agent-work/companies
+- GET /api/agent-work/crm/search?q=<name-or-email>
+- GET /api/agent-work/activity-log
+- GET /api/agent-work/revenue-forecast
+- GET /api/agent-work/companies/:companyId/transactions/search
+- POST /api/agent-work/transactions/search
+- POST /api/agent-work/companies/:companyId/transactions/backfill
+- POST /api/agent-work/transactions/backfill
+- GET /api/agent-work/inbox/summary
+- GET /api/agent-work/inbox/threads
+- GET /api/agent-work/inbox/threads/:threadId
+- POST /api/agent-work/inbox/threads/:threadId/draft
+- GET /api/agent-work/team-chat/summary
+- GET /api/agent-work/team-chat/conversations
+- GET /api/agent-work/team-chat/conversations/:conversationId/messages
+- POST /api/agent-work/team-chat/conversations/:conversationId/reply
+
+Notes:
+- CRM search requires crm_read capability and searches firm-scoped relationships, linked people/spouses/emails, and active companies.
+- Activity log requires activity_log_read capability. Use it for daily/nightly workflow review; it returns firm-wide workflow events plus cached client and Team Chat summaries.
+- Conversation Summaries calendar/detail access is advertised as summaries_read in /api/agent-work/status. Both Agent Work adapter reads are side-effect free.
+- Transaction search requires transactions_read capability.
+- Transaction backfill requires transactions_write capability.
+- Search amount filters use absolute value, so callers do not need to know whether a transaction is stored positive or negative.
+- Search supports vendor/payee, q/query text, exact amount, near amount with tolerance, amount ranges, date ranges, status, source, limit, and offset.

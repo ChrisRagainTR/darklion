@@ -1,0 +1,698 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .create-wrap { padding: 1.5rem 2rem; max-width: 960px; }
+  .create-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .create-top h1 { font-size: 1.2rem; font-weight: 800; }
+
+  .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; }
+
+  /* Type Toggle */
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .type-card { border: 2px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.15s; }
+  .type-card:hover { border-color: rgba(201,168,76,0.4); }
+  .type-card.selected { border-color: var(--gold); background: rgba(201,168,76,0.06); }
+  .type-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.2rem; }
+  .type-card p { font-size: 0.78rem; color: var(--muted); }
+
+  /* Form grid */
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+  /* Tiers */
+  .tiers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .tier-editor { border: 1px solid var(--border); border-radius: 10px; padding: 1rem; position: relative; }
+  .tier-editor.recommended { border-color: var(--gold); }
+  .recommended-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--gold); color: var(--navy); font-size: 0.65rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap; }
+  .tier-editor input[type="text"], .tier-editor input[type="number"] {
+    width: 100%; background: var(--charcoal); border: 1px solid var(--border); color: var(--text);
+    padding: 0.4rem 0.6rem; border-radius: 5px; font-size: 0.82rem; outline: none;
+    transition: border-color 0.15s; margin-bottom: 0.5rem;
+  }
+  .tier-editor input:focus { border-color: var(--gold); }
+  .tier-label { font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem; }
+  .bullets-list { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.5rem; }
+  .bullet-row { display: flex; align-items: center; gap: 0.3rem; }
+  .bullet-row input { flex: 1; margin-bottom: 0; }
+  .bullet-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0.1rem 0.3rem; border-radius: 4px; }
+  .bullet-remove:hover { color: var(--red); }
+  .add-bullet-btn { font-size: 0.75rem; color: var(--gold); background: none; border: none; cursor: pointer; padding: 0; }
+  .add-bullet-btn:hover { text-decoration: underline; }
+  .set-rec-btn { width: 100%; margin-top: 0.5rem; font-size: 0.75rem; padding: 0.3rem; }
+
+  /* Add-ons / backwork tables */
+  .extras-table { width: 100%; border-collapse: collapse; }
+  .extras-table th { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 0.4rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+  .extras-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .extras-table td input { width: 100%; background: var(--charcoal); border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.5rem; border-radius: 5px; font-size: 0.82rem; outline: none; }
+  .extras-table td input:focus { border-color: var(--gold); }
+  .remove-row-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+  .remove-row-btn:hover { color: var(--red); }
+
+  .footer-actions { display: flex; gap: 0.75rem; justify-content: flex-end; padding: 1rem 0; }
+  .rel-required-note { margin-top: 0.45rem; font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+  .rel-required-note.error { color: var(--red); }
+  .rel-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.65rem; }
+  .rel-create-panel { display: none; margin-top: 0.75rem; padding: 0.85rem; background: rgba(201,168,76,0.05); border: 1px solid rgba(201,168,76,0.18); border-radius: 8px; }
+  .rel-create-panel.open { display: block; }
+
+  @media (max-width: 768px) {
+    .create-wrap { padding: 1rem; }
+    .tiers-grid, .form-grid-3 { grid-template-columns: 1fr; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+    .type-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="create-wrap">
+  <div class="create-top">
+    <h1 id="page-heading">New Proposal</h1>
+    <a href="/proposals" class="btn btn-outline btn-sm">← Back</a>
+  </div>
+
+  <!-- 1. Engagement Type -->
+  <div class="section-card">
+    <div class="section-title">Engagement Type</div>
+    <div class="type-grid">
+      <div class="type-card selected" id="type-tax" onclick="setType('tax')">
+        <h3>📊 Tax Services</h3>
+        <p>Tax preparation, planning, and year-round CPA access. Flat monthly fee.</p>
+      </div>
+      <div class="type-card" id="type-wealth" onclick="setType('wealth')">
+        <h3>💼 Wealth Management</h3>
+        <p>Investment advisory and retirement planning. AUM-based or tiered pricing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Client Info -->
+  <div class="section-card">
+    <div class="section-title">Client Information</div>
+    <div class="form-group">
+      <label class="form-group label">Proposal Title</label>
+      <input type="text" class="form-control" id="f-title" value="Service Engagement Proposal" placeholder="Service Engagement Proposal">
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Client Name *</label>
+        <input type="text" class="form-control" id="f-client-name" placeholder="John & Jane Smith" required>
+      </div>
+      <div class="form-group">
+        <label>Client Email *</label>
+        <input type="email" class="form-control" id="f-client-email" placeholder="client@example.com" required>
+      </div>
+    </div>
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" class="form-control" id="f-client-phone" placeholder="(239) 555-0100">
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" class="form-control" id="f-client-address" placeholder="123 Main St">
+      </div>
+      <div class="form-group">
+        <label>City, State, ZIP</label>
+        <input type="text" class="form-control" id="f-client-csz" placeholder="Springfield, IL 62701">
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. CRM Link -->
+  <div class="section-card">
+    <div class="section-title">CRM Relationship Required</div>
+    <div class="form-group">
+      <label>Link to Relationship *</label>
+      <input type="text" class="form-control" id="rel-search" placeholder="Search relationships…" autocomplete="off">
+      <input type="hidden" id="f-relationship-id">
+      <div id="rel-dropdown" style="position:relative;"></div>
+      <div id="rel-selected" style="font-size:0.8rem;color:var(--gold);margin-top:0.35rem;"></div>
+      <div id="rel-required-note" class="rel-required-note">Select or create a relationship before sending. Drafts can be prepared, but proposals are not signable until linked to CRM.</div>
+      <div class="rel-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="toggleRelCreate()">+ Create Relationship / Person</button>
+        <a href="/crm?tab=relationships" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Open CRM</a>
+      </div>
+      <div class="rel-create-panel" id="rel-create-panel">
+        <div class="form-grid-2">
+          <div class="form-group"><label>Relationship Name *</label><input type="text" class="form-control" id="new-rel-name" placeholder="Smith Household"></div>
+          <div class="form-group"><label>Primary Email</label><input type="email" class="form-control" id="new-person-email" placeholder="client@example.com"></div>
+        </div>
+        <div class="form-grid-3">
+          <div class="form-group"><label>First Name</label><input type="text" class="form-control" id="new-person-first" placeholder="John"></div>
+          <div class="form-group"><label>Last Name</label><input type="text" class="form-control" id="new-person-last" placeholder="Smith"></div>
+          <div class="form-group"><label>Phone</label><input type="tel" class="form-control" id="new-person-phone" placeholder="(239) 555-0100"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;justify-content:flex-end;">
+          <span id="rel-create-msg" style="font-size:0.78rem;color:var(--muted);margin-right:auto;"></span>
+          <button type="button" class="btn btn-outline btn-sm" onclick="toggleRelCreate(false)">Cancel</button>
+          <button type="button" class="btn btn-gold btn-sm" id="create-rel-btn" onclick="createRelationshipAndPerson()">Create & Link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Tiers -->
+  <div class="section-card">
+    <div class="section-title">Service Tiers</div>
+    <div class="tiers-grid" id="tiers-grid"></div>
+  </div>
+
+  <!-- 5. Tax Extras -->
+  <div class="section-card" id="tax-extras">
+    <div class="section-title">Add-Ons</div>
+    <table class="extras-table" id="addons-table">
+      <thead><tr><th style="width:70%">Description</th><th>$/mo</th><th></th></tr></thead>
+      <tbody id="addons-body"></tbody>
+    </table>
+    <button class="btn btn-outline btn-sm" style="margin-top:0.75rem;" onclick="addAddonRow()">+ Add Row</button>
+
+    <div class="section-title" style="margin-top:1.5rem;">Back Work / One-Time Fees</div>
+    <table class="extras-table" id="backwork-table">
+      <thead><tr><th style="width:70%">Description</th><th>Flat Fee</th><th></th></tr></thead>
+      <tbody id="backwork-body"></tbody>
+    </table>
+    <button class="btn btn-outline btn-sm" style="margin-top:0.75rem;" onclick="addBackworkRow()">+ Add Row</button>
+  </div>
+
+  <!-- 6. Wealth Extras -->
+  <div class="section-card" id="wealth-extras" style="display:none;">
+    <div class="section-title">AUM Fee</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>AUM Advisory Fee (%)</label>
+        <input type="number" class="form-control" id="f-aum" value="0.69" step="0.01" min="0" max="5">
+        <div class="form-hint">Annual percentage on assets under management (default 0.69%)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Options -->
+  <div class="section-card">
+    <div class="section-title">Options</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label>Expiry Date (optional)</label>
+        <input type="date" class="form-control" id="f-expires">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;padding-top:1.4rem;">
+        <input type="checkbox" id="f-dual-sig" style="width:16px;height:16px;accent-color:var(--gold);">
+        <label for="f-dual-sig" style="text-transform:none;letter-spacing:0;font-size:0.85rem;">Require dual signature (two signers)</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Internal Notes</label>
+      <textarea class="form-control" id="f-notes" rows="3" placeholder="Notes visible only to staff…" style="resize:vertical;"></textarea>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-actions">
+    <button class="btn btn-outline" id="save-draft-btn">Save Draft</button>
+    <button class="btn btn-gold" id="save-send-btn">Save &amp; Send →</button>
+  </div>
+</div>
+
+<!-- Copy Link Modal -->
+<div class="modal-overlay" id="send-modal">
+  <div class="modal">
+    <h2>✅ Proposal Ready</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.75rem;">Share this link with your client:</p>
+    <div style="display:flex;gap:0.5rem;">
+      <input id="send-link-input" type="text" class="form-control" readonly style="font-size:0.8rem;">
+      <button class="btn btn-gold btn-sm" onclick="doSendCopy()">Copy</button>
+    </div>
+    <div class="modal-actions">
+      <a id="view-proposal-link" href="#" class="btn btn-outline btn-sm">View Detail</a>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('send-modal').classList.remove('open');window.location='/proposals'">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let engagementType = 'tax';
+let recommendedTier = 1; // set properly after defaults load
+let recommendedTiers = [];
+let editId = null;
+let relationships = [];
+
+// Detect edit mode from URL
+const pathParts = window.location.pathname.split('/');
+if (pathParts.length >= 3 && /^\d+$/.test(pathParts[2])) {
+  editId = parseInt(pathParts[2]);
+  document.getElementById('page-heading').textContent = 'Edit Proposal';
+}
+
+const TAX_DEFAULTS = [
+  {
+    name: 'Tax Subscription',
+    subtitle: 'Essential tax management for individuals & businesses',
+    price: 250,
+    bullets: [
+      'Personal & Business Tax Return Preparation',
+      'Proactive Tax Strategy & Projections',
+      'Quarterly Estimated Tax Planning',
+      'Year-Round CPA Support & Consultations',
+      'IRS Compliance & Representation',
+    ],
+    isRecommended: false,
+  },
+  {
+    name: 'Tax + Bookkeeping',
+    subtitle: 'Complete tax & financial record management',
+    price: 500,
+    bullets: [
+      'Monthly Bookkeeping & Reconciliation',
+      'Financial Statement Preparation',
+      'Cash Flow Monitoring & Analysis',
+      'Payroll Tax Compliance & Reporting',
+      'Year-End Close & Adjusting Entries',
+    ],
+    isRecommended: true,
+  },
+  {
+    name: 'Tax + Bookkeeping + Financial Planning',
+    subtitle: 'Full-service tax, bookkeeping & wealth strategy',
+    price: 1000,
+    bullets: [
+      'Comprehensive Financial Plan & Roadmap',
+      'Investment Management & Portfolio Oversight',
+      'Retirement & Cashflow Planning',
+      'Estate & Legacy Planning',
+      'Insurance & Risk Assessment',
+    ],
+    isRecommended: false,
+  },
+];
+const WEALTH_DEFAULTS = [
+  {
+    name: 'Tax & Planning',
+    subtitle: 'Comprehensive tax strategy & financial planning',
+    price: 299,
+    bullets: [
+      'Tax Return Preparation & Planning',
+      'Proactive Tax Strategy & Projections',
+      'Retirement Income Strategies',
+      'Tax-Advantaged Distribution Planning',
+      'Year-Round Advisory Support',
+    ],
+    isRecommended: false,
+  },
+  {
+    name: 'Legacy Blueprint',
+    subtitle: 'Full-service financial planning & life oversight',
+    price: 599,
+    bullets: [
+      'Healthcare & Medicaid Planning',
+      'Estate & Legacy Planning',
+      'Fraud Protection & Tech Safety',
+      'Emergency Procedures & Household Vault',
+      'Wellness Checks & Ongoing Support',
+    ],
+    isRecommended: true,
+  },
+  {
+    name: 'Investment Management',
+    subtitle: 'Discretionary portfolio management + full planning',
+    price: 0,
+    bullets: [
+      'Customized Investment Portfolio',
+      'Ongoing Portfolio Monitoring & Rebalancing',
+      'Tax-Efficient Investment Strategies',
+      'Quarterly Performance Reviews',
+      'Dedicated Portfolio Manager',
+    ],
+    isRecommended: false,
+  },
+];
+
+let tiers = JSON.parse(JSON.stringify(TAX_DEFAULTS));
+recommendedTier = TAX_DEFAULTS.findIndex(t => t.isRecommended);
+if (recommendedTier < 0) recommendedTier = 1;
+recommendedTiers = TAX_DEFAULTS.map((t, i) => t.isRecommended ? i : -1).filter(i => i >= 0);
+
+function setType(t) {
+  engagementType = t;
+  document.getElementById('type-tax').classList.toggle('selected', t === 'tax');
+  document.getElementById('type-wealth').classList.toggle('selected', t === 'wealth');
+  document.getElementById('tax-extras').style.display = t === 'tax' ? '' : 'none';
+  document.getElementById('wealth-extras').style.display = t === 'wealth' ? '' : 'none';
+  const defaults = t === 'tax' ? TAX_DEFAULTS : WEALTH_DEFAULTS;
+  tiers = JSON.parse(JSON.stringify(defaults));
+  recommendedTier = defaults.findIndex(d => d.isRecommended);
+  if (recommendedTier < 0) recommendedTier = 1;
+  recommendedTiers = defaults.map((d, i) => d.isRecommended ? i : -1).filter(i => i >= 0);
+  renderTiers();
+}
+
+function renderTiers() {
+  const grid = document.getElementById('tiers-grid');
+  grid.innerHTML = tiers.map((tier, i) => `
+    <div class="tier-editor ${isTierRecommended(i) ? 'recommended' : ''}" id="tier-${i}">
+      ${isTierRecommended(i) ? '<div class="recommended-badge">⭐ Recommended</div>' : ''}
+      <div class="tier-label">Tier ${i+1} Name</div>
+      <input type="text" value="${escHtml(tier.name)}" onchange="tiers[${i}].name=this.value" placeholder="e.g. Essential">
+      <div class="tier-label">Subtitle</div>
+      <input type="text" value="${escHtml(tier.subtitle||'')}" onchange="tiers[${i}].subtitle=this.value" placeholder="Short description">
+      <div class="tier-label">Monthly Price ($)</div>
+      <input type="number" value="${tier.price||0}" min="0" step="1" onchange="tiers[${i}].price=parseFloat(this.value)||0"
+        placeholder="${engagementType==='wealth'?'0 = AUM-based':'Monthly fee'}">
+      ${engagementType==='wealth' ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:-0.3rem;margin-bottom:0.3rem;">Leave 0 to show the AUM fee on the proposal</div>' : ''}
+      <div class="tier-label" style="margin-top:0.25rem;">Included Services</div>
+      <div class="bullets-list" id="bullets-${i}">
+        ${(tier.bullets||[]).map((b,j) => bulletRow(i,j,b)).join('')}
+      </div>
+      <button class="add-bullet-btn" onclick="addBullet(${i})">+ Add item</button>
+      <button class="btn btn-outline set-rec-btn" onclick="setRecommended(${i})">${isTierRecommended(i) ? '✓ Recommended' : (engagementType === 'wealth' ? 'Recommend This Package' : 'Set as Recommended')}</button>
+    </div>
+  `).join('');
+}
+
+function isTierRecommended(i) {
+  return engagementType === 'wealth' ? recommendedTiers.includes(i) : i === recommendedTier;
+}
+
+function bulletRow(ti, bi, val) {
+  return `<div class="bullet-row" id="bullet-${ti}-${bi}">
+    <input type="text" value="${escHtml(val)}" onchange="tiers[${ti}].bullets[${bi}]=this.value" placeholder="Included service…">
+    <button class="bullet-remove" onclick="removeBullet(${ti},${bi})" title="Remove">×</button>
+  </div>`;
+}
+
+function addBullet(ti) {
+  if (!tiers[ti].bullets) tiers[ti].bullets = [];
+  tiers[ti].bullets.push('');
+  renderTiers();
+}
+function removeBullet(ti, bi) {
+  tiers[ti].bullets.splice(bi, 1);
+  renderTiers();
+}
+function setRecommended(i) {
+  if (engagementType === 'wealth') {
+    const idx = recommendedTiers.indexOf(i);
+    if (idx >= 0) recommendedTiers.splice(idx, 1);
+    else recommendedTiers.push(i);
+    recommendedTiers.sort((a, b) => a - b);
+  } else {
+    recommendedTier = i;
+    recommendedTiers = [i];
+  }
+  renderTiers();
+}
+
+// Add-ons
+function addAddonRow(desc='',price='') {
+  const tbody = document.getElementById('addons-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" value="${escHtml(desc)}" placeholder="Description…"></td>
+    <td><input type="number" value="${price||''}" min="0" step="0.01" placeholder="0.00" style="max-width:90px;"></td>
+    <td><button class="remove-row-btn" onclick="this.closest('tr').remove()">×</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function addBackworkRow(desc='',fee='') {
+  const tbody = document.getElementById('backwork-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" value="${escHtml(desc)}" placeholder="Description…"></td>
+    <td><input type="number" value="${fee||''}" min="0" step="0.01" placeholder="0.00" style="max-width:90px;"></td>
+    <td><button class="remove-row-btn" onclick="this.closest('tr').remove()">×</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function getAddons() {
+  return Array.from(document.querySelectorAll('#addons-body tr')).map(tr => {
+    const ins = tr.querySelectorAll('input');
+    return { description: ins[0].value, monthlyPrice: parseFloat(ins[1].value)||0 };
+  }).filter(a => a.description.trim());
+}
+function getBackwork() {
+  return Array.from(document.querySelectorAll('#backwork-body tr')).map(tr => {
+    const ins = tr.querySelectorAll('input');
+    return { description: ins[0].value, flatFee: parseFloat(ins[1].value)||0 };
+  }).filter(a => a.description.trim());
+}
+
+// CRM relationship search
+let relSearchTimer = null;
+document.getElementById('rel-search').addEventListener('input', function() {
+  clearTimeout(relSearchTimer);
+  const q = this.value.trim();
+  if (q.length < 1) { hideRelDropdown(); return; }
+  relSearchTimer = setTimeout(() => fetchRels(q), 200);
+});
+
+async function fetchRels(q) {
+  try {
+    const r = await fetch('/api/relationships?q=' + encodeURIComponent(q) + '&limit=10', {
+      headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) }
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    showRelDropdown(Array.isArray(data) ? data : (data.rows || []));
+  } catch(e) {}
+}
+
+function showRelDropdown(items) {
+  const wrap = document.getElementById('rel-dropdown');
+  if (!items.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `<div style="position:absolute;top:4px;left:0;right:0;background:var(--charcoal);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:200;max-height:200px;overflow-y:auto;">
+    ${items.map(r => `<div class="hcd-option" onclick="selectRel(${r.id},'${escAttr(r.name||r.id)}')" style="cursor:pointer;padding:0.5rem 1rem;font-size:0.85rem;">${escHtml(r.name||r.id)}</div>`).join('')}
+  </div>`;
+}
+function hideRelDropdown() { document.getElementById('rel-dropdown').innerHTML = ''; }
+function selectRel(id, name) {
+  document.getElementById('f-relationship-id').value = id;
+  document.getElementById('rel-search').value = name;
+  document.getElementById('rel-selected').textContent = '✓ Linked to: ' + name;
+  setRelError('');
+  hideRelDropdown();
+}
+
+function setRelError(msg) {
+  const note = document.getElementById('rel-required-note');
+  note.textContent = msg || 'Select or create a relationship before sending. Drafts can be prepared, but proposals are not signable until linked to CRM.';
+  note.classList.toggle('error', !!msg);
+}
+
+function toggleRelCreate(force) {
+  const panel = document.getElementById('rel-create-panel');
+  panel.classList.toggle('open', force === undefined ? !panel.classList.contains('open') : !!force);
+  document.getElementById('rel-create-msg').textContent = '';
+}
+
+async function createRelationshipAndPerson() {
+  const btn = document.getElementById('create-rel-btn');
+  const msg = document.getElementById('rel-create-msg');
+  const relName = document.getElementById('new-rel-name').value.trim();
+  const email = document.getElementById('new-person-email').value.trim();
+  const first = document.getElementById('new-person-first').value.trim();
+  const last = document.getElementById('new-person-last').value.trim();
+  const phone = document.getElementById('new-person-phone').value.trim();
+  if (!relName) { msg.style.color = 'var(--red)'; msg.textContent = 'Relationship name is required.'; return; }
+  btn.disabled = true; btn.textContent = 'Creating…'; msg.style.color = 'var(--muted)'; msg.textContent = '';
+  try {
+    const relRes = await fetch('/api/relationships', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) },
+      body: JSON.stringify({ name: relName })
+    });
+    const rel = await relRes.json();
+    if (!relRes.ok) throw new Error(rel.error || 'Failed to create relationship');
+    if (email) {
+      const personRes = await fetch('/api/people', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) },
+        body: JSON.stringify({ relationship_id: rel.id, first_name: first, last_name: last, email, phone, portal_enabled: false })
+      });
+      const person = await personRes.json();
+      if (!personRes.ok) throw new Error(person.error || 'Relationship created, but person creation failed');
+    }
+    selectRel(rel.id, rel.name || relName);
+    toggleRelCreate(false);
+    showToast(email ? 'Relationship and person linked' : 'Relationship linked');
+  } catch(e) {
+    msg.style.color = 'var(--red)'; msg.textContent = e.message || 'Failed to create';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create & Link';
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('rel-search').contains(e.target)) hideRelDropdown();
+});
+
+// Build payload
+function buildPayload(status) {
+  // Read current tier values from DOM inputs directly
+  const tierInputs = document.querySelectorAll('[id^="tier-"]');
+  // Use tiers array which is kept in sync via onchange
+  const tiersPayload = tiers.map(t => ({
+    name: t.name,
+    subtitle: t.subtitle || '',
+    price: t.price || 0,
+    bullets: t.bullets || [],
+  }));
+  // Mark recommended. Wealth supports multiple advisor-recommended packages;
+  // tax remains a single recommended tier.
+  tiersPayload.forEach((t, i) => {
+    t.recommended = engagementType === 'wealth' ? recommendedTiers.includes(i) : (i === recommendedTier);
+  });
+
+  return {
+    title: document.getElementById('f-title').value.trim() || 'Service Engagement Proposal',
+    client_name: document.getElementById('f-client-name').value.trim(),
+    client_email: document.getElementById('f-client-email').value.trim(),
+    client_phone: document.getElementById('f-client-phone').value.trim(),
+    client_address: document.getElementById('f-client-address').value.trim(),
+    client_city_state_zip: document.getElementById('f-client-csz').value.trim(),
+    engagement_type: engagementType,
+    tiers: tiersPayload,
+    add_ons: getAddons(),
+    backwork: getBackwork(),
+    aum_fee_percent: parseFloat(document.getElementById('f-aum').value) || 0.69,
+    require_dual_signature: document.getElementById('f-dual-sig').checked,
+    notes: document.getElementById('f-notes').value.trim(),
+    status,
+    relationship_id: document.getElementById('f-relationship-id').value || null,
+    expires_at: document.getElementById('f-expires').value || null,
+  };
+}
+
+function showToast(msg, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+async function saveProposal(status) {
+  const data = buildPayload(status);
+  if (!data.client_name) { showToast('Client name is required', true); return null; }
+  if (!data.client_email) { showToast('Client email is required', true); return null; }
+  if (status === 'sent' && !data.relationship_id) {
+    setRelError('A CRM relationship is required before this proposal can be sent or signed. Select an existing relationship or create/link a new one.');
+    document.getElementById('rel-search').focus();
+    showToast('Link a CRM relationship before sending', true);
+    return null;
+  }
+
+  const method = editId ? 'PUT' : 'POST';
+  const url = editId ? '/api/proposals/' + editId : '/api/proposals';
+
+  try {
+    const r = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!r.ok) {
+      const err = await r.json();
+      throw new Error(err.error || 'Failed to save');
+    }
+    return await r.json();
+  } catch(e) {
+    showToast(e.message || 'Failed to save', true);
+    return null;
+  }
+}
+
+document.getElementById('save-draft-btn').addEventListener('click', async () => {
+  const result = await saveProposal('draft');
+  if (result) {
+    showToast('Draft saved');
+    setTimeout(() => window.location = '/proposals/' + result.id, 800);
+  }
+});
+
+document.getElementById('save-send-btn').addEventListener('click', async () => {
+  const result = await saveProposal('sent');
+  if (result) {
+    const link = result.custom_domain ? 'https://' + result.custom_domain + '/p/' + result.public_token : window.location.origin + '/p/' + result.public_token;
+    document.getElementById('send-link-input').value = link;
+    document.getElementById('view-proposal-link').href = '/proposals/' + result.id;
+    document.getElementById('send-modal').classList.add('open');
+    if (editId) editId = result.id;
+  }
+});
+
+function doSendCopy() {
+  const inp = document.getElementById('send-link-input');
+  inp.select();
+  navigator.clipboard.writeText(inp.value).then(() => showToast('Copied!')).catch(() => {
+    document.execCommand('copy'); showToast('Copied!');
+  });
+}
+
+document.getElementById('send-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('send-modal')) document.getElementById('send-modal').classList.remove('open');
+});
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+// Load existing proposal data if editing
+async function loadForEdit() {
+  if (!editId) { renderTiers(); return; }
+  try {
+    const r = await fetch('/api/proposals/' + editId, {
+      headers: { Authorization: 'Bearer ' + (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token')) }
+    });
+    if (!r.ok) { showToast('Failed to load proposal', true); renderTiers(); return; }
+    const p = await r.json();
+
+    // Block editing signed proposals — redirect to detail page
+    if (p.status === 'signed') {
+      showToast('Signed proposals cannot be edited. Create a new proposal instead.', true);
+      setTimeout(() => { window.location = '/proposals/' + editId; }, 1800);
+      return;
+    }
+    document.getElementById('f-title').value = p.title || '';
+    document.getElementById('f-client-name').value = p.client_name || '';
+    document.getElementById('f-client-email').value = p.client_email || '';
+    document.getElementById('f-client-phone').value = p.client_phone || '';
+    document.getElementById('f-client-address').value = p.client_address || '';
+    document.getElementById('f-client-csz').value = p.client_city_state_zip || '';
+    document.getElementById('f-aum').value = p.aum_fee_percent || 0.69;
+    document.getElementById('f-dual-sig').checked = p.require_dual_signature || false;
+    document.getElementById('f-notes').value = p.notes || '';
+    if (p.expires_at) document.getElementById('f-expires').value = p.expires_at.split('T')[0];
+
+    engagementType = p.engagement_type || 'tax';
+    document.getElementById('type-tax').classList.toggle('selected', engagementType === 'tax');
+    document.getElementById('type-wealth').classList.toggle('selected', engagementType === 'wealth');
+    document.getElementById('tax-extras').style.display = engagementType === 'tax' ? '' : 'none';
+    document.getElementById('wealth-extras').style.display = engagementType === 'wealth' ? '' : 'none';
+
+    if (p.tiers && p.tiers.length) {
+      tiers = p.tiers;
+      recommendedTier = tiers.findIndex(t => t.recommended);
+      if (recommendedTier < 0) recommendedTier = 0;
+      recommendedTiers = tiers.map((t, i) => t.recommended ? i : -1).filter(i => i >= 0);
+      if (!recommendedTiers.length) recommendedTiers = [recommendedTier];
+    }
+
+    if (p.relationship_id && p.relationship_name) {
+      document.getElementById('f-relationship-id').value = p.relationship_id;
+      document.getElementById('rel-search').value = p.relationship_name;
+      document.getElementById('rel-selected').textContent = '✓ Linked to: ' + p.relationship_name;
+    }
+
+    if (p.add_ons) p.add_ons.forEach(a => addAddonRow(a.description, a.monthlyPrice));
+    if (p.backwork) p.backwork.forEach(b => addBackworkRow(b.description, b.flatFee));
+
+    renderTiers();
+  } catch(e) {
+    showToast('Failed to load proposal data', true);
+    renderTiers();
+  }
+}
+
+loadForEdit();
+</script>
+
+<%- include('partials/shell-globals') %>
+<%- include('partials/shell-close') %>

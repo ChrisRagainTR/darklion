@@ -1,0 +1,280 @@
+<!-- ── DarkLion AI Floating Chat ── -->
+<style>
+  #agent-float-btn { position:fixed; bottom:1.5rem; right:1.5rem; z-index:900; width:52px; height:52px; border-radius:50%; border:1px solid rgba(201,168,76,0.45); cursor:pointer; background:#050505; box-shadow:0 4px 18px rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; transition:transform 0.2s, box-shadow 0.2s; }
+  #agent-float-btn:hover { transform:scale(1.08); box-shadow:0 6px 24px rgba(0,0,0,0.6); }
+  #agent-float-btn img { width:34px; height:34px; object-fit:contain; border-radius:0; }
+  #agent-float-badge { position:absolute; top:-2px; right:-2px; width:14px; height:14px; background:#3ecf8e; border-radius:50%; border:2px solid #0f1923; display:none; }
+  #agent-float-panel { position:fixed; bottom:5rem; right:1.5rem; z-index:901; width:400px; height:calc(90vh - 5rem); max-height:860px; background:#0f1923; border:1px solid rgba(201,168,76,0.25); border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,0.55); display:flex; flex-direction:column; overflow:hidden; transform:translateY(20px) scale(0.95); opacity:0; pointer-events:none; transition:transform 0.2s ease, opacity 0.2s ease; }
+  #agent-float-panel.open { transform:translateY(0) scale(1); opacity:1; pointer-events:all; }
+  .afp-header { background:linear-gradient(135deg,#462161,#2e1540); padding:0.85rem 1rem; display:flex; align-items:center; gap:0.6rem; flex-shrink:0; }
+  .afp-header img { width:32px; height:32px; object-fit:contain; border-radius:50%; background:transparent; }
+  .afp-title { font-weight:700; font-size:0.88rem; color:#fff; flex:1; }
+  .afp-status { font-size:0.68rem; color:rgba(255,255,255,0.6); }
+  .afp-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:1.1rem; cursor:pointer; line-height:1; padding:0 0.25rem; }
+  .afp-messages { flex:1; overflow-y:auto; overflow-x:hidden; padding:0.85rem 1rem; display:flex; flex-direction:column; gap:0.65rem; }
+  .afp-bubble { max-width:92%; min-width:0; border-radius:10px; padding:0.55rem 0.8rem; font-size:0.82rem; line-height:1.5; overflow-wrap:anywhere; word-break:break-word; white-space:normal; }
+  .afp-bubble.agent { background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.2); color:#e8edf2; align-self:flex-start; border-bottom-left-radius:3px; }
+  .afp-bubble.user { background:#c9a84c; color:#0f1923; align-self:flex-end; margin-left:1.5rem; border-bottom-right-radius:3px; font-weight:600; }
+  .afp-input-row { padding:0.65rem 0.85rem; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:0.4rem; align-items:flex-end; flex-shrink:0; }
+  .afp-input { flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:0.5rem 0.65rem; color:#e8edf2; font-size:0.83rem; font-family:inherit; resize:none; min-height:54px; max-height:140px; outline:none; }
+  .afp-input:focus { border-color:rgba(201,168,76,0.5); }
+  .afp-send { background:#c9a84c; color:#0f1923; border:none; border-radius:8px; width:34px; height:34px; cursor:pointer; font-size:0.95rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:700; transition:opacity 0.15s; }
+  .afp-send:disabled { opacity:0.4; cursor:not-allowed; }
+  @media (max-width: 600px) {
+    #agent-float-btn,
+    #agent-float-panel { display:none !important; }
+  }
+  @keyframes afp-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+</style>
+
+<button id="agent-float-btn" onclick="toggleAgentFloat()" title="DarkLion AI" style="display:none">
+  <img src="/lion-logo.png" alt="DarkLion AI">
+  <div id="agent-float-badge"></div>
+</button>
+
+<div id="agent-float-panel">
+  <div class="afp-header">
+    <img src="/lion-logo.png" alt="">
+    <div class="afp-title">DarkLion AI</div>
+    <span class="afp-status" id="afp-status">Connecting…</span>
+    <button class="afp-close" onclick="toggleAgentFloat()">✕</button>
+  </div>
+  <div class="afp-messages" id="afp-messages">
+    <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;color:#8fa3b8;font-size:0.8rem;">
+      <div style="width:16px;height:16px;border:2px solid #c9a84c;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;"></div>
+      Loading…
+    </div>
+  </div>
+  <div class="afp-input-row">
+    <textarea class="afp-input" id="afp-input" placeholder="Ask anything…" rows="2" disabled></textarea>
+    <button class="afp-send" id="afp-send" disabled onclick="afpSend()">↑</button>
+  </div>
+</div>
+
+<script src="https://js.pusher.com/8.3.0/pusher.min.js"></script>
+<script src="/realtime-config.js"></script>
+<script src="/js/realtime.js"></script>
+<script>
+(function() {
+  let _afpOpen = false;
+  let _afpLoaded = false;
+  let _afpHistory = [];
+  let _afpEnabled = false;
+  let _afpFeatureRequest = 0;
+
+  // Hidden until the current authenticated firm's rollout state is known.
+  // Team Chat realtime below remains independent of this chatbot control.
+  async function refreshAgentFeature() {
+    const request = ++_afpFeatureRequest;
+    let enabled = false;
+    try {
+      const r = await afpApiFetch('/firms/features');
+      const data = r.ok ? await r.json() : null;
+      enabled = data?.features?.embedded_chat === true;
+    } catch (_) { /* Stay hidden when configuration is unavailable. */ }
+    if (request !== _afpFeatureRequest) return;
+    _afpEnabled = enabled;
+    const button = document.getElementById('agent-float-btn');
+    if (button) button.style.display = _afpEnabled ? '' : 'none';
+    if (!_afpEnabled) {
+      _afpOpen = false;
+      _afpLoaded = false;
+      _afpHistory = [];
+      document.getElementById('agent-float-panel')?.classList.remove('open');
+      const messages = document.getElementById('afp-messages');
+      if (messages) messages.replaceChildren();
+    }
+  }
+  refreshAgentFeature();
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) refreshAgentFeature();
+  });
+
+  window.toggleAgentFloat = function() {
+    if (!_afpEnabled) return;
+    _afpOpen = !_afpOpen;
+    const panel = document.getElementById('agent-float-panel');
+    if (_afpOpen) {
+      panel.classList.add('open');
+      if (!_afpLoaded) initAgentFloat();
+      else { const inp = document.getElementById('afp-input'); if (inp) inp.focus(); }
+    } else {
+      panel.classList.remove('open');
+    }
+  };
+
+  function afpApiFetch(url, opts) {
+    const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+    return fetch(url, Object.assign({ headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': 'Bearer ' + token } : {}) }, opts || {}));
+  }
+
+  async function initAgentFloat() {
+    _afpLoaded = true;
+    const statusEl = document.getElementById('afp-status');
+    const inputEl = document.getElementById('afp-input');
+    const sendBtn = document.getElementById('afp-send');
+
+    try {
+      const r = await afpApiFetch('/api/emma-chat/session');
+      if (!r.ok) { if (statusEl) statusEl.textContent = 'Unavailable'; return; }
+      const s = await r.json();
+      _afpHistory = s.messages || [];
+      afpRenderMessages(_afpHistory);
+      if (statusEl) { statusEl.textContent = 'Online'; statusEl.style.color = '#3ecf8e'; }
+      if (inputEl) { inputEl.disabled = false; inputEl.focus(); }
+      if (sendBtn) sendBtn.disabled = false;
+    } catch(e) {
+      if (statusEl) statusEl.textContent = 'Offline';
+    }
+  }
+
+  function afpEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function afpRenderMessages(msgs) {
+    const el = document.getElementById('afp-messages');
+    if (!el) return;
+    if (!msgs.length) {
+      el.innerHTML = '<div class="afp-bubble agent">Hi — I\'m DarkLion AI. Ask me anything about your firm.</div>';
+      return;
+    }
+    el.innerHTML = msgs.map(function(m) {
+      var text = afpEsc(m.content||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+      var idAttr = m.chat_message_id ? ' data-chat-message-id="' + afpEsc(m.chat_message_id) + '"' : '';
+      return '<div class="afp-bubble ' + (m.role==='user'?'user':'agent') + '"' + idAttr + '>' + text + '</div>';
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function afpCssEscape(s) {
+    if (window.CSS && CSS.escape) return CSS.escape(s);
+    return String(s || '').replace(/"/g, '\\"');
+  }
+
+  function afpReplaceOrAppendAsyncReply(chatMessageId, reply) {
+    if (!_afpEnabled) return;
+    var el = document.getElementById('afp-messages');
+    if (!el) return;
+    var target = chatMessageId ? el.querySelector('[data-chat-message-id="' + afpCssEscape(chatMessageId) + '"]') : null;
+    var rendered = afpEsc(reply || '').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    if (target) {
+      target.innerHTML = rendered;
+      target.removeAttribute('data-chat-message-id');
+    } else {
+      afpAppend('assistant', reply);
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function afpAppend(role, content) {
+    var el = document.getElementById('afp-messages');
+    if (!el) return;
+    var text = afpEsc(content||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    var div = document.createElement('div');
+    div.className = 'afp-bubble ' + (role==='user'?'user':'agent');
+    div.innerHTML = text;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  window.afpSend = async function() {
+    if (!_afpEnabled) return;
+    var inputEl = document.getElementById('afp-input');
+    var sendBtn = document.getElementById('afp-send');
+    var text = inputEl ? inputEl.value.trim() : '';
+    if (!text) return;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    inputEl.disabled = true;
+    sendBtn.disabled = true;
+    afpAppend('user', text);
+
+    // Thinking indicator
+    var el = document.getElementById('afp-messages');
+    var thinking = document.createElement('div');
+    thinking.className = 'afp-bubble agent';
+    thinking.id = 'afp-thinking';
+    thinking.style.opacity = '0.6';
+    thinking.innerHTML = '<span style="display:flex;gap:3px;align-items:center"><span style="width:5px;height:5px;border-radius:50%;background:#c9a84c;animation:afp-pulse 1.2s ease-in-out infinite"></span><span style="width:5px;height:5px;border-radius:50%;background:#c9a84c;animation:afp-pulse 1.2s ease-in-out 0.4s infinite"></span><span style="width:5px;height:5px;border-radius:50%;background:#c9a84c;animation:afp-pulse 1.2s ease-in-out 0.8s infinite"></span></span>';
+    if (el) { el.appendChild(thinking); el.scrollTop = el.scrollHeight; }
+
+    try {
+      var r = await afpApiFetch('/api/emma-chat/message', { method: 'POST', body: JSON.stringify({ message: text }) });
+      var t = document.getElementById('afp-thinking'); if (t) t.remove();
+      var data = await r.json();
+      if (data.reply) afpAppend('assistant', data.reply);
+      else afpAppend('assistant', 'No response received.');
+    } catch(e) {
+      var t = document.getElementById('afp-thinking'); if (t) t.remove();
+      afpAppend('assistant', 'Connection error. Please try again.');
+    }
+    inputEl.disabled = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  };
+
+  function initAgentFloatRealtime() {
+    if (window._afpRealtimeInit || typeof Pusher === 'undefined') return;
+    var token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+    if (!token) return;
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      var firmId = payload.firmId || payload.id;
+      var userId = payload.userId || payload.sub;
+      if (!firmId || !userId) return;
+      window._afpRealtimeInit = true;
+      var pusher = window.DLRealtime.create({
+        channelAuthorization: { endpoint: '/pusher/auth/staff', transport: 'ajax', headers: { Authorization: 'Bearer ' + token } },
+      });
+      var channel = pusher.subscribe('private-firm-' + firmId);
+      channel.bind('agent-chat-reply', function(data) {
+        if (String(data.staffUserId) !== String(userId)) return;
+        afpReplaceOrAppendAsyncReply(data.chatMessageId, data.reply);
+      });
+      var teamChannel = pusher.subscribe('private-team-chat-' + firmId + '-' + userId);
+      teamChannel.bind('team-chat-message', function(payload) {
+        if (typeof window.updateTeamChatBadge === 'function') window.updateTeamChatBadge();
+        var msg = payload && payload.message ? payload.message : {};
+        if (msg.out || String(msg.sender_staff_user_id || '') === String(userId)) return;
+        if (!document.hidden && location.pathname.indexOf('/team-chat') === 0) return;
+        if (window.DLDesktop && typeof window.DLDesktop.notifyOnce === 'function') {
+          window.DLDesktop.notifyOnce('team-chat-' + (msg.id || msg.message_id || Date.now()), {
+            title: msg.sender_name ? 'Team Chat — ' + msg.sender_name : 'New Team Chat message',
+            body: msg.text || msg.body || 'New message in Team Chat',
+            route: '/team-chat'
+          });
+        }
+      });
+    } catch(e) { /* non-fatal */ }
+  }
+
+  initAgentFloatRealtime();
+
+  // Preserve native browser spelling suggestions/context menu in message composers.
+  document.addEventListener('contextmenu', function(e) {
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var editable = target.closest('textarea, input[type="text"], input[type="search"], [contenteditable="true"]');
+    if (editable) e.stopPropagation();
+  }, true);
+
+  // Enter to send
+  document.addEventListener('keydown', function(e) {
+    if (e.target.id === 'afp-input' && e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      window.afpSend();
+    }
+  });
+
+  // Auto-resize
+  document.addEventListener('input', function(e) {
+    if (e.target.id === 'afp-input') {
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+    }
+  });
+})();
+</script>
+
+</main>
+</body>
+</html>

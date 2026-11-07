@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Route to DarkLion</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #1e2330;
+    }
+    .header-icon { font-size: 22px; }
+    .header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .header p {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .form-group { margin-bottom: 13px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 9px 11px;
+      background: #1e2330;
+      border: 1px solid #2d3748;
+      border-radius: 7px;
+      color: #e2e8f0;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, select:focus {
+      border-color: #4f8ef7;
+    }
+    select option { background: #1e2330; }
+
+    /* Client search */
+    .search-wrap { position: relative; }
+    #clientResults {
+      position: absolute;
+      top: 100%;
+      left: 0; right: 0;
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-top: none;
+      border-radius: 0 0 7px 7px;
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+    }
+    .result-item {
+      padding: 8px 11px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.1s;
+    }
+    .result-item:hover { background: #252d3d; }
+    .result-item .type-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .type-person   { background: #1e3a5f; color: #60a5fa; }
+    .type-company  { background: #1a3a2a; color: #4ade80; }
+    .type-relationship { background: #3a1a3a; color: #c084fc; }
+
+    /* Selected client chip */
+    #selectedClient {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a2640;
+      border: 1px solid #2d4a6e;
+      border-radius: 7px;
+      padding: 8px 11px;
+      font-size: 13px;
+    }
+    #selectedClient .name { color: #93c5fd; font-weight: 600; }
+    #selectedClient .clear {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    #selectedClient .clear:hover { color: #e2e8f0; }
+
+    /* Row layout for year + folder */
+    .row { display: flex; gap: 10px; }
+    .row .form-group { flex: 1; }
+
+    /* Buttons */
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 16px;
+    }
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-primary {
+      background: #4f8ef7;
+      color: white;
+    }
+    .btn-primary:hover { background: #3b7de8; }
+    .btn-primary:disabled { background: #374151; cursor: not-allowed; opacity: 0.6; }
+    .btn-ghost {
+      background: #1e2330;
+      color: #94a3b8;
+      border: 1px solid #2d3748;
+    }
+    .btn-ghost:hover { background: #252d3d; }
+
+    /* Status / error */
+    .status {
+      font-size: 12px;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 18px;
+      color: #64748b;
+    }
+    .status.error { color: #fca5a5; }
+    .status.success { color: #4ade80; }
+
+    /* Progress overlay */
+    #uploading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,17,23,0.88);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 14px;
+      color: #94a3b8;
+      z-index: 999;
+    }
+    #uploading.show { display: flex; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #2d3748;
+      border-top-color: #4f8ef7;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-icon">🦁</div>
+    <div>
+      <h2>Route to DarkLion</h2>
+      <p id="jobLabel">Select a client and folder below</p>
+    </div>
+  </div>
+
+  <!-- Document name -->
+  <div class="form-group">
+    <label>Document Name</label>
+    <input type="text" id="docName" placeholder="Document name" />
+  </div>
+
+  <!-- Client search -->
+  <div class="form-group">
+    <label>Client</label>
+    <div class="search-wrap">
+      <input type="text" id="clientSearch"
+             placeholder="Type to search clients…"
+             autocomplete="off"
+             oninput="onSearchInput()" />
+      <div id="clientResults"></div>
+    </div>
+    <div id="selectedClient">
+      <span class="name" id="selectedName"></span>
+      <button class="clear" onclick="clearClient()" title="Change client">✕</button>
+    </div>
+  </div>
+
+  <!-- Year + Category row -->
+  <div class="row">
+    <div class="form-group">
+      <label>Year</label>
+      <select id="year"></select>
+    </div>
+    <div class="form-group">
+      <label>Folder</label>
+      <select id="category">
+        <option value="tax">Tax</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Section -->
+  <div class="form-group">
+    <label>Section</label>
+    <select id="section">
+      <option value="firm_uploaded">Delivered by Advisor</option>
+      <option value="client_uploaded">Client Portal</option>
+    </select>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-ghost" onclick="doCancel()">Cancel</button>
+    <button class="btn btn-primary" id="uploadBtn" onclick="doUpload()" disabled>Upload to DarkLion</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <!-- Upload in progress overlay -->
+  <div id="uploading">
+    <div class="spinner"></div>
+    <span>Uploading to DarkLion…</span>
+  </div>
+
+  <script>
+'use strict';
+
+let currentFilePath = null;
+let selectedClient = null;
+let searchTimer = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  populateYearDropdown();
+  window.electronAPI.onJobReady(({ filePath, jobName }) => {
+    currentFilePath = filePath;
+    document.getElementById('docName').value = jobName || 'Document';
+    document.getElementById('jobLabel').textContent = 'From: ' + (jobName || 'Unknown Job');
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-wrap')) hideResults();
+  });
+});
+
+function populateYearDropdown() {
+  const sel = document.getElementById('year');
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= currentYear - 4; y--) {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    sel.appendChild(opt);
+  }
+}
+
+function onSearchInput() {
+  const q = document.getElementById('clientSearch').value.trim();
+  if (searchTimer) clearTimeout(searchTimer);
+  if (q.length < 2) { hideResults(); return; }
+  searchTimer = setTimeout(() => runSearch(q), 250);
+}
+
+async function runSearch(q) {
+  try {
+    const results = await window.electronAPI.search(q);
+    renderResults(results);
+  } catch (err) {
+    setStatus('Search failed: ' + err.message, 'error');
+  }
+}
+
+function renderResults(data) {
+  const container = document.getElementById('clientResults');
+  container.innerHTML = '';
+  const items = [];
+  (data.people || []).forEach(p => items.push({ id: p.id, type: 'person', label: p.full_name || p.name || 'Person #' + p.id, sub: p.email || '' }));
+  (data.companies || []).forEach(c => items.push({ id: c.id, type: 'company', label: c.name || 'Company #' + c.id, sub: '' }));
+  (data.relationships || []).forEach(r => items.push({ id: r.id, type: 'relationship', label: r.name || r.display_name || 'Household #' + r.id, sub: '' }));
+  if (items.length === 0) {
+    container.innerHTML = '<div class="result-item" style="color:#64748b;cursor:default;">No results found</div>';
+    container.style.display = 'block';
+    return;
+  }
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    const badge = item.type === 'relationship' ? 'household' : item.type;
+    div.innerHTML = '<span class="type-badge type-' + item.type + '">' + badge + '</span> <span>' + escapeHtml(item.label) + '</span>' + (item.sub ? '<span style="color:#64748b;font-size:11px;margin-left:auto">' + escapeHtml(item.sub) + '</span>' : '');
+    div.addEventListener('click', () => selectClient(item));
+    container.appendChild(div);
+  });
+  container.style.display = 'block';
+}
+
+function hideResults() { document.getElementById('clientResults').style.display = 'none'; }
+
+function selectClient(item) {
+  selectedClient = item;
+  document.getElementById('clientSearch').style.display = 'none';
+  document.getElementById('selectedClient').style.display = 'flex';
+  document.getElementById('selectedName').textContent = item.label;
+  hideResults();
+  updateUploadButton();
+}
+
+function clearClient() {
+  selectedClient = null;
+  document.getElementById('clientSearch').style.display = 'block';
+  document.getElementById('clientSearch').value = '';
+  document.getElementById('clientSearch').focus();
+  document.getElementById('selectedClient').style.display = 'none';
+  updateUploadButton();
+}
+
+function updateUploadButton() {
+  document.getElementById('uploadBtn').disabled = !selectedClient || !currentFilePath;
+}
+
+async function doUpload() {
+  if (!selectedClient || !currentFilePath) return;
+  const displayName = document.getElementById('docName').value.trim() || 'Document';
+  const year = document.getElementById('year').value;
+  const category = document.getElementById('category').value;
+  const section = document.getElementById('section').value;
+  document.getElementById('uploading').classList.add('show');
+  document.getElementById('uploadBtn').disabled = true;
+  setStatus('');
+  try {
+    await window.electronAPI.upload({
+      filePath: currentFilePath,
+      ownerType: selectedClient.type,
+      ownerId: selectedClient.id,
+      year, folderSection: section, folderCategory: category,
+      displayName: displayName.endsWith('.pdf') ? displayName : displayName + '.pdf',
+    });
+    window.electronAPI.uploadComplete(currentFilePath);
+  } catch (err) {
+    document.getElementById('uploading').classList.remove('show');
+    document.getElementById('uploadBtn').disabled = false;
+    setStatus('Upload failed: ' + (err.message || 'Unknown error'), 'error');
+  }
+}
+
+function doCancel() { window.electronAPI.cancel(currentFilePath); }
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+  </script>
+</body>
+</html>

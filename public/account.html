@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Account security</title>
+    <link rel="stylesheet" href="/public-offer.css" />
+    <meta name="referrer" content="same-origin" />
+    <script defer src="/js/portal-session.js?v=s3c-20261009"></script>
+    <script defer src="/public-offer.js?v=s3c-20261009"></script>
+    <script defer src="/account.js?v=s3c-20261009"></script>
+  </head>
+  <body>
+    <header>
+      <a class="wordmark" id="wordmark" href="/"></a>
+      <nav>
+        <a id="workspace-link" href="/workspace-setup">Workspace setup</a
+        ><a id="return-link" href="/today">Back to workspace</a>
+      </nav>
+    </header>
+    <main>
+      <span class="eyebrow">Your account</span>
+      <h1>Keep your access secure.</h1>
+      <p class="lead">
+        Manage your authenticator, signed-in devices, and personal data
+        requests.
+      </p>
+      <div
+        id="status"
+        class="status"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+      <div class="grid">
+        <section class="card">
+          <span class="step">01 / TWO-STEP VERIFICATION</span>
+          <h2>Authenticator</h2>
+          <p id="mfa-state">Loading your security settings…</p>
+          <div id="setup">
+            <label for="password">Current password</label
+            ><input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+            /><button id="begin">Set up authenticator</button>
+          </div>
+          <div id="confirm" hidden>
+            <p>
+              Add this key to your authenticator app as a time-based account.
+            </p>
+            <pre id="secret"></pre>
+            <a id="authenticator-link">Open authenticator</a
+            ><label for="code">Six-digit code</label
+            ><input
+              id="code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+            /><button id="enable">Verify and enable</button>
+          </div>
+          <div id="recovery" hidden>
+            <h2>Save your recovery codes</h2>
+            <p>
+              Each code works once. Store them somewhere private so you can sign
+              in if you lose your phone.
+            </p>
+            <pre id="recovery-codes"></pre>
+            <button id="download-codes">Download codes</button
+            ><button id="signin" class="secondary">
+              I saved my codes · Sign in again
+            </button>
+          </div>
+        </section>
+        <section class="card">
+          <span class="step">02 / DEVICE ACCESS</span>
+          <h2>Active sessions</h2>
+          <p>
+            End a session you no longer recognize. Devices must sign in again
+            after access is revoked.
+          </p>
+          <div id="sessions" class="rows"></div>
+          <button id="revoke-all" class="secondary">
+            Sign out all devices
+          </button>
+        </section>
+        <section class="card">
+          <span class="step">03 / PASSWORD</span>
+          <h2>Change password</h2>
+          <p>
+            At least 8 characters with an uppercase letter and a number. Every
+            device signs in again afterward.
+          </p>
+          <label for="current-password">Current password</label
+          ><input id="current-password" type="password" autocomplete="current-password" /><label
+            for="new-password"
+            >New password</label
+          ><input id="new-password" type="password" autocomplete="new-password" /><button
+            id="change-password"
+          >
+            Change password
+          </button>
+        </section>
+        <section class="card" id="address-card" hidden>
+          <span class="step">04 / MAILING ADDRESS</span>
+          <h2>Mailing address</h2>
+          <p id="email-note"></p>
+          <label for="address-line1">Street address</label
+          ><input id="address-line1" maxlength="200" autocomplete="address-line1" /><label
+            for="address-line2"
+            >Apartment, suite (optional)</label
+          ><input id="address-line2" maxlength="200" autocomplete="address-line2" /><label
+            for="address-city"
+            >City</label
+          ><input id="address-city" maxlength="100" autocomplete="address-level2" /><label
+            for="address-state"
+            >State</label
+          ><input id="address-state" maxlength="50" autocomplete="address-level1" /><label
+            for="address-zip"
+            >ZIP</label
+          ><input id="address-zip" maxlength="20" autocomplete="postal-code" /><button
+            id="save-address"
+          >
+            Save address
+          </button>
+        </section>
+        <section class="card wide">
+          <span class="step">05 / YOUR INFORMATION</span>
+          <h2>Export or deletion request</h2>
+          <p>
+            Your firm reviews requests and explains any records it must retain.
+            A request does not delete documents automatically.
+          </p>
+          <label for="request-kind">Request</label
+          ><select id="request-kind">
+            <option value="export">A copy of my information</option>
+            <option value="deletion">
+              Delete my account and information
+            </option></select
+          ><label for="request-note">Additional details (optional)</label
+          ><textarea id="request-note" maxlength="1000" rows="3"></textarea
+          ><button id="request">Submit request</button>
+          <div id="requests" class="rows"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,946 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  /* ── PAGE WRAPPER ── */
+  .ps-wrap { padding: 1.5rem 2rem; max-width: 1400px; }
+  .ps-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+  .ps-back { font-size: 0.82rem; color: var(--muted); text-decoration: none; padding: 0.3rem 0.5rem; border-radius: 5px; transition: color 0.15s; }
+  .ps-back:hover { color: var(--gold); }
+  .ps-title { font-size: 1.2rem; font-weight: 800; flex: 1; }
+  .ps-subtitle { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+
+  /* ── SECTION HEADERS ── */
+  .ps-section { margin-bottom: 2rem; }
+  .ps-section-title { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+
+  /* ── STAGE GRID ── */
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  @media (min-width: 1200px) {
+    .stage-grid { grid-template-columns: repeat(5, 1fr); }
+  }
+  .stage-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    position: relative;
+    cursor: grab;
+    transition: opacity 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .stage-card:active { cursor: grabbing; }
+  .stage-card.dragging { opacity: 0.4; }
+  .stage-card.drag-over {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(201,168,76,0.3);
+  }
+  .stage-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .stage-color-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--gold);
+  }
+  .stage-name-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    outline: none;
+    padding: 0.2rem 0.3rem;
+    border-radius: 4px;
+    transition: background 0.15s, border 0.15s;
+    min-width: 0;
+  }
+  .stage-name-input:hover { background: rgba(255,255,255,0.04); }
+  .stage-name-input:focus { background: var(--charcoal); border: 1px solid var(--gold); padding: 0.15rem 0.3rem; }
+  .stage-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .stage-action-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.3rem;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+    line-height: 1;
+  }
+  .stage-action-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .stage-action-btn.danger:hover { color: var(--red); background: rgba(245,101,101,0.08); }
+  .stage-terminal-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .stage-terminal-label input[type=checkbox] { cursor: pointer; accent-color: var(--gold); }
+  .stage-terminal-label.is-terminal { color: var(--gold); }
+
+  /* ── ADD STAGE ROW ── */
+  .add-stage-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.25rem;
+  }
+  .add-stage-input {
+    flex: 1;
+    max-width: 280px;
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.45rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .add-stage-input:focus { border-color: var(--gold); }
+  .add-stage-input::placeholder { color: var(--muted); }
+
+  /* ── AUTOMATION CARDS ── */
+  .auto-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .auto-card-header {
+    padding: 0.6rem 1rem;
+    background: rgba(0,0,0,0.12);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+  }
+  .auto-card-body {
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr;
+    align-items: start;
+  }
+  .auto-col {
+    padding: 0.85rem 1rem;
+  }
+  .auto-col-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem 0;
+    color: var(--gold);
+    font-size: 1.3rem;
+    align-self: center;
+  }
+  .auto-col-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.6rem;
+  }
+  .at-stage-color { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); margin-right: 0.4rem; vertical-align: middle; }
+  .at-stage-name { font-weight: 600; font-size: 0.85rem; }
+
+  /* ── TRIGGER CHIPS ── */
+  .trigger-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+  }
+  .trigger-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 12px;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--gold);
+  }
+  .trigger-chip-remove {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0;
+    line-height: 1;
+    margin-left: 0.1rem;
+  }
+  .trigger-chip-remove:hover { color: var(--red); }
+  .trigger-add-select {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .trigger-add-select:focus { border-color: var(--gold); }
+
+  /* ── ACTIONS CELL ── */
+  .action-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    margin-bottom: 0.35rem;
+  }
+  .action-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 12px;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--gold);
+  }
+  .action-chip-edit {
+    background: none;
+    border: none;
+    color: var(--gold);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    line-height: 1.2;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .action-chip-edit:hover { color: var(--gold-light); text-decoration: underline; }
+  .action-chip-remove {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0;
+    line-height: 1;
+    margin-left: 0.1rem;
+  }
+  .action-chip-remove:hover { color: var(--red); }
+  .action-add-select {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .action-add-select:focus { border-color: var(--gold); }
+
+  /* ── ACTION FORM (inline) ── */
+  .action-form {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+  .action-form label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.1rem;
+    display: block;
+  }
+  .action-form input[type=text],
+  .action-form textarea,
+  .action-form select {
+    width: 100%;
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .action-form input:focus,
+  .action-form textarea:focus { border-color: var(--gold); }
+  .action-form textarea { resize: vertical; min-height: 60px; }
+  .action-form-actions { display: flex; gap: 0.4rem; justify-content: flex-end; margin-top: 0.15rem; }
+  .action-merge-hint {
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .action-assignees { display: flex; flex-direction: column; gap: 0.25rem; max-height: 120px; overflow-y: auto; }
+  .action-assignee-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .action-assignee-item input[type=checkbox] { accent-color: var(--gold); cursor: pointer; }
+
+  /* ── LOADING / EMPTY ── */
+  .ps-loading { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); padding: 2rem 0; font-size: 0.88rem; }
+  .ps-empty { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; }
+</style>
+
+<div class="ps-wrap">
+  <!-- Header -->
+  <div class="ps-header">
+    <a class="ps-back" id="back-to-pipeline" href="/pipelines">← Back to Pipeline</a>
+    <span style="color:var(--border);">|</span>
+    <div>
+      <div class="ps-title" id="ps-pipeline-name"><span style="color:var(--muted);">Loading…</span></div>
+      <div class="ps-subtitle">Pipeline Settings</div>
+    </div>
+  </div>
+
+  <!-- ══ YEAR SETTINGS (Default Year + Copy to Year) ══ -->
+  <div class="ps-section">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1.1rem;">
+      <!-- Default Year -->
+      <div style="display:flex;flex-direction:column;gap:0.3rem;min-width:160px;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">📅 Default Year</div>
+        <select id="default-year-sel" class="add-stage-input" style="max-width:140px;" onchange="saveDefaultYear(this.value)">
+          <option value="">No default</option>
+        </select>
+        <span style="font-size:0.72rem;color:var(--muted);">Opens to this year by default.</span>
+      </div>
+      <!-- Divider -->
+      <div style="border-left:1px solid var(--border);padding-left:1rem;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">📋 Copy to Another Year</div>
+        <div style="font-size:0.76rem;color:var(--muted);margin-bottom:0.6rem;">Duplicate this pipeline's stages, triggers &amp; actions into a new year's instance.</div>
+        <div style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap;">
+          <input type="number" id="copy-year-input" min="2020" max="2040" placeholder="e.g. 2026"
+            style="background:var(--charcoal);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.84rem;outline:none;width:110px;" />
+          <button class="btn btn-gold btn-sm" onclick="copyPipelineToYear()">Copy →</button>
+          <span id="copy-year-msg" style="font-size:0.76rem;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STAGE GRID ══ -->
+  <div class="ps-section">
+    <div class="ps-section-title">🗂️ Stages</div>
+    <div class="stage-grid" id="stage-grid">
+      <div class="ps-loading"><div class="loading-spinner"></div> Loading stages…</div>
+    </div>
+    <div class="add-stage-row">
+      <input type="text" id="new-stage-input" class="add-stage-input" placeholder="New stage name…" onkeydown="if(event.key==='Enter')addStage()" />
+      <button class="btn btn-gold btn-sm" onclick="addStage()">+ Add Stage</button>
+    </div>
+  </div>
+
+  <!-- ══ AUTOMATION ══ -->
+  <div class="ps-section">
+    <div class="ps-section-title">⚡ Automation</div>
+    <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1.25rem;font-size:0.82rem;color:var(--muted);line-height:1.6;">
+      <strong style="color:var(--gold);">How it works:</strong>
+      A <strong style="color:var(--text);">Trigger</strong> fires automatically (e.g. tax return sent) and moves a client's card into the Stage.
+      Once the card lands, the Stage's <strong style="color:var(--text);">Actions</strong> run — like sending a portal message or creating a staff task.
+    </div>
+    <div id="automation-list" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div class="ps-loading"><div class="loading-spinner"></div> Loading…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  if (!token) { window.location.replace('/login'); return; }
+
+  // Extract instanceId from URL: /pipelines/:instanceId/settings
+  var pathParts = window.location.pathname.split('/');
+  var instanceId = pathParts[2]; // /pipelines/{instanceId}/settings
+
+  var templateId = null;
+  var stages = [];
+  var availableTriggers = [];
+  var smartStageConfigs = {}; // stageId -> [{ configId, triggerKey }]
+  var stageActions = {}; // stageId -> [action]
+  var firmTeam = []; // [{ id, name, display_name }]
+  var activeActionForm = null; // { stageId, type, actionId, config } — which inline form is open
+
+  // ── Update "Back to Pipeline" link ──
+  document.getElementById('back-to-pipeline').href = '/pipelines?instance=' + instanceId;
+
+  // ── Utility ──
+  function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function apiPipelines(method, path, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    return fetch('/api/pipelines' + path, opts).then(function(r) {
+      if (r.status === 401) { localStorage.removeItem('dl_token'); window.location.replace('/login'); throw new Error('Unauthorized'); }
+      if (!r.ok) return r.text().then(function(t) { var msg; try { msg = JSON.parse(t).error; } catch(e2) { msg = r.status === 503 ? 'Server is starting up, please try again' : (t.slice(0,120) || 'Request failed'); } throw new Error(msg); });
+      return r.json();
+    });
+  }
+  function apiTriggers(method, path, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    return fetch('/api/pipeline-triggers' + path, opts).then(function(r) {
+      if (!r.ok) return r.text().then(function(t) { var msg; try { msg = JSON.parse(t).error; } catch(e2) { msg = r.status === 503 ? 'Server is starting up, please try again' : (t.slice(0,120) || 'Request failed'); } throw new Error(msg); });
+      return r.json();
+    });
+  }
+  function apiActions(method, path, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    return fetch('/api/pipeline-actions' + path, opts).then(function(r) {
+      if (!r.ok) return r.text().then(function(t) { var msg; try { msg = JSON.parse(t).error; } catch(e2) { msg = r.status === 503 ? 'Server is starting up, please try again' : (t.slice(0,120) || 'Request failed'); } throw new Error(msg); });
+      return r.json();
+    });
+  }
+
+  // ── LOAD PAGE DATA ──
+  function loadAll() {
+    Promise.all([
+      apiPipelines('GET', '/instances/' + instanceId),
+      apiTriggers('GET', ''),
+      apiTriggers('GET', '/stage-config/' + instanceId),
+      apiActions('GET', '/' + instanceId),
+      fetch('/firms/team', { headers: { 'Authorization': 'Bearer ' + token } }).then(function(r) { return r.ok ? r.json() : []; })
+    ]).then(function(results) {
+      var instance = results[0];
+      availableTriggers = results[1] || [];
+      var configs = results[2] || [];
+      stageActions = results[3] || {};
+      firmTeam = results[4] || [];
+
+      templateId = instance.template_id;
+      stages = instance.stages || [];
+
+      // Set page title
+      var tmplName = (instance.template && instance.template.name) || instance.name || 'Pipeline';
+      var nameParts = [tmplName];
+      if (instance.tax_year) nameParts.push(instance.tax_year);
+      document.getElementById('ps-pipeline-name').textContent = nameParts.join(' · ');
+      document.title = nameParts.join(' · ') + ' Settings — DarkLion';
+
+      // Populate default year selector (current year ± 3)
+      var defaultYear = (instance.template && instance.template.default_year) || '';
+      var yearSel = document.getElementById('default-year-sel');
+      var thisYear = new Date().getFullYear();
+      for (var y = thisYear - 2; y <= thisYear + 3; y++) {
+        var opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (String(y) === String(defaultYear)) opt.selected = true;
+        yearSel.appendChild(opt);
+      }
+
+      // Parse trigger configs
+      smartStageConfigs = {};
+      configs.forEach(function(c) {
+        if (!smartStageConfigs[c.stage_id]) smartStageConfigs[c.stage_id] = [];
+        smartStageConfigs[c.stage_id].push({ configId: c.id, triggerKey: c.trigger_key });
+      });
+
+      renderStageGrid();
+      renderAutomationTable();
+    }).catch(function(e) {
+      document.getElementById('stage-grid').innerHTML = '<div class="ps-empty">Failed to load: ' + esc(e.message) + '</div>';
+      document.getElementById('automation-list').innerHTML = '<div class="ps-empty">Failed to load.</div>';
+    });
+  }
+
+  // ── STAGE GRID ──
+  function renderStageGrid() {
+    if (!stages.length) {
+      document.getElementById('stage-grid').innerHTML = '<div class="ps-empty">No stages yet. Add one below.</div>';
+      return;
+    }
+    var lastStageId = stages.length ? stages[stages.length - 1].id : null;
+    var html = stages.map(function(s) {
+      var color = s.color || '#c9a84c';
+      var terminalClass = s.is_terminal ? ' is-terminal' : '';
+      var terminalChecked = s.is_terminal ? ' checked' : '';
+      // Last stage is always terminal — show hold option on it
+      var isLast = s.id === lastStageId;
+      var holdChecked = s.hold_for_migration ? ' checked' : '';
+      var terminalHtml = isLast
+        ? '<div style="padding:0.4rem 0.5rem;border-top:1px solid rgba(255,255,255,0.05);">' +
+            '<div style="font-size:0.7rem;color:var(--gold);font-weight:600;margin-bottom:0.35rem;">🏁 Final stage</div>' +
+            '<label style="display:flex;align-items:center;gap:0.4rem;font-size:0.72rem;color:var(--muted);cursor:pointer;" title="Hold card here instead of archiving — migrate to next year\'s pipeline">' +
+              '<input type="checkbox"' + holdChecked + ' onchange="toggleHoldForMigration(' + s.id + ', this.checked)" style="cursor:pointer;accent-color:var(--gold);" />' +
+              '♻️ Hold card for migration' +
+            '</label>' +
+          '</div>'
+        : '';
+      return '<div class="stage-card" data-stage-id="' + s.id + '" draggable="true">' +
+        '<div class="stage-card-head">' +
+          '<span class="stage-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);font-size:0.85rem;flex-shrink:0;">⠿</span>' +
+          '<span class="stage-color-dot" style="background:' + esc(color) + ';"></span>' +
+          '<input type="text" class="stage-name-input" value="' + esc(s.name) + '" ' +
+            'onblur="renameStage(' + s.id + ', this)" ' +
+            'onkeydown="if(event.key===\'Enter\')this.blur()" ' +
+            'title="Click to rename" />' +
+        '</div>' +
+        terminalHtml +
+        '<div class="stage-card-actions">' +
+          '<button class="stage-action-btn" onclick="focusRename(' + s.id + ')" title="Rename">✏️</button>' +
+          '<button class="stage-action-btn danger" onclick="deleteStage(' + s.id + ')" title="Delete stage">🗑️</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    document.getElementById('stage-grid').innerHTML = html;
+    initDragAndDrop();
+  }
+
+  // ── DRAG AND DROP REORDER ──
+  var dragSrcId = null;
+
+  function initDragAndDrop() {
+    var grid = document.getElementById('stage-grid');
+    var cards = grid.querySelectorAll('.stage-card');
+
+    cards.forEach(function(card) {
+      card.addEventListener('dragstart', function(e) {
+        dragSrcId = parseInt(card.getAttribute('data-stage-id'));
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', dragSrcId);
+      });
+
+      card.addEventListener('dragend', function() {
+        card.classList.remove('dragging');
+        grid.querySelectorAll('.stage-card').forEach(function(c) { c.classList.remove('drag-over'); });
+      });
+
+      card.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        var targetId = parseInt(card.getAttribute('data-stage-id'));
+        if (targetId !== dragSrcId) {
+          grid.querySelectorAll('.stage-card').forEach(function(c) { c.classList.remove('drag-over'); });
+          card.classList.add('drag-over');
+        }
+      });
+
+      card.addEventListener('dragleave', function() {
+        card.classList.remove('drag-over');
+      });
+
+      card.addEventListener('drop', function(e) {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        var targetId = parseInt(card.getAttribute('data-stage-id'));
+        if (!dragSrcId || dragSrcId === targetId) return;
+
+        // Reorder stages array
+        var srcIdx = stages.findIndex(function(s) { return s.id === dragSrcId; });
+        var tgtIdx = stages.findIndex(function(s) { return s.id === targetId; });
+        if (srcIdx === -1 || tgtIdx === -1) return;
+
+        var moved = stages.splice(srcIdx, 1)[0];
+        stages.splice(tgtIdx, 0, moved);
+
+        // Update positions
+        stages.forEach(function(s, i) { s.position = i; });
+
+        renderStageGrid();
+        renderAutomationTable();
+
+        // Persist to server
+        var orderedIds = stages.map(function(s) { return s.id; });
+        apiPipelines('PUT', '/templates/' + templateId + '/stages/reorder', { stageIds: orderedIds })
+          .then(function() { window.toast && window.toast('Stage order saved'); })
+          .catch(function(e) { window.toast && window.toast('Failed to save order: ' + e.message, 'error'); });
+      });
+    });
+  }
+
+  // ── AUTOMATION TABLE ──
+  function renderAutomationTable() {
+    var container = document.getElementById('automation-list');
+    if (!stages.length) {
+      container.innerHTML = '<div class="ps-empty" style="grid-column:1/-1;">Add stages above to configure automation.</div>';
+      return;
+    }
+
+    // Build grouped triggers for dropdowns
+    var byCategory = {};
+    availableTriggers.forEach(function(t) {
+      if (!byCategory[t.category]) byCategory[t.category] = [];
+      byCategory[t.category].push(t);
+    });
+
+    var cards = stages.map(function(s) {
+      var cfgs = smartStageConfigs[s.id] || [];
+      var color = s.color || '#c9a84c';
+
+      // Trigger chips
+      var chips = cfgs.map(function(c) {
+        var label = (availableTriggers.find(function(t) { return t.key === c.triggerKey; }) || {}).label || c.triggerKey;
+        return '<div class="trigger-chip">' +
+          '⚡ ' + esc(label) +
+          '<button class="trigger-chip-remove" onclick="removeTrigger(' + c.configId + ',' + s.id + ')" title="Remove">×</button>' +
+          '</div>';
+      }).join('');
+
+      // Add trigger dropdown
+      var usedKeys = cfgs.map(function(c) { return c.triggerKey; });
+      var addOpts = '<option value="">+ Add trigger…</option>';
+      Object.keys(byCategory).sort().forEach(function(cat) {
+        var catOpts = byCategory[cat].filter(function(t) { return usedKeys.indexOf(t.key) === -1; });
+        if (!catOpts.length) return;
+        addOpts += '<optgroup label="' + esc(cat) + '">';
+        catOpts.forEach(function(t) { addOpts += '<option value="' + esc(t.key) + '">' + esc(t.label) + '</option>'; });
+        addOpts += '</optgroup>';
+      });
+      var addTriggerEl = cfgs.length >= 2
+        ? '<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">Max 2 triggers</span>'
+        : '<select class="trigger-add-select" id="trigger-sel-' + s.id + '" style="width:100%;" onchange="addTrigger(' + s.id + ', this)">' + addOpts + '</select>';
+
+      return '<div class="auto-card">' +
+        '<div class="auto-card-header">' +
+          '<span class="at-stage-color" style="background:' + esc(color) + ';"></span>' +
+          '<span>' + esc(s.name) + '</span>' +
+          (s.hold_for_migration ? '<span style="margin-left:auto;font-size:0.7rem;background:rgba(74,144,217,0.12);color:#4a90d9;border-radius:4px;padding:0.1rem 0.4rem;font-weight:700;">♻️ Hold for Migration</span>' : (s.is_terminal ? '<span style="margin-left:auto;font-size:0.7rem;background:rgba(62,207,142,0.12);color:var(--green);border-radius:4px;padding:0.1rem 0.4rem;font-weight:700;">🏁 Terminal</span>' : '')) +
+        '</div>' +
+        '<div class="auto-card-body">' +
+          '<div class="auto-col">' +
+            '<div class="auto-col-label">⚡ Triggers — move card here when…</div>' +
+            '<div class="trigger-chips" id="chips-' + s.id + '" style="flex-direction:column;">' +
+              chips + addTriggerEl +
+            '</div>' +
+          '</div>' +
+          '<div class="auto-col-arrow">→</div>' +
+          '<div class="auto-col" id="actions-cell-' + s.id + '">' +
+            renderActionsCell(s.id) +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    container.innerHTML = cards;
+  }
+
+  // ── STAGE ACTIONS ──
+  window.focusRename = function(stageId) {
+    var card = document.querySelector('[data-stage-id="' + stageId + '"]');
+    if (card) { var inp = card.querySelector('.stage-name-input'); if (inp) { inp.focus(); inp.select(); } }
+  };
+
+  window.renameStage = function(stageId, inputEl) {
+    var name = inputEl.value.trim();
+    if (!name) { inputEl.value = (stages.find(function(s) { return s.id === stageId; }) || {}).name || ''; return; }
+    var stage = stages.find(function(s) { return s.id === stageId; });
+    if (stage && stage.name === name) return; // no change
+    apiPipelines('PUT', '/templates/' + templateId + '/stages/' + stageId, { name: name })
+      .then(function() {
+        if (stage) stage.name = name;
+        // Re-render automation cards to reflect name change
+        renderAutomationTable();
+        window.toast && window.toast('Stage renamed');
+      })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  window.toggleHoldForMigration = function(stageId, hold) {
+    var stage = stages.find(function(s) { return s.id === stageId; });
+    apiPipelines('PUT', '/templates/' + templateId + '/stages/' + stageId, { hold_for_migration: hold })
+      .then(function(updated) {
+        if (stage) stage.hold_for_migration = updated.hold_for_migration;
+        renderAutomationTable();
+        window.toast && window.toast(hold ? '♻️ Card will be held for migration' : '🗑️ Card will archive on completion');
+      }).catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  window.copyPipelineToYear = function() {
+    var year = (document.getElementById('copy-year-input').value || '').trim();
+    var migrateHeld = false;
+    var msgEl = document.getElementById('copy-year-msg');
+    if (!year || isNaN(parseInt(year))) {
+      msgEl.style.color = 'var(--red)'; msgEl.textContent = 'Please enter a valid year.'; return;
+    }
+    msgEl.style.color = 'var(--muted)'; msgEl.textContent = 'Creating…';
+    fetch('/api/pipelines/instances/' + instanceId + '/copy-to-year', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ tax_year: year, migrate_held: migrateHeld })
+    }).then(function(r) {
+      return r.json().then(function(data) { return { ok: r.ok, data: data }; });
+    }).then(function(res) {
+      if (!res.ok) { msgEl.style.color = 'var(--red)'; msgEl.textContent = res.data.error || 'Failed'; return; }
+      var migratedMsg = migrateHeld && res.data.migrated_cards > 0 ? ' Migrated ' + res.data.migrated_cards + ' card(s).' : '';
+      msgEl.style.color = 'var(--green)';
+      msgEl.textContent = '✓ ' + year + ' pipeline created.' + migratedMsg;
+      document.getElementById('copy-year-input').value = '';
+      document.getElementById('copy-migrate-held').checked = false;
+    }).catch(function(e) { msgEl.style.color = 'var(--red)'; msgEl.textContent = 'Error: ' + e.message; });
+  };
+
+  window.deleteStage = async function(stageId) {
+    if (!await window.dlConfirm('Delete this stage? Jobs in this stage will be moved to the first stage.', { title: 'Delete Stage', confirmLabel: 'Delete', danger: true, icon: '⚠️' })) return;
+    apiPipelines('DELETE', '/templates/' + templateId + '/stages/' + stageId)
+      .then(function() {
+        stages = stages.filter(function(s) { return s.id !== stageId; });
+        if (smartStageConfigs[stageId]) delete smartStageConfigs[stageId];
+        renderStageGrid();
+        renderAutomationTable();
+        window.toast && window.toast('Stage deleted');
+      })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  window.addStage = function() {
+    var input = document.getElementById('new-stage-input');
+    var name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    apiPipelines('POST', '/templates/' + templateId + '/stages', { name: name, position: 999 })
+      .then(function(newStage) {
+        input.value = '';
+        stages.push(newStage);
+        renderStageGrid();
+        renderAutomationTable();
+        window.toast && window.toast('Stage added');
+      })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  // ── DEFAULT YEAR ──
+  window.saveDefaultYear = function(year) {
+    apiPipelines('PUT', '/templates/' + templateId, { default_year: year || null })
+      .then(function() { window.toast && window.toast(year ? '📅 Default year set to ' + year : 'Default year cleared'); })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  // ── ACTIONS CELL RENDERING ──
+  function renderActionsCell(stageId) {
+    var actions = stageActions[stageId] || [];
+    var chips = actions.map(function(a) {
+      var config = a.config || {};
+      var label = a.action_type === 'portal_message'
+        ? '📩 ' + (config.subject || 'Client Message')
+        : '📋 ' + (config.name || 'Staff Task');
+      return '<span class="action-chip">' +
+        '<button class="action-chip-edit" onclick="editAction(' + a.id + ',' + stageId + ')" title="View / edit action">' + esc(label) + '</button>' +
+        '<button class="action-chip-remove" onclick="removeAction(' + a.id + ',' + stageId + ')" title="Remove">×</button>' +
+        '</span>';
+    }).join('');
+
+    var addSelect = '<select class="action-add-select" id="action-sel-' + stageId + '" style="width:100%;" onchange="openActionForm(' + stageId + ', this)">' +
+      '<option value="">+ Add action…</option>' +
+      '<option value="portal_message">📩 Client Message</option>' +
+      '<option value="staff_task">📋 Staff Task</option>' +
+      '</select>';
+
+    var formHtml = '';
+    if (activeActionForm && activeActionForm.stageId === stageId) {
+      formHtml = buildActionForm(stageId, activeActionForm.type, activeActionForm);
+    }
+
+    return '<div class="auto-col-label">🎯 Actions — fire when card arrives…</div>' +
+      '<div class="action-chips">' + chips + addSelect + '</div>' + formHtml;
+  }
+
+  function buildActionForm(stageId, type, formState) {
+    formState = formState || {};
+    var config = formState.config || {};
+    var editing = !!formState.actionId;
+    var heading = editing ? '<div style="font-size:0.72rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Editing existing action</div>' : '';
+    if (type === 'portal_message') {
+      return '<div class="action-form" id="action-form-' + stageId + '">' +
+        heading +
+        '<div><label>Subject (optional)</label>' +
+        '<input type="text" id="af-subject-' + stageId + '" placeholder="e.g. Your return is ready" value="' + esc(config.subject || '') + '" /></div>' +
+        '<div><label>Message Body</label>' +
+        '<textarea id="af-body-' + stageId + '" placeholder="Hi {First Name}, your documents are ready…">' + esc(config.body || '') + '</textarea>' +
+        '<div class="action-merge-hint">Tags: {First Name} {Last Name} {Full Name} {Entity Name} {Tax Year} {Pipeline Name} {Stage Name}</div>' +
+        '</div>' +
+        '<div class="action-form-actions">' +
+        '<button class="btn btn-outline btn-sm" onclick="cancelActionForm(' + stageId + ')">Cancel</button>' +
+        '<button class="btn btn-gold btn-sm" onclick="saveAction(' + stageId + ', \'portal_message\')">' + (editing ? 'Update' : 'Save') + '</button>' +
+        '</div>' +
+        '</div>';
+    } else {
+      var selectedAssignees = Array.isArray(config.assignees) ? config.assignees.map(function(id) { return Number(id); }) : [];
+      var assigneeCheckboxes = firmTeam.map(function(u) {
+        var name = esc(u.display_name || u.name || u.email || '');
+        var checked = selectedAssignees.indexOf(Number(u.id)) !== -1 ? ' checked' : '';
+        return '<label class="action-assignee-item">' +
+          '<input type="checkbox" class="af-assignee-' + stageId + '" value="' + u.id + '"' + checked + ' /> ' + name +
+          '</label>';
+      }).join('');
+      return '<div class="action-form" id="action-form-' + stageId + '">' +
+        heading +
+        '<div><label>Task Name</label>' +
+        '<input type="text" id="af-taskname-' + stageId + '" placeholder="e.g. Review {Entity Name}\'s return" value="' + esc(config.name || '') + '" /></div>' +
+        '<div><label>Description (optional)</label>' +
+        '<textarea id="af-taskbody-' + stageId + '" placeholder="Optional details…">' + esc(config.body || '') + '</textarea>' +
+        '</div>' +
+        '<div><label>Assign to</label>' +
+        '<div class="action-assignees">' + (assigneeCheckboxes || '<span style="color:var(--muted);font-size:0.78rem;">No team members found</span>') + '</div>' +
+        '</div>' +
+        '<div class="action-form-actions">' +
+        '<button class="btn btn-outline btn-sm" onclick="cancelActionForm(' + stageId + ')">Cancel</button>' +
+        '<button class="btn btn-gold btn-sm" onclick="saveAction(' + stageId + ', \'staff_task\')">' + (editing ? 'Update' : 'Save') + '</button>' +
+        '</div>' +
+        '</div>';
+    }
+  }
+
+  function refreshActionsCell(stageId) {
+    var cell = document.getElementById('actions-cell-' + stageId);
+    if (cell) cell.innerHTML = renderActionsCell(stageId);
+  }
+
+  window.openActionForm = function(stageId, selectEl) {
+    var type = selectEl.value;
+    if (!type) return;
+    selectEl.value = '';
+    activeActionForm = { stageId: stageId, type: type };
+    refreshActionsCell(stageId);
+  };
+
+  window.editAction = function(actionId, stageId) {
+    var action = (stageActions[stageId] || []).find(function(a) { return Number(a.id) === Number(actionId); });
+    if (!action) return;
+    activeActionForm = {
+      stageId: stageId,
+      type: action.action_type,
+      actionId: action.id,
+      config: action.config || {},
+      position: action.position,
+    };
+    refreshActionsCell(stageId);
+  };
+
+  window.cancelActionForm = function(stageId) {
+    activeActionForm = null;
+    refreshActionsCell(stageId);
+  };
+
+  window.saveAction = function(stageId, type) {
+    var config = {};
+    if (type === 'portal_message') {
+      var subject = (document.getElementById('af-subject-' + stageId) || {}).value || '';
+      var body = (document.getElementById('af-body-' + stageId) || {}).value || '';
+      if (!body.trim()) { window.toast && window.toast('Message body is required', 'error'); return; }
+      config = { subject: subject.trim(), body: body.trim() };
+    } else {
+      var taskName = (document.getElementById('af-taskname-' + stageId) || {}).value || '';
+      var taskBody = (document.getElementById('af-taskbody-' + stageId) || {}).value || '';
+      if (!taskName.trim()) { window.toast && window.toast('Task name is required', 'error'); return; }
+      var assigneeCheckboxes = document.querySelectorAll('.af-assignee-' + stageId + ':checked');
+      var assignees = Array.from(assigneeCheckboxes).map(function(cb) { return parseInt(cb.value); });
+      config = { name: taskName.trim(), body: taskBody.trim(), assignees: assignees };
+    }
+
+    var isEditing = activeActionForm && activeActionForm.actionId;
+    var request = isEditing
+      ? apiActions('PUT', '/' + activeActionForm.actionId, { config: config, position: activeActionForm.position })
+      : apiActions('POST', '', {
+          pipeline_instance_id: parseInt(instanceId),
+          stage_id: stageId,
+          action_type: type,
+          config: config,
+        });
+
+    request.then(function(savedAction) {
+      if (!stageActions[stageId]) stageActions[stageId] = [];
+      if (isEditing) {
+        stageActions[stageId] = stageActions[stageId].map(function(a) { return a.id === savedAction.id ? savedAction : a; });
+      } else {
+        stageActions[stageId].push(savedAction);
+      }
+      activeActionForm = null;
+      refreshActionsCell(stageId);
+      window.toast && window.toast(isEditing ? '✅ Action updated' : '✅ Action saved');
+    }).catch(function(e) {
+      window.toast && window.toast('Failed: ' + e.message, 'error');
+    });
+  };
+
+  window.removeAction = function(actionId, stageId) {
+    apiActions('DELETE', '/' + actionId)
+      .then(function() {
+        if (stageActions[stageId]) {
+          stageActions[stageId] = stageActions[stageId].filter(function(a) { return a.id !== actionId; });
+        }
+        refreshActionsCell(stageId);
+        window.toast && window.toast('Action removed');
+      })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  // ── TRIGGER ACTIONS ──
+  window.addTrigger = function(stageId, selectEl) {
+    var triggerKey = selectEl.value;
+    if (!triggerKey) return;
+    apiTriggers('POST', '/stage-config', { pipeline_instance_id: instanceId, stage_id: stageId, trigger_key: triggerKey })
+      .then(function(cfg) {
+        if (!smartStageConfigs[stageId]) smartStageConfigs[stageId] = [];
+        smartStageConfigs[stageId].push({ configId: cfg.id, triggerKey: cfg.trigger_key });
+        renderAutomationTable();
+        window.toast && window.toast('⚡ Trigger added');
+      })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); selectEl.value = ''; });
+  };
+
+  window.removeTrigger = function(configId, stageId) {
+    apiTriggers('DELETE', '/stage-config/' + configId)
+      .then(function() {
+        if (smartStageConfigs[stageId]) {
+          smartStageConfigs[stageId] = smartStageConfigs[stageId].filter(function(c) { return c.configId !== configId; });
+          if (!smartStageConfigs[stageId].length) delete smartStageConfigs[stageId];
+        }
+        renderAutomationTable();
+        window.toast && window.toast('Trigger removed');
+      })
+      .catch(function(e) { window.toast && window.toast('Failed: ' + e.message, 'error'); });
+  };
+
+  // ── INIT ──
+  if (!instanceId || instanceId === 'settings') {
+    document.getElementById('stage-grid').innerHTML = '<div class="ps-empty">Invalid pipeline URL.</div>';
+  } else {
+    loadAll();
+  }
+
+})();
+</script>
+
+<%- include('partials/shell-globals') %>
+<%- include('partials/shell-close') %>

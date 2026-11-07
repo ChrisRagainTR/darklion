@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="same-origin" />
+  <link rel="icon" type="image/png" href="/lion-logo.png">
+  <link rel="stylesheet" href="/client-portal-screen-gate.css">
+  <script src="/client-portal-screen-gate.js"></script>
+  <title>Client Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --gold: #c9a84c;
+      --gold-light: #e2c068;
+      --text: #e8e8e8;
+      --muted: #8a8fa8;
+      --border: #2a2d3a;
+      --red: #e05555;
+      --green: #3ecf8e;
+      --input-bg: #12151f;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 920px;
+      min-height: 600px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      display: grid;
+      grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.1fr);
+      overflow: hidden;
+    }
+
+    .logo-wrap {
+      text-align: center;
+      margin-bottom: 0;
+      padding: 3rem;
+      background:
+        linear-gradient(145deg, rgba(201,168,76,0.13), transparent 48%),
+        #151823;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .logo-wrap img {
+      width: 104px;
+      height: 104px;
+      object-fit: contain;
+      margin-bottom: 1.15rem;
+    }
+
+    .logo-wrap img[data-logo-style="logo"] { width: 240px; max-width: 100%; }
+
+    .logo-text {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 0;
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+    }
+
+    .logo-wrap::after {
+      content: "Secure messages, documents, uploads, and requests in one client workspace.";
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      max-width: 260px;
+      text-align: center;
+    }
+
+    .firm-name {
+      font-size: 0.82rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .portal-auth-panel {
+      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 1.75rem;
+      line-height: 1.5;
+    }
+
+    .form-group {
+      margin-bottom: 1.1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.03em;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      padding: 0.65rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      border-color: var(--gold);
+    }
+
+    input::placeholder { color: #4a4e62; }
+
+    .password-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+    }
+
+    .field-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      line-height: 1.4;
+    }
+
+    .username-note {
+      background: rgba(201,168,76,0.1);
+      border: 1px solid rgba(201,168,76,0.32);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      margin: -0.6rem 0 1.25rem;
+      padding: 0.75rem 0.85rem;
+      word-break: break-word;
+    }
+
+    .username-note strong {
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--gold);
+      color: #0f1117;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn-primary:hover { background: var(--gold-light); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .msg-box {
+      border-radius: 7px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .msg-box.visible { display: block; }
+
+    .msg-box.error {
+      background: rgba(224,85,85,0.12);
+      border: 1px solid rgba(224,85,85,0.35);
+      color: var(--red);
+    }
+
+    .msg-box.success {
+      background: rgba(62,207,142,0.1);
+      border: 1px solid rgba(62,207,142,0.28);
+      color: var(--green);
+    }
+
+    .forgot-link {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.84rem;
+    }
+
+    .forgot-link a {
+      color: var(--gold);
+      text-decoration: none;
+      opacity: 0.8;
+    }
+
+    .forgot-link a:hover { opacity: 1; text-decoration: underline; }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 1.75rem 0;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .help-note { margin-top: 0.5rem; }
+    .help-note a { color: var(--gold); text-decoration: none; overflow-wrap: anywhere; }
+    .help-note a:hover { text-decoration: underline; }
+
+    .iphone-app-prompt {
+      display: none;
+      border: 1px solid rgba(201,168,76,0.26);
+      background: rgba(201,168,76,0.08);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-top: 1.35rem;
+      text-align: center;
+    }
+
+    .iphone-app-prompt .eyebrow {
+      color: var(--gold);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+
+    .iphone-app-prompt p {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      margin-bottom: 0.75rem;
+    }
+
+    .app-store-badge {
+      display: block;
+      width: 150px;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+      border: 0;
+    }
+
+    /* Loading state */
+    .loading-state {
+      text-align: center;
+      padding: 1.5rem 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15,17,23,0.78);
+      padding: 1.25rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+      padding: 1.5rem;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .modal-head h2 {
+      color: var(--text);
+      font-size: 1.05rem;
+      line-height: 1.3;
+      margin: 0;
+    }
+
+    .modal-head p {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      margin-top: 0.35rem;
+    }
+
+    .modal-close {
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--input-bg);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      border-color: var(--gold);
+      color: var(--text);
+    }
+
+    @media (max-width: 899px) {
+      .login-card {
+        display: block;
+        max-width: 420px;
+        min-height: 0;
+        padding: 2.5rem 2rem;
+      }
+
+      .logo-wrap {
+        display: block;
+        text-align: center;
+        padding: 0;
+        margin-bottom: 1.75rem;
+        background: transparent;
+        border-right: 0;
+      }
+
+      .logo-wrap img {
+        width: 86px;
+        height: 86px;
+        margin-bottom: 0.75rem;
+      }
+
+      .logo-text {
+        font-size: 1.2rem;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.25rem;
+      }
+
+      .logo-wrap::after { display: none; }
+
+      .portal-auth-panel {
+        display: block;
+        padding: 0;
+      }
+
+      .iphone-app-prompt { display: block; }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="client-portal-screen-gate" role="alert" aria-live="polite">
+    <div class="client-portal-screen-gate-stack">
+      <a class="client-portal-app-store-badge-link" href="#" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+        <img class="client-portal-app-store-badge" src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" alt="Download on the App Store" />
+      </a>
+      <div class="client-portal-screen-gate-card">
+        <img class="client-portal-screen-gate-logo" src="/lion-logo.png" alt="Your firm" />
+        <div class="client-portal-screen-gate-kicker">Client Portal</div>
+        <h1>The client portal is designed for larger screens.</h1>
+        <p>For full document and organizer work, please use a desktop or laptop. For iPhone messages, uploads, requests, and notifications, use the app above.</p>
+        <div class="client-portal-screen-gate-note">If you have questions, you can reply directly to any email from our team.</div>
+      </div>
+    </div>
+  </div>
+  <div class="login-card">
+    <div class="logo-wrap">
+      <img src="/lion-logo.png" alt="Your firm" />
+      <div class="logo-text" id="firm-name-display"></div>
+      <div class="firm-name" id="firmName" style="display:none;"></div>
+      <script>
+        if (window.__FIRM__) {
+          document.getElementById('firm-name-display').textContent = window.__FIRM__.name;
+        }
+      </script>
+    </div>
+
+    <div class="portal-auth-panel">
+    <!-- MSG BOX (shared) -->
+    <div class="msg-box error" id="errorMsg"></div>
+    <div class="msg-box success" id="successMsg"></div>
+
+    <!-- LOADING STATE (for invite/reset token lookup) -->
+    <div class="loading-state" id="loadingState" style="display:none;">
+      <div class="spinner"></div><br>Loading…
+    </div>
+
+    <!-- ── LOGIN FORM ── -->
+    <div id="loginView">
+      <h1>Sign In</h1>
+      <p class="subtitle">Access your secure client portal</p>
+
+      <form id="loginForm" method="post" autocomplete="on">
+
+        <div class="form-group">
+          <label for="email">Email Address / Username</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+          <div class="field-hint">Use the email address where you received your invite.</div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+        <div class="form-group" id="mfa-group" hidden>
+          <label for="mfa-code">Authenticator or recovery code</label>
+          <input type="text" id="mfa-code" autocomplete="one-time-code" placeholder="Authentication code" />
+        </div>
+        <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
+      </form>
+
+      <div class="forgot-link">
+        <a href="#" id="forgotLink">Forgot your password?</a>
+      </div>
+
+      <div class="iphone-app-prompt">
+        <div class="eyebrow">iPhone App Available</div>
+        <p>Use your browser for messages, uploads, requests, and documents.</p>
+        <a href="#" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+          <img class="app-store-badge" src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" alt="Download on the App Store" />
+        </a>
+      </div>
+    </div>
+
+    <!-- ── INVITE FORM ── -->
+    <div id="inviteView" style="display:none;">
+      <h1>Set Your Password</h1>
+      <p class="subtitle" id="inviteSubtitle">Create a password for your client portal.</p>
+      <div class="username-note" id="inviteUsernameNote" style="display:none;"></div>
+
+      <form id="inviteForm" method="post" autocomplete="off">
+        <div class="form-group">
+          <label for="invitePassword">New Password</label>
+          <input type="password" id="invitePassword" name="password" placeholder="••••••••" required autocomplete="new-password" />
+          <div class="password-hint">Min. 8 characters, 1 uppercase letter, 1 number</div>
+        </div>
+        <div class="form-group">
+          <label for="inviteConfirm">Confirm Password</label>
+          <input type="password" id="inviteConfirm" name="confirm" placeholder="••••••••" required autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn-primary" id="inviteBtn">Create Account &amp; Sign In</button>
+      </form>
+
+      <div class="iphone-app-prompt">
+        <div class="eyebrow">Next: Add The App</div>
+        <p>After your account is created, install the iPhone app so you can get alerts and message us quickly.</p>
+        <a href="#" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+          <img class="app-store-badge" src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" alt="Download on the App Store" />
+        </a>
+      </div>
+    </div>
+
+    <!-- ── RESET FORM ── -->
+    <div id="resetView" style="display:none;">
+      <h1>Reset Your Password</h1>
+      <p class="subtitle">Choose a new password for your portal account.</p>
+
+      <form id="resetForm" method="post" autocomplete="off">
+        <div class="form-group">
+          <label for="resetPassword">New Password</label>
+          <input type="password" id="resetPassword" name="password" placeholder="••••••••" required autocomplete="new-password" />
+          <div class="password-hint">Min. 8 characters, 1 uppercase letter, 1 number</div>
+        </div>
+        <div class="form-group">
+          <label for="resetConfirm">Confirm Password</label>
+          <input type="password" id="resetConfirm" name="confirm" placeholder="••••••••" required autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn-primary" id="resetBtn">Reset Password &amp; Sign In</button>
+      </form>
+
+      <div class="iphone-app-prompt">
+        <div class="eyebrow">iPhone App Available</div>
+        <p>After resetting your password, sign in with your authenticator if you have enabled one.</p>
+        <a href="#" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+          <img class="app-store-badge" src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" alt="Download on the App Store" />
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <p class="footer-note">Secure portal powered by your advisory firm</p>
+    <p class="footer-note help-note" id="loginHelp">Need help? Reply to any email from our team.</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="forgotModal" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="forgotTitle">Reset Password</h2>
+          <p>Enter the email address for your client portal.</p>
+        </div>
+        <button type="button" class="modal-close" id="forgotClose" aria-label="Close reset password form">×</button>
+      </div>
+      <form id="forgotForm" method="post" autocomplete="on">
+        <div class="form-group">
+          <label for="forgotEmail">Email Address</label>
+          <input type="email" id="forgotEmail" name="email" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+        <button type="submit" class="btn-primary" id="forgotBtn">Send Reset Email</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    if (window.DarkLionPortalScreenGate && window.DarkLionPortalScreenGate.apply()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('invite');
+    const resetToken = params.get('reset');
+    const slugParam = window.__FIRM_SLUG__ || params.get('slug') || '';
+
+    // Already signed in → go to portal. The session is an HttpOnly cookie, so ask the server.
+    // A session saved in this browser before the cookie existed also counts; the portal moves
+    // it into the cookie. After the portal sent us here (session ended), don't bounce back.
+    if (!inviteToken && !resetToken) {
+      let bounced = false;
+      try {
+        bounced = Date.now() - Number(sessionStorage.getItem('portalAuthBounce') || 0) < 15000;
+        sessionStorage.removeItem('portalAuthBounce');
+      } catch (e) {}
+      let legacy = null;
+      try { legacy = localStorage.getItem('portalToken'); } catch (e) {}
+      if (legacy && !bounced) {
+        window.location.href = '/portal';
+        return;
+      }
+      if (!bounced) {
+        fetch('/portal/me', { credentials: 'same-origin' })
+          .then(res => { if (res.ok) window.location.replace('/portal'); })
+          .catch(() => {});
+      }
+    }
+
+    // ── Helpers ─────────────────────────────────────────
+    function showErr(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.classList.add('visible');
+      document.getElementById('successMsg').classList.remove('visible');
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById('successMsg');
+      el.textContent = msg;
+      el.classList.add('visible');
+      document.getElementById('errorMsg').classList.remove('visible');
+    }
+
+    function clearMsgs() {
+      document.getElementById('errorMsg').classList.remove('visible');
+      document.getElementById('successMsg').classList.remove('visible');
+    }
+
+    // The server keeps the session in an HttpOnly cookie (session: 'cookie' in the request),
+    // so the token never reaches this page. Confirm the browser kept the cookie before leaving.
+    async function storeAndRedirect(data) {
+      if (data.session !== 'cookie' && data.token) {
+        // The server didn't set the cookie (should not happen on this site). Fall back to the
+        // old saved session so signing in still works; the portal retries moving it to the cookie.
+        console.warn('[portal-login] session cookie not issued; using saved session');
+        try { localStorage.setItem('portalToken', data.token); } catch (e) {}
+        window.location.href = '/portal';
+        return;
+      }
+      try {
+        const check = await fetch('/portal/me', { credentials: 'same-origin' });
+        if (check.status === 401) {
+          showErr('You were signed in, but this browser blocked the sign-in cookie. Allow cookies for this site and try again.');
+          return;
+        }
+      } catch (e) {}
+      window.location.href = '/portal';
+    }
+
+    // Firm app badges are shown only after the workspace identity is known.
+    document.querySelectorAll('a[href*="apps.apple.com"], .logo-wrap img').forEach(node => node.hidden=true);
+    // ── Load firm name ───────────────────────────────────
+    (async () => {
+      try {
+        const url = slugParam
+          ? `/portal-auth/firm-info?slug=${encodeURIComponent(slugParam)}`
+          : '/portal-auth/firm-info';
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.firmName) {
+            document.getElementById('firmName').textContent = data.firmName;
+            document.getElementById('firm-name-display').textContent = data.firmName;
+            document.querySelectorAll('.logo-wrap img').forEach(img => {
+              const imageUrl = data.portalLogoUrl || data.logoUrl;
+              img.hidden = !imageUrl;
+              if (imageUrl) img.src = imageUrl;
+              img.dataset.logoStyle = data.portalLogoStyle || 'logo';
+              img.alt = data.firmName;
+            });
+            if (data.portalIconUrl) {
+              document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(link => { link.href = data.portalIconUrl; link.removeAttribute('type'); });
+            }
+            if (/^#[0-9a-f]{6}$/i.test(data.primaryColor || '')) {
+              document.documentElement.style.setProperty('--gold', data.primaryColor);
+            }
+            document.querySelectorAll('a[href*="apps.apple.com"]').forEach(a=>{a.hidden=!data.appStoreUrl;if(data.appStoreUrl){a.href=data.appStoreUrl;a.setAttribute('aria-label','Download '+data.appName);}});
+            document.title = `${data.firmName} — Client Portal`;
+          }
+          // Help goes to the firm's public contact email when it has one.
+          const supportEmail = String(data.supportEmail || '').trim();
+          if (/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(supportEmail)) {
+            const link = document.createElement('a');
+            link.href = 'mailto:' + supportEmail;
+            link.textContent = supportEmail;
+            document.getElementById('loginHelp').replaceChildren(document.createTextNode('Need help? Email '), link);
+          }
+        }
+      } catch (e) { /* silent */ }
+    })();
+
+    // ── MODE DETECTION ───────────────────────────────────
+
+    if (inviteToken) {
+      // ── INVITE MODE ──────────────────────────────────
+      showMode('loading');
+      (async () => {
+        try {
+          const res = await fetch(`/portal-auth/invite/${encodeURIComponent(inviteToken)}`);
+          const data = await res.json();
+
+          if (data.expired) {
+            showMode('login');
+            showErr('This invite link has expired. Please contact your advisor to request a new one.');
+            return;
+          }
+
+          if (data.alreadyAccepted) {
+            showMode('login');
+            showSuccess('Your account is already set up. Please sign in below.');
+            return;
+          }
+
+          if (!data.valid) {
+            showMode('login');
+            showErr('This invite link is invalid. Please contact your advisor.');
+            return;
+          }
+
+          const firstName = data.firstName || '';
+          const firmName = data.firmName || 'your advisory firm';
+          document.getElementById('inviteSubtitle').textContent =
+            `Welcome, ${firstName}! Create a password for your ${firmName} client portal.`;
+          if (data.email) {
+            const usernameNote = document.getElementById('inviteUsernameNote');
+            usernameNote.innerHTML = '';
+            usernameNote.append('You will sign in with ');
+            const strong = document.createElement('strong');
+            strong.textContent = data.email;
+            usernameNote.append(strong, '.');
+            usernameNote.style.display = 'block';
+            document.getElementById('email').value = data.email;
+          }
+          document.getElementById('firmName').textContent = firmName;
+          document.title = `${firmName} — Set Up Your Account`;
+          showMode('invite');
+        } catch (e) {
+          showMode('login');
+          showErr('Unable to load invite. Please try again or contact your advisor.');
+        }
+      })();
+
+    } else if (resetToken) {
+      // ── RESET MODE ───────────────────────────────────
+      showMode('reset');
+
+    } else {
+      // ── LOGIN MODE ───────────────────────────────────
+      showMode('login');
+    }
+
+    function showMode(mode) {
+      document.getElementById('loadingState').style.display = mode === 'loading' ? 'block' : 'none';
+      document.getElementById('loginView').style.display = mode === 'login' ? 'block' : 'none';
+      document.getElementById('inviteView').style.display = mode === 'invite' ? 'block' : 'none';
+      document.getElementById('resetView').style.display = mode === 'reset' ? 'block' : 'none';
+    }
+
+    function openForgotModal() {
+      clearMsgs();
+      const loginEmail = document.getElementById('email').value.trim();
+      const forgotEmail = document.getElementById('forgotEmail');
+      forgotEmail.value = loginEmail;
+      const modal = document.getElementById('forgotModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => forgotEmail.focus(), 0);
+    }
+
+    function closeForgotModal() {
+      const modal = document.getElementById('forgotModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('forgotBtn').disabled = false;
+      document.getElementById('forgotBtn').textContent = 'Send Reset Email';
+    }
+
+    // ── LOGIN FORM ───────────────────────────────────────
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsgs();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+
+      try {
+        const body = { email, password, mfaCode: document.getElementById('mfa-code').value.trim(), session: 'cookie' };
+
+        const res = await fetch('/portal-auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.code === 'MFA_REQUIRED') {
+            document.getElementById('mfa-group').hidden = false;
+            document.getElementById('mfa-code').focus();
+          }
+          showErr(data.error || 'Login failed. Please try again.');
+          return;
+        }
+
+        if (data.signInRequired) { location.href='/client-login'; return; }
+        await storeAndRedirect(data);
+      } catch (err) {
+        showErr('Network error. Please check your connection and try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+
+    // ── FORGOT PASSWORD ──────────────────────────────────
+    document.getElementById('forgotLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      openForgotModal();
+    });
+
+    document.getElementById('forgotClose').addEventListener('click', closeForgotModal);
+    document.getElementById('forgotModal').addEventListener('click', (e) => {
+      if (e.target.id === 'forgotModal') closeForgotModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.getElementById('forgotModal').classList.contains('open')) {
+        closeForgotModal();
+      }
+    });
+
+    document.getElementById('forgotForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsgs();
+      const email = document.getElementById('forgotEmail').value.trim();
+      const btn = document.getElementById('forgotBtn');
+      if (!email) {
+        showErr('Enter your email address, then try again.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+
+      try {
+        const body = { email };
+        await fetch('/portal-auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        closeForgotModal();
+        showSuccess('If your email is registered, you\'ll receive a reset link shortly.');
+      } catch (err) {
+        showErr('Request failed. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send Reset Email';
+      }
+    });
+
+    // ── INVITE FORM ──────────────────────────────────────
+    document.getElementById('inviteForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsgs();
+
+      const password = document.getElementById('invitePassword').value;
+      const confirm = document.getElementById('inviteConfirm').value;
+      const btn = document.getElementById('inviteBtn');
+
+      if (password !== confirm) { showErr('Passwords do not match.'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Setting up account…';
+
+      try {
+        const res = await fetch(`/portal-auth/invite/${encodeURIComponent(inviteToken)}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, session: 'cookie' }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) { showErr(data.error || 'Failed to create account. Please try again.'); return; }
+
+        if (data.signInRequired) { location.href='/client-login'; return; }
+        await storeAndRedirect(data);
+      } catch (err) {
+        showErr('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account & Sign In';
+      }
+    });
+
+    // ── RESET FORM ───────────────────────────────────────
+    document.getElementById('resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsgs();
+
+      const password = document.getElementById('resetPassword').value;
+      const confirm = document.getElementById('resetConfirm').value;
+      const btn = document.getElementById('resetBtn');
+
+      if (password !== confirm) { showErr('Passwords do not match.'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Resetting password…';
+
+      try {
+        const res = await fetch(`/portal-auth/reset-password/${encodeURIComponent(resetToken)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, session: 'cookie' }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) { showErr(data.error || 'Failed to reset password. The link may have expired.'); return; }
+
+        if (data.signInRequired) { location.href='/client-login'; return; }
+        await storeAndRedirect(data);
+      } catch (err) {
+        showErr('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Reset Password & Sign In';
+      }
+    });
+
+  })();
+  </script>
+</body>
+</html>

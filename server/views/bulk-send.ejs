@@ -1,0 +1,1510 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .bulk-wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 1.5rem 1.5rem 4rem;
+  }
+  .bulk-header {
+    margin-bottom: 1.5rem;
+  }
+  .bulk-header h1 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+  .bulk-header p {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* Steps */
+  .step-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .step-tab {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+  }
+  .step-tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+  .step-tab.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(201,168,76,0.12);
+    color: var(--gold);
+    font-size: 0.72rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-tab.active .step-num {
+    background: var(--gold);
+    color: var(--navy);
+  }
+
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* ── Filter builder ─────────────────────────────── */
+  .filter-builder {
+    margin-bottom: 1rem;
+  }
+  .filter-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    flex-wrap: wrap;
+  }
+  .filter-row-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+  .filter-row-controls {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .filter-select, .filter-input {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.84rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .filter-select:focus, .filter-input:focus { border-color: var(--gold); }
+  .filter-select-inline {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.84rem;
+    outline: none;
+    transition: border-color 0.15s;
+    flex: 1;
+    min-width: 140px;
+  }
+  .filter-select-inline:focus { border-color: var(--gold); }
+  .filter-remove-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0.25rem 0.35rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    line-height: 1;
+    margin-left: auto;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .filter-remove-btn:hover {
+    color: var(--red, #f56565);
+    background: rgba(245,101,101,0.1);
+  }
+
+  /* Add filter dropdown */
+  .add-filter-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .add-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--gold);
+    padding: 0.45rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .add-filter-btn:hover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.06);
+  }
+  .filter-type-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 50;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    min-width: 220px;
+    padding: 0.35rem 0;
+    animation: dropIn 0.12s ease;
+  }
+  .filter-type-dropdown.open { display: block; }
+  @keyframes dropIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .filter-type-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 0.85rem 0.2rem;
+  }
+  .filter-type-option {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.84rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .filter-type-option:hover {
+    background: rgba(201,168,76,0.08);
+  }
+  .filter-type-option.disabled-opt {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .filter-type-sep {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0.3rem 0;
+  }
+
+  .audience-count-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .audience-count-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .audience-count-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+  .recipient-preview {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--charcoal);
+    padding: 0.5rem 0;
+    margin-top: 0.75rem;
+    display: none;
+  }
+  .recipient-preview.open { display: block; }
+  .recipient-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .recipient-row:last-child { border-bottom: none; }
+  .recipient-name { font-weight: 600; flex: 1; }
+  .recipient-email { color: var(--muted); font-size: 0.74rem; }
+  .recipient-rel { color: var(--muted); font-size: 0.72rem; }
+
+  /* Compose */
+  .compose-section { margin-bottom: 1.25rem; }
+  .compose-section label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+  }
+  .compose-input {
+    width: 100%;
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.55rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .compose-input:focus { border-color: var(--gold); }
+  .compose-textarea {
+    width: 100%;
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    outline: none;
+    resize: vertical;
+    min-height: 180px;
+    font-family: inherit;
+    line-height: 1.6;
+    transition: border-color 0.15s;
+  }
+  .compose-textarea:focus { border-color: var(--gold); }
+
+  .template-picker {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .template-picker label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+  }
+
+  .message-preview-box {
+    background: rgba(201,168,76,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.86rem;
+    color: var(--muted);
+    line-height: 1.7;
+    min-height: 80px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-style: italic;
+  }
+  .message-preview-box.has-content {
+    color: var(--text);
+    font-style: normal;
+  }
+
+  /* Send step */
+  .send-summary {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .send-summary-row {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    align-items: flex-start;
+  }
+  .send-summary-row:last-child { margin-bottom: 0; }
+  .send-summary-label {
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 90px;
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-top: 1px;
+  }
+  .send-summary-value { color: var(--text); flex: 1; min-width: 0; word-break: break-word; }
+
+  .progress-bar-wrap {
+    background: var(--charcoal);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 4px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  /* History */
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+  }
+  .history-table th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .history-table tr:last-child td { border-bottom: none; }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* Active-filter pills in summary */
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.25);
+    color: var(--gold);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* Operator toggle */
+  .operator-toggle {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.3rem 0.55rem;
+    border-radius: 5px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    line-height: 1.4;
+  }
+  .operator-toggle:hover {
+    border-color: var(--gold);
+    color: var(--text);
+  }
+  .operator-toggle.is-not {
+    color: var(--red, #f56565);
+    border-color: rgba(245,101,101,0.4);
+    background: rgba(245,101,101,0.07);
+  }
+
+  /* Multi-select checkbox dropdown */
+  .ms-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 140px;
+  }
+  .ms-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.84rem;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: border-color 0.15s;
+    outline: none;
+    min-height: 32px;
+  }
+  .ms-trigger:focus, .ms-trigger.open {
+    border-color: var(--gold);
+  }
+  .ms-trigger-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ms-trigger-arrow {
+    color: var(--muted);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+  .ms-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 0;
+    z-index: 60;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    min-width: 200px;
+    max-width: 320px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 0.3rem 0;
+    animation: dropIn 0.12s ease;
+  }
+  .ms-dropdown.open { display: block; }
+  .ms-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.84rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+  }
+  .ms-option:hover { background: rgba(201,168,76,0.08); }
+  .ms-option input[type="checkbox"] {
+    accent-color: var(--gold);
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
+  .ms-option.checked { color: var(--gold); }
+</style>
+
+<div class="bulk-wrap">
+  <div class="bulk-header">
+    <h1>📢 Bulk Send</h1>
+    <p>Send one message to multiple clients at once. Each client gets their own private thread.</p>
+  </div>
+
+  <!-- Step tabs -->
+  <div class="step-tabs" id="step-tabs">
+    <div class="step-tab active" data-step="1">
+      <span class="step-num">1</span> Audience
+    </div>
+    <div class="step-tab disabled" id="tab-2" data-step="2">
+      <span class="step-num">2</span> Compose
+    </div>
+    <div class="step-tab disabled" id="tab-3" data-step="3">
+      <span class="step-num">3</span> Send
+    </div>
+  </div>
+
+  <!-- ── STEP 1: Audience Builder ────────────────────── -->
+  <div class="step-panel active" id="step-1">
+
+    <!-- Dynamic filter rows -->
+    <div class="filter-builder">
+      <div class="filter-rows" id="filter-rows">
+        <!-- Filter rows injected here by JS -->
+      </div>
+
+      <!-- Add filter button + dropdown -->
+      <div class="add-filter-wrap" id="add-filter-wrap">
+        <button class="add-filter-btn" id="add-filter-btn">
+          <span>＋</span> Add Filter
+        </button>
+        <div class="filter-type-dropdown" id="filter-type-dropdown">
+          <div class="filter-type-group-label">Relationship</div>
+          <div class="filter-type-option" data-type="relationship">👥 Relationship</div>
+          <div class="filter-type-option" data-type="service_tier">⭐ Service Tier</div>
+          <div class="filter-type-option" data-type="billing_status">💳 Billing Status</div>
+          <hr class="filter-type-sep">
+          <div class="filter-type-group-label">CRM</div>
+          <div class="filter-type-option" data-type="entity_type">🏢 Entity Type</div>
+          <div class="filter-type-option" data-type="filing_status">📋 Filing Status</div>
+          <div class="filter-type-option" data-type="company_status">🔖 Company Status</div>
+          <div class="filter-type-option" data-type="has_documents">📎 Has Documents</div>
+          <hr class="filter-type-sep">
+          <div class="filter-type-group-label">Portal</div>
+          <div class="filter-type-option" data-type="portal_activity">🟢 Portal Activity</div>
+          <hr class="filter-type-sep">
+          <div class="filter-type-group-label">Pipeline</div>
+          <div class="filter-type-option" data-type="pipeline_stage">🔁 Pipeline Stage</div>
+          <div class="filter-type-option" data-type="pipeline_completed">🏁 Pipeline Completed</div>
+          <div class="filter-type-option" data-type="proposal_status">📝 Proposal Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live count bar -->
+    <div class="audience-count-bar">
+      <div>
+        <div class="audience-count-num" id="audience-count">—</div>
+        <div class="audience-count-label">recipients match (portal-enabled clients)</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" id="toggle-preview-btn" style="display:none">
+          Show recipients
+        </button>
+        <button class="btn btn-gold btn-sm" id="step1-next" disabled>
+          Continue to Compose →
+        </button>
+      </div>
+    </div>
+    <div class="recipient-preview" id="recipient-preview"></div>
+  </div>
+
+  <!-- ── STEP 2: Compose ────────────────────────────── -->
+  <div class="step-panel" id="step-2">
+
+    <div class="template-picker" id="template-picker-wrap" style="display:none">
+      <label>Load from Template</label>
+      <select class="filter-select" id="template-select">
+        <option value="">— pick a template to load —</option>
+      </select>
+    </div>
+
+    <div class="compose-section">
+      <label>Subject</label>
+      <input type="text" class="compose-input" id="compose-subject" placeholder="e.g. Important update from your advisor" maxlength="200">
+    </div>
+
+    <div class="compose-section">
+      <label>Message</label>
+      <textarea class="compose-textarea" id="compose-body" placeholder="Write your message here…"></textarea>
+      <div style="margin-top:0.4rem;font-size:0.72rem;color:var(--muted);line-height:1.8;">
+        <strong style="color:var(--text);">Merge tags:</strong>
+        <span style="cursor:pointer;color:var(--gold);" onclick="insertMergeTag('{First Name}')">{First Name}</span> ·
+        <span style="cursor:pointer;color:var(--gold);" onclick="insertMergeTag('{Last Name}')">{Last Name}</span> ·
+        <span style="cursor:pointer;color:var(--gold);" onclick="insertMergeTag('{Full Name}')">{Full Name}</span> ·
+        <span style="cursor:pointer;color:var(--gold);" onclick="insertMergeTag('{Relationship Name}')">{Relationship Name}</span> ·
+        <span style="cursor:pointer;color:var(--gold);" onclick="insertMergeTag('{Firm Name}')">{Firm Name}</span> ·
+        <span style="cursor:pointer;color:var(--gold);" onclick="insertMergeTag('{Company Names}')">{Company Names}</span>
+        <span style="color:var(--muted);"> — click to insert at cursor</span>
+      </div>
+    </div>
+
+    <div class="compose-section">
+      <label>Preview</label>
+      <div class="message-preview-box" id="message-preview">Your message will appear here as you type.</div>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.25rem;">
+      <button class="btn btn-outline" id="step2-back">← Back</button>
+      <button class="btn btn-gold" id="step2-next" disabled>
+        Continue to Send →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Send ───────────────────────────────── -->
+  <div class="step-panel" id="step-3">
+
+    <div class="send-summary" id="send-summary">
+      <div class="send-summary-row">
+        <span class="send-summary-label">To</span>
+        <span class="send-summary-value" id="summary-recipients">—</span>
+      </div>
+      <div class="send-summary-row">
+        <span class="send-summary-label">Filters</span>
+        <span class="send-summary-value" id="summary-filters" style="display:flex;flex-wrap:wrap;gap:0.35rem;"></span>
+      </div>
+      <div class="send-summary-row">
+        <span class="send-summary-label">Subject</span>
+        <span class="send-summary-value" id="summary-subject">—</span>
+      </div>
+      <div class="send-summary-row">
+        <span class="send-summary-label">Message</span>
+        <span class="send-summary-value" id="summary-message" style="white-space:pre-wrap;"></span>
+      </div>
+    </div>
+
+    <!-- Expandable recipient list -->
+    <div id="send-recipient-list-wrap" style="margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.82rem;color:var(--muted);font-weight:600;">RECIPIENT LIST</span>
+        <button class="btn btn-ghost btn-xs" id="toggle-send-recipients">Show</button>
+      </div>
+      <div class="recipient-preview" id="send-recipient-preview"></div>
+    </div>
+
+    <!-- Progress (hidden until sending) -->
+    <div id="send-progress-wrap" style="display:none;margin-bottom:1.25rem;">
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.4rem;" id="send-progress-label">Sending…</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="send-progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="send-result" style="display:none;padding:1rem 1.25rem;border-radius:8px;margin-bottom:1.25rem;font-size:0.9rem;font-weight:600;"></div>
+
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" id="step3-back">← Back</button>
+      <button class="btn btn-gold" id="confirm-send-btn">
+        ✉️ Confirm & Send <span id="confirm-count"></span>
+      </button>
+      <button class="btn btn-gold" id="send-another-btn" style="display:none">
+        Send Another
+      </button>
+    </div>
+  </div>
+
+  <!-- ── History ────────────────────────────────────── -->
+  <hr class="section-divider">
+  <h2 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;color:var(--text);">Recent Sends</h2>
+  <div id="history-wrap">
+    <div class="loading-state" style="padding:1.5rem;">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+<%- include('partials/shell-close') %>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let filterData = {
+    relationships: [], pipelines: [], pipelineTemplates: [], completionYears: [],
+    serviceTiers: [], billingStatuses: [],
+    templates: [], filingStatuses: [], entityTypes: [], companyStatuses: [],
+  };
+  let audienceRecipients = [];
+  let previewShown = false;
+  let currentStep = 1;
+  let isSending = false;
+
+  // Active filters: array of { id, type, value, value2 }
+  let activeFilters = [];
+  let filterIdCounter = 0;
+
+  const token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+  // ── Filter type definitions ───────────────────────────────────────────────
+  const FILTER_TYPES = {
+    relationship:    { label: 'Relationship',     icon: '👥' },
+    service_tier:    { label: 'Service Tier',      icon: '⭐' },
+    billing_status:  { label: 'Billing Status',    icon: '💳' },
+    entity_type:     { label: 'Entity Type',       icon: '🏢' },
+    filing_status:   { label: 'Filing Status',     icon: '📋' },
+    company_status:  { label: 'Company Status',    icon: '🔖' },
+    has_documents:   { label: 'Has Documents',     icon: '📎' },
+    portal_activity: { label: 'Portal Activity',   icon: '🟢' },
+    pipeline_stage:     { label: 'Pipeline Stage',     icon: '🔁' },
+    pipeline_completed: { label: 'Pipeline Completed', icon: '🏁' },
+    proposal_status:    { label: 'Proposal Status',    icon: '📝' },
+  };
+
+  // Labels for filter pills in the send summary
+  const ENTITY_TYPE_LABELS = {
+    s_corp: 'S-Corp', c_corp: 'C-Corp', llc: 'LLC', partnership: 'Partnership',
+    sole_prop: 'Sole Prop', individual: 'Individual', trust: 'Trust', other: 'Other',
+  };
+  const FILING_STATUS_LABELS = {
+    single: 'Single', mfj: 'MFJ', mfs: 'MFS', hoh: 'Head of Household',
+    qw: 'Qualifying Widow(er)', married_joint: 'Married Filing Joint',
+    married_separate: 'Married Filing Separate',
+  };
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const audienceCount = document.getElementById('audience-count');
+  const togglePreviewBtn = document.getElementById('toggle-preview-btn');
+  const recipientPreview = document.getElementById('recipient-preview');
+  const step1Next = document.getElementById('step1-next');
+  const step2Next = document.getElementById('step2-next');
+  const step2Back = document.getElementById('step2-back');
+  const step3Back = document.getElementById('step3-back');
+  const confirmSendBtn = document.getElementById('confirm-send-btn');
+  const sendAnotherBtn = document.getElementById('send-another-btn');
+  const composeSubject = document.getElementById('compose-subject');
+  const composeBody = document.getElementById('compose-body');
+  const messagePreview = document.getElementById('message-preview');
+  const templateSelect = document.getElementById('template-select');
+  const templatePickerWrap = document.getElementById('template-picker-wrap');
+  const filterRowsEl = document.getElementById('filter-rows');
+  const addFilterBtn = document.getElementById('add-filter-btn');
+  const filterTypeDropdown = document.getElementById('filter-type-dropdown');
+
+  // ── Step navigation ───────────────────────────────────────────────────────
+  function goToStep(n) {
+    currentStep = n;
+    document.querySelectorAll('.step-panel').forEach((p, i) => {
+      p.classList.toggle('active', i + 1 === n);
+    });
+    document.querySelectorAll('.step-tab').forEach((t, i) => {
+      const tabN = i + 1;
+      t.classList.toggle('active', tabN === n);
+      t.classList.toggle('disabled', tabN > n && !(tabN === 2 && audienceRecipients.length > 0) && !(tabN === 3));
+    });
+    if (n === 3) populateSendStep();
+  }
+
+  document.getElementById('step-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.step-tab');
+    if (!tab || tab.classList.contains('disabled')) return;
+    const n = parseInt(tab.dataset.step);
+    if (n < currentStep) goToStep(n);
+  });
+
+  step1Next.addEventListener('click', () => goToStep(2));
+  step2Back.addEventListener('click', () => goToStep(1));
+  step2Next.addEventListener('click', () => goToStep(3));
+  step3Back.addEventListener('click', () => goToStep(2));
+
+  // ── Load filter data ──────────────────────────────────────────────────────
+  async function loadFilters() {
+    try {
+      const res = await fetch('/api/bulk-send/filters', { headers });
+      if (!res.ok) throw new Error('Failed to load');
+      filterData = await res.json();
+      // Templates
+      if (filterData.templates && filterData.templates.length > 0) {
+        templatePickerWrap.style.display = '';
+        filterData.templates.forEach(t => {
+          const o = document.createElement('option');
+          o.value = t.id;
+          o.textContent = t.name;
+          templateSelect.appendChild(o);
+        });
+      }
+      // Update any already-rendered filter rows that need filter data
+      rerenderAllFilterRows();
+    } catch (e) {
+      console.error('Failed to load filters:', e);
+    }
+  }
+
+  // ── Add/remove filter rows ────────────────────────────────────────────────
+  addFilterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    filterTypeDropdown.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!filterTypeDropdown.contains(e.target) && e.target !== addFilterBtn) {
+      filterTypeDropdown.classList.remove('open');
+    }
+  });
+
+  filterTypeDropdown.addEventListener('click', (e) => {
+    const opt = e.target.closest('.filter-type-option');
+    if (!opt || opt.classList.contains('disabled-opt')) return;
+    const type = opt.dataset.type;
+    filterTypeDropdown.classList.remove('open');
+    addFilterRow(type);
+  });
+
+  // Multi-select filter types
+  const MULTI_SELECT_TYPES = new Set([
+    'pipeline_stage', 'service_tier', 'billing_status', 'filing_status',
+    'entity_type', 'company_status', 'portal_activity', 'proposal_status',
+  ]);
+
+  function addFilterRow(type) {
+    const id = ++filterIdCounter;
+    const filter = { id, type, value: MULTI_SELECT_TYPES.has(type) ? [] : '', value2: '', operator: 'is' };
+    activeFilters.push(filter);
+    renderFilterRow(filter);
+    debouncedRefreshCount();
+  }
+
+  function removeFilterRow(id) {
+    activeFilters = activeFilters.filter(f => f.id !== id);
+    const el = document.getElementById(`filter-row-${id}`);
+    if (el) el.remove();
+    debouncedRefreshCount();
+  }
+
+  function renderFilterRow(filter) {
+    const row = document.createElement('div');
+    row.className = 'filter-row';
+    row.id = `filter-row-${filter.id}`;
+    row.innerHTML = buildFilterRowHTML(filter);
+    filterRowsEl.appendChild(row);
+    // Attach events
+    attachFilterRowEvents(row, filter);
+  }
+
+  function rerenderAllFilterRows() {
+    // Re-render all rows (called after filterData loads to populate selects)
+    filterRowsEl.innerHTML = '';
+    activeFilters.forEach(f => renderFilterRow(f));
+  }
+
+  function buildMultiSelectHTML(filterId, options, selectedValues, placeholder) {
+    const sel = Array.isArray(selectedValues) ? selectedValues : (selectedValues ? [selectedValues] : []);
+    const label = sel.length === 0
+      ? placeholder
+      : sel.length === 1
+        ? escHtml(options.find(o => o.v === sel[0])?.l || cap(sel[0]))
+        : `${sel.length} selected`;
+    const isNotSelected = (v) => sel.includes(v);
+    const optionsHTML = options.map(o =>
+      `<label class="ms-option${isNotSelected(o.v) ? ' checked' : ''}">
+        <input type="checkbox" value="${escHtml(o.v)}"${isNotSelected(o.v) ? ' checked' : ''}>
+        ${escHtml(o.l)}
+      </label>`
+    ).join('');
+    return `<div class="ms-wrap" data-ms-id="${filterId}">
+      <button type="button" class="ms-trigger" data-field="value" data-placeholder="${escHtml(placeholder)}">
+        <span class="ms-trigger-text">${label}</span>
+        <span class="ms-trigger-arrow">▾</span>
+      </button>
+      <div class="ms-dropdown">${optionsHTML}</div>
+    </div>`;
+  }
+
+  function buildFilterRowHTML(filter) {
+    const def = FILTER_TYPES[filter.type] || { label: filter.type, icon: '' };
+    const labelHTML = `<span class="filter-row-label">${def.icon} ${def.label}</span>`;
+    const removeBtn = `<button class="filter-remove-btn" data-remove="${filter.id}" title="Remove filter">✕</button>`;
+    const isNot = filter.operator === 'is_not';
+    const operatorBtn = `<button type="button" class="operator-toggle${isNot ? ' is-not' : ''}" data-op-toggle="${filter.id}">${isNot ? 'is not ▾' : 'is ▾'}</button>`;
+
+    let controlsHTML = '';
+
+    switch (filter.type) {
+      case 'relationship': {
+        const opts = filterData.relationships.map(r =>
+          `<option value="${r.id}"${filter.value == r.id ? ' selected' : ''}>${escHtml(r.name)}</option>`
+        ).join('');
+        controlsHTML = `${operatorBtn}<select class="filter-select-inline" data-field="value">
+          <option value="">All relationships</option>${opts}
+        </select>`;
+        break;
+      }
+      case 'service_tier': {
+        const opts = (filterData.serviceTiers || []).map(t => ({ v: t, l: cap(t) }));
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, opts, filter.value, 'Any tier')}`;
+        break;
+      }
+      case 'billing_status': {
+        const opts = (filterData.billingStatuses || []).map(b => ({ v: b, l: cap(b) }));
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, opts, filter.value, 'Any status')}`;
+        break;
+      }
+      case 'entity_type': {
+        const staticOpts = [
+          { v: 'individual', l: 'Individual (no company)' },
+          { v: 's_corp', l: 'S-Corp' },
+          { v: 'c_corp', l: 'C-Corp' },
+          { v: 'llc', l: 'LLC' },
+          { v: 'partnership', l: 'Partnership' },
+          { v: 'sole_prop', l: 'Sole Prop' },
+          { v: 'trust', l: 'Trust' },
+          { v: 'other', l: 'Other' },
+        ];
+        const dbTypes = filterData.entityTypes || [];
+        const extra = dbTypes.filter(t => !staticOpts.find(o => o.v === t));
+        const allOpts = [...staticOpts, ...extra.map(t => ({ v: t, l: cap(t) }))];
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, allOpts, filter.value, 'All entity types')}`;
+        break;
+      }
+      case 'filing_status': {
+        const staticStatuses = [
+          { v: 'single', l: 'Single' },
+          { v: 'mfj', l: 'MFJ – Married Filing Jointly' },
+          { v: 'mfs', l: 'MFS – Married Filing Separately' },
+          { v: 'hoh', l: 'HOH – Head of Household' },
+          { v: 'qw', l: 'QW – Qualifying Widow(er)' },
+          { v: 'married_joint', l: 'Married Joint' },
+          { v: 'married_separate', l: 'Married Separate' },
+        ];
+        const dbStatuses = filterData.filingStatuses || [];
+        const extra = dbStatuses.filter(s => !staticStatuses.find(o => o.v === s));
+        const allS = [...staticStatuses, ...extra.map(s => ({ v: s, l: cap(s) }))];
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, allS, filter.value, 'Any filing status')}`;
+        break;
+      }
+      case 'company_status': {
+        const dbStatuses = filterData.companyStatuses || [];
+        const defaultStatuses = ['active', 'inactive', 'prospect'];
+        const all = [...new Set([...defaultStatuses, ...dbStatuses])];
+        const opts = all.map(s => ({ v: s, l: cap(s) }));
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, opts, filter.value, 'Any status')}`;
+        break;
+      }
+      case 'has_documents': {
+        controlsHTML = `${operatorBtn}<span style="font-size:0.84rem;color:var(--muted);">
+          People who have at least one document uploaded
+        </span>
+        <input type="hidden" data-field="value" value="true">`;
+        break;
+      }
+      case 'portal_activity': {
+        const paOpts = [
+          { v: '30', l: 'Active (within 30 days)' },
+          { v: '60', l: 'Active (within 60 days)' },
+          { v: '90', l: 'Active (within 90 days)' },
+          { v: 'never', l: 'Never logged in' },
+        ];
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, paOpts, filter.value, 'Any')}`;
+        break;
+      }
+      case 'pipeline_stage': {
+        const pipeVal = Array.isArray(filter.value) ? (filter.value[0] || '') : (filter.value || '');
+        const pipeOpts = (filterData.pipelines || []).map(p =>
+          `<option value="${p.id}"${String(p.id) === String(pipeVal) ? ' selected' : ''}>
+            ${escHtml(p.name)}${p.tax_year ? ` (${p.tax_year})` : ''}
+          </option>`
+        ).join('');
+        const selectedPipeline = filterData.pipelines && pipeVal
+          ? filterData.pipelines.find(p => String(p.id) === String(pipeVal))
+          : null;
+        const sortedStages = selectedPipeline && selectedPipeline.stages
+          ? [...selectedPipeline.stages].sort((a, b) => {
+              if (a.position !== b.position) return a.position - b.position;
+              return a.id - b.id;
+            })
+          : [];
+        // value2 is an array of selected stage IDs for multi-select
+        const selectedStageIds = Array.isArray(filter.value2) ? filter.value2
+          : (filter.value2 ? [String(filter.value2)] : []);
+        const stageOptions = sortedStages.map(s => ({ v: String(s.id), l: s.name }));
+        const stagePickerRaw = stageOptions.length
+          ? buildMultiSelectHTML(filter.id + '_stage', stageOptions, selectedStageIds, 'Any stage')
+          : `<div style="color:var(--muted);font-size:0.78rem;padding:0.3rem;">Select a pipeline first</div>`;
+        // Mark this ms-wrap as targeting value2
+        const stagePicker = stagePickerRaw.replace('class="ms-wrap"', 'class="ms-wrap" data-target="value2"');
+        controlsHTML = `${operatorBtn}
+          <select class="filter-select-inline" data-field="value" style="flex:1;min-width:140px;">
+            <option value="">Select pipeline…</option>${pipeOpts}
+          </select>
+          <div style="flex:1;min-width:140px;" data-field="value2-multiselect">${stagePicker}</div>`;
+        break;
+      }
+      case 'pipeline_completed': {
+        // value = template id, value2 = tax year or 'any'
+        const tmplVal = Array.isArray(filter.value) ? (filter.value[0] || '') : (filter.value || '');
+        const tmplOpts = (filterData.pipelineTemplates || []).map(t =>
+          `<option value="${t.id}"${String(t.id) === String(tmplVal) ? ' selected' : ''}>${escHtml(t.name)}</option>`
+        ).join('');
+        // Build year options: 'any' + distinct years from data + last 5 years
+        const knownYears = filterData.completionYears || [];
+        const currentYear = new Date().getFullYear();
+        const yearSet = new Set([...knownYears, currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4]);
+        const sortedYears = [...yearSet].sort((a, b) => b - a);
+        const yearOpts = sortedYears.map(y =>
+          `<option value="${y}"${String(filter.value2) === String(y) ? ' selected' : ''}>${y}</option>`
+        ).join('');
+        controlsHTML = `${operatorBtn}
+          <select class="filter-select-inline" data-field="value" style="flex:1;min-width:140px;">
+            <option value="">Select pipeline…</option>${tmplOpts}
+          </select>
+          <select class="filter-select-inline" data-field="value2" style="flex:1;min-width:100px;">
+            <option value="any"${(!filter.value2 || filter.value2 === 'any') ? ' selected' : ''}>Any year</option>
+            ${yearOpts}
+          </select>`;
+        break;
+      }
+      case 'proposal_status': {
+        const pStatuses = [
+          { v: 'sent', l: 'Proposal Sent' },
+          { v: 'signed', l: 'Proposal Signed' },
+          { v: 'expired', l: 'Proposal Expired' },
+          { v: 'draft', l: 'Draft' },
+        ];
+        controlsHTML = `${operatorBtn}${buildMultiSelectHTML(filter.id, pStatuses, filter.value, 'Any')}`;
+        break;
+      }
+      default:
+        controlsHTML = `<span style="color:var(--muted);font-size:0.82rem;">Unknown filter type</span>`;
+    }
+
+    return `
+      ${labelHTML}
+      <div class="filter-row-controls">${controlsHTML}</div>
+      ${removeBtn}
+    `;
+  }
+
+  function attachFilterRowEvents(row, filter) {
+    // Remove button
+    row.querySelector('[data-remove]').addEventListener('click', () => {
+      removeFilterRow(filter.id);
+    });
+
+    // Operator toggle
+    const opBtn = row.querySelector('[data-op-toggle]');
+    if (opBtn) {
+      opBtn.addEventListener('click', () => {
+        filter.operator = filter.operator === 'is_not' ? 'is' : 'is_not';
+        opBtn.textContent = filter.operator === 'is_not' ? 'is not ▾' : 'is ▾';
+        opBtn.classList.toggle('is-not', filter.operator === 'is_not');
+        debouncedRefreshCount();
+      });
+    }
+
+    // Multi-select checkboxes
+    row.querySelectorAll('.ms-wrap').forEach(msWrap => {
+      const trigger = msWrap.querySelector('.ms-trigger');
+      const dropdown = msWrap.querySelector('.ms-dropdown');
+      const triggerText = msWrap.querySelector('.ms-trigger-text');
+
+      // Open/close dropdown
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.contains('open');
+        // Close all other open dropdowns in this row
+        document.querySelectorAll('.ms-dropdown.open').forEach(d => d.classList.remove('open'));
+        document.querySelectorAll('.ms-trigger.open').forEach(d => d.classList.remove('open'));
+        if (!isOpen) {
+          dropdown.classList.add('open');
+          trigger.classList.add('open');
+        }
+      });
+
+      // Handle checkbox changes
+      dropdown.addEventListener('change', (e) => {
+        if (e.target.type !== 'checkbox') return;
+        const checked = Array.from(dropdown.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        const targetField = msWrap.dataset.target || 'value';
+        filter[targetField] = checked;
+        // Update checked class
+        dropdown.querySelectorAll('.ms-option').forEach(opt => {
+          const cb = opt.querySelector('input[type="checkbox"]');
+          opt.classList.toggle('checked', cb && cb.checked);
+        });
+        // Update trigger label
+        const allOpts = Array.from(dropdown.querySelectorAll('.ms-option')).map(o => ({
+          v: o.querySelector('input').value,
+          l: o.textContent.trim(),
+        }));
+        if (checked.length === 0) {
+          triggerText.textContent = trigger.dataset.placeholder || 'Any';
+        } else if (checked.length === 1) {
+          const found = allOpts.find(o => o.v === checked[0]);
+          triggerText.textContent = found ? found.l : checked[0];
+        } else {
+          triggerText.textContent = `${checked.length} selected`;
+        }
+        debouncedRefreshCount();
+      });
+    });
+
+    // Regular <select> and <input> value fields (non-multiselect)
+    row.querySelectorAll('[data-field]').forEach(el => {
+      if (el.classList.contains('ms-trigger')) return; // handled above
+      if (el.tagName !== 'SELECT' && el.type !== 'hidden') return;
+      if (el.closest('.ms-wrap')) return; // skip ms internals
+      const field = el.dataset.field;
+      const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+      el.addEventListener(evt, () => {
+        filter[field] = el.value;
+        // Special: pipeline stage cascade
+        if (filter.type === 'pipeline_stage' && field === 'value') {
+          const row2 = document.getElementById(`filter-row-${filter.id}`);
+          if (row2) {
+            filter.value2 = []; // reset stage multi-select when pipeline changes
+            row2.innerHTML = buildFilterRowHTML(filter);
+            attachFilterRowEvents(row2, filter);
+          }
+        }
+        debouncedRefreshCount();
+      });
+    });
+  }
+
+  // Close multi-select dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.ms-wrap')) {
+      document.querySelectorAll('.ms-dropdown.open').forEach(d => d.classList.remove('open'));
+      document.querySelectorAll('.ms-trigger.open').forEach(t => t.classList.remove('open'));
+    }
+  });
+
+  // ── Live count refresh ────────────────────────────────────────────────────
+  let countDebounce = null;
+  function debouncedRefreshCount() {
+    clearTimeout(countDebounce);
+    countDebounce = setTimeout(refreshCount, 400);
+  }
+
+  async function refreshCount() {
+    audienceCount.textContent = '…';
+    step1Next.disabled = true;
+    togglePreviewBtn.style.display = 'none';
+
+    const filters = getFilters();
+    try {
+      const res = await fetch('/api/bulk-send/preview', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ filters }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      audienceRecipients = data.recipients || [];
+      audienceCount.textContent = data.count;
+      step1Next.disabled = data.count === 0;
+      togglePreviewBtn.style.display = data.count > 0 ? '' : 'none';
+      togglePreviewBtn.textContent = previewShown ? 'Hide recipients' : `Show recipients (${Math.min(data.count, 200)})`;
+      if (previewShown) renderRecipientPreview(recipientPreview, audienceRecipients);
+    } catch (e) {
+      audienceCount.textContent = '—';
+      console.error(e);
+    }
+  }
+
+  function getFilters() {
+    // Return array format for new API
+    return activeFilters
+      .filter(f => {
+        if (f.type === 'has_documents') return true;
+        if (Array.isArray(f.value)) return f.value.length > 0 || f.value2;
+        return f.value || f.value2;
+      })
+      .map(f => ({
+        type: f.type,
+        value: f.value,
+        value2: f.value2 || '',
+        operator: f.operator || 'is',
+      }));
+  }
+
+  // Toggle recipient preview
+  togglePreviewBtn.addEventListener('click', () => {
+    previewShown = !previewShown;
+    recipientPreview.classList.toggle('open', previewShown);
+    togglePreviewBtn.textContent = previewShown
+      ? 'Hide recipients'
+      : `Show recipients (${Math.min(audienceRecipients.length, 200)})`;
+    if (previewShown) renderRecipientPreview(recipientPreview, audienceRecipients);
+  });
+
+  function renderRecipientPreview(container, recipients) {
+    if (!recipients.length) {
+      container.innerHTML = '<div class="recipient-row" style="color:var(--muted)">No recipients match.</div>';
+      return;
+    }
+    container.innerHTML = recipients.map(r => `
+      <div class="recipient-row">
+        <div class="recipient-name">${escHtml(r.name)}</div>
+        <div class="recipient-email">${escHtml(r.email || '—')}</div>
+        ${r.relationship ? `<div class="recipient-rel">· ${escHtml(r.relationship)}</div>` : ''}
+        ${r.companies ? `<div class="recipient-rel" style="color:var(--muted);">🏢 ${escHtml(r.companies)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  // ── Merge tag insertion ───────────────────────────────────────────────────
+  window.insertMergeTag = function(tag) {
+    const el = document.getElementById('compose-body');
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = el.value;
+    el.value = text.slice(0, start) + tag + text.slice(end);
+    el.selectionStart = el.selectionEnd = start + tag.length;
+    el.focus();
+    updatePreview();
+  };
+
+  // ── Compose step ──────────────────────────────────────────────────────────
+  composeBody.addEventListener('input', updatePreview);
+  composeSubject.addEventListener('input', () => {
+    step2Next.disabled = !composeBody.value.trim();
+  });
+
+  function updatePreview() {
+    const body = composeBody.value.trim();
+    step2Next.disabled = !body;
+    if (body) {
+      messagePreview.textContent = body;
+      messagePreview.classList.add('has-content');
+    } else {
+      messagePreview.textContent = 'Your message will appear here as you type.';
+      messagePreview.classList.remove('has-content');
+    }
+  }
+
+  // Template loader
+  templateSelect.addEventListener('change', function() {
+    const id = this.value;
+    if (!id) return;
+    const tmpl = filterData.templates.find(t => String(t.id) === id);
+    if (tmpl && tmpl.body) {
+      composeBody.value = tmpl.body;
+      updatePreview();
+    }
+    this.value = '';
+  });
+
+  // ── Send step ─────────────────────────────────────────────────────────────
+  function populateSendStep() {
+    const count = audienceRecipients.length;
+    document.getElementById('summary-recipients').textContent =
+      `${count} client${count !== 1 ? 's' : ''}`;
+    document.getElementById('summary-subject').textContent =
+      composeSubject.value.trim() || '(no subject)';
+    document.getElementById('summary-message').textContent = composeBody.value.trim();
+    document.getElementById('confirm-count').textContent =
+      `(${count} client${count !== 1 ? 's' : ''})`;
+
+    // Render filter pills
+    const pillsEl = document.getElementById('summary-filters');
+    const filters = getFilters();
+    const pills = buildFilterPills(filters);
+    pillsEl.innerHTML = pills.length
+      ? pills.map(p => `<span class="filter-pill">${escHtml(p)}</span>`).join('')
+      : '<span style="color:var(--muted);font-size:0.82rem;">No filters — all portal-enabled clients</span>';
+
+    const sendPrev = document.getElementById('send-recipient-preview');
+    renderRecipientPreview(sendPrev, audienceRecipients);
+  }
+
+  function buildFilterPills(filters) {
+    // filters is now an array of { type, value, value2, operator }
+    const pills = [];
+    if (!Array.isArray(filters)) return pills;
+
+    for (const f of filters) {
+      const neg = f.operator === 'is_not' ? 'NOT ' : '';
+      const vals = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+      const valStr = (labelFn) => vals.map(labelFn).join(', ');
+
+      switch (f.type) {
+        case 'relationship': {
+          const rel = filterData.relationships.find(r => String(r.id) === String(f.value));
+          pills.push(`${neg}${rel ? rel.name : `Relationship #${f.value}`}`);
+          break;
+        }
+        case 'service_tier':
+          if (vals.length) pills.push(`${neg}Tier: ${valStr(v => cap(v))}`);
+          break;
+        case 'billing_status':
+          if (vals.length) pills.push(`${neg}Billing: ${valStr(v => cap(v))}`);
+          break;
+        case 'entity_type':
+          if (vals.length) pills.push(`${neg}Entity: ${valStr(v => ENTITY_TYPE_LABELS[v] || cap(v))}`);
+          break;
+        case 'filing_status':
+          if (vals.length) pills.push(`${neg}Filing: ${valStr(v => FILING_STATUS_LABELS[v] || cap(v))}`);
+          break;
+        case 'company_status':
+          if (vals.length) pills.push(`${neg}Co. Status: ${valStr(v => cap(v))}`);
+          break;
+        case 'has_documents':
+          pills.push(`${neg}Has Documents`);
+          break;
+        case 'portal_activity':
+          if (vals.includes('never')) pills.push(`${neg}Never logged in`);
+          else if (vals.length) pills.push(`${neg}Active within ${vals[0]}d`);
+          break;
+        case 'pipeline_stage': {
+          const pipeId = Array.isArray(f.value) ? f.value[0] : f.value;
+          const pipe = filterData.pipelines && filterData.pipelines.find(p => String(p.id) === String(pipeId));
+          const stage = pipe && pipe.stages && pipe.stages.find(s => String(s.id) === String(f.value2));
+          pills.push(`${neg}Pipeline: ${pipe ? pipe.name : '?'} → ${stage ? stage.name : '?'}`);
+          break;
+        }
+        case 'proposal_status':
+          if (vals.length) pills.push(`${neg}Proposal: ${valStr(v => cap(v))}`);
+          break;
+      }
+    }
+    return pills;
+  }
+
+  document.getElementById('toggle-send-recipients').addEventListener('click', function() {
+    const pv = document.getElementById('send-recipient-preview');
+    const open = pv.classList.toggle('open');
+    this.textContent = open ? 'Hide' : 'Show';
+  });
+
+  confirmSendBtn.addEventListener('click', async () => {
+    if (isSending) return;
+    isSending = true;
+    confirmSendBtn.disabled = true;
+    step3Back.disabled = true;
+
+    const progressWrap = document.getElementById('send-progress-wrap');
+    const progressLabel = document.getElementById('send-progress-label');
+    const progressBar = document.getElementById('send-progress-bar');
+    const resultDiv = document.getElementById('send-result');
+
+    progressWrap.style.display = '';
+    progressLabel.textContent = 'Sending messages…';
+    progressBar.style.width = '20%';
+    resultDiv.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/bulk-send/send', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          subject: composeSubject.value.trim(),
+          message: composeBody.value.trim(),
+          filters: getFilters(),
+        }),
+      });
+      const data = await res.json();
+      progressBar.style.width = '100%';
+
+      if (res.ok && data.ok) {
+        progressLabel.textContent = `Done! Sent to ${data.sentCount} client${data.sentCount !== 1 ? 's' : ''}.`;
+        resultDiv.style.display = '';
+        resultDiv.style.background = 'rgba(62,207,142,0.1)';
+        resultDiv.style.border = '1px solid rgba(62,207,142,0.3)';
+        resultDiv.style.color = 'var(--green)';
+        resultDiv.textContent = `✅ Successfully sent to ${data.sentCount} client${data.sentCount !== 1 ? 's' : ''}!`;
+        confirmSendBtn.style.display = 'none';
+        sendAnotherBtn.style.display = '';
+        loadHistory();
+      } else {
+        throw new Error(data.error || 'Send failed');
+      }
+    } catch (e) {
+      progressLabel.textContent = 'Error sending.';
+      progressBar.style.background = 'var(--red)';
+      resultDiv.style.display = '';
+      resultDiv.style.background = 'rgba(245,101,101,0.1)';
+      resultDiv.style.border = '1px solid rgba(245,101,101,0.3)';
+      resultDiv.style.color = 'var(--red)';
+      resultDiv.textContent = '❌ ' + e.message;
+      confirmSendBtn.disabled = false;
+    }
+    isSending = false;
+  });
+
+  sendAnotherBtn.addEventListener('click', () => {
+    composeSubject.value = '';
+    composeBody.value = '';
+    updatePreview();
+    audienceRecipients = [];
+    audienceCount.textContent = '—';
+    step1Next.disabled = true;
+    activeFilters = [];
+    filterRowsEl.innerHTML = '';
+    document.getElementById('send-progress-wrap').style.display = 'none';
+    document.getElementById('send-result').style.display = 'none';
+    confirmSendBtn.style.display = '';
+    confirmSendBtn.disabled = false;
+    sendAnotherBtn.style.display = 'none';
+    step3Back.disabled = false;
+    isSending = false;
+    goToStep(1);
+    refreshCount();
+  });
+
+  // ── History ───────────────────────────────────────────────────────────────
+  async function loadHistory() {
+    const wrap = document.getElementById('history-wrap');
+    try {
+      const res = await fetch('/api/bulk-send/history', { headers });
+      if (!res.ok) throw new Error('Failed');
+      const rows = await res.json();
+      if (!rows.length) {
+        wrap.innerHTML = '<div class="empty-state" style="padding:1.5rem 0;font-size:0.85rem;">No bulk sends yet.</div>';
+        return;
+      }
+      wrap.innerHTML = `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Recipients</th>
+                <th>Sent By</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td>${escHtml(r.subject || '(no subject)')}</td>
+                  <td>${r.recipient_count}</td>
+                  <td>${escHtml(r.sent_by_name || '—')}</td>
+                  <td style="color:var(--muted);white-space:nowrap;">${fmtDate(r.sent_at)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (e) {
+      wrap.innerHTML = '<div style="font-size:0.84rem;color:var(--muted);padding:0.5rem 0;">Failed to load history.</div>';
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function cap(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadFilters().then(() => refreshCount());
+  loadHistory();
+
+})();
+</script>

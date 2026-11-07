@@ -1,0 +1,1068 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+<%- include('partials/shell-globals') %>
+
+<style>
+  .bk-wrap { padding: 1.5rem 2rem; max-width: 1060px; }
+  .bk-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 1rem; }
+  .bk-header-left { display: flex; align-items: center; gap: 1rem; }
+  .bk-header h1 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+  .bk-summary { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.25rem; }
+  .bk-summary strong { color: var(--gold); }
+
+  /* Tabs */
+  .bk-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.25rem; }
+  .bk-tab { padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .bk-tab:hover { color: var(--text); }
+  .bk-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* Controls row */
+  .bk-controls { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .bk-select { background: var(--card); border: 1px solid var(--border); color: var(--text); font-size: 0.82rem; padding: 0.35rem 0.6rem; border-radius: 7px; }
+  .bk-select:focus { outline: none; border-color: var(--gold); }
+  .bk-search { background: var(--card); border: 1px solid var(--border); color: var(--text); font-size: 0.82rem; padding: 0.35rem 0.75rem; border-radius: 7px; min-width: 180px; }
+  .bk-search:focus { outline: none; border-color: var(--gold); }
+  .bk-count { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+
+  /* Transaction card */
+  .bk-txn { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+  .bk-txn.coded { opacity: 0.5; border-color: var(--green); }
+  .bk-txn-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .bk-txn-vendor { font-weight: 700; font-size: 0.95rem; }
+  .bk-company-pill { display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.78rem; font-weight: 700; background: rgba(201,168,76,0.12); color: var(--gold); border: 1px solid rgba(201,168,76,0.25); white-space: nowrap; }
+  .bk-txn-amount { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .bk-txn-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+  .bk-txn-ai { background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.15); border-radius: 8px; padding: 0.6rem 0.85rem; margin-top: 0.6rem; font-size: 0.82rem; }
+  .bk-txn-ai-label { font-weight: 600; color: var(--gold); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+  .bk-txn-ai-account { font-weight: 700; }
+  .bk-txn-ai-confidence { display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; margin-left: 0.5rem; }
+  .bk-txn-ai-confidence.high { background: rgba(62,207,142,0.12); color: var(--green); }
+  .bk-txn-ai-confidence.med { background: rgba(237,137,54,0.12); color: var(--orange); }
+  .bk-txn-ai-confidence.low { background: rgba(229,62,62,0.1); color: var(--red); }
+  .bk-txn-ai-reasoning { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; font-style: italic; }
+  .bk-txn-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .bk-txn-actions select { flex: 1; min-width: 200px; }
+  .bk-txn-save-mapping { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; }
+  .bk-txn-skip { font-size: 0.78rem; color: var(--muted); cursor: pointer; text-decoration: underline; background: none; border: none; }
+  .bk-txn-skip:hover { color: var(--red); }
+
+  /* Mapping table */
+  .bk-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .bk-table th { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0.65rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+  .bk-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
+  .bk-table tbody tr:last-child td { border-bottom: none; }
+  .bk-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .bk-source { display: inline-flex; align-items: center; padding: 0.12rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+  .bk-source-auto { background: rgba(62,207,142,0.1); color: var(--green); }
+  .bk-source-ai { background: rgba(201,168,76,0.12); color: var(--gold); }
+  .bk-source-manual { background: rgba(99,179,237,0.12); color: #63b3ed; }
+  .bk-edit-btn { font-size: 0.78rem; color: var(--gold); cursor: pointer; background: none; border: none; }
+  .bk-edit-btn:hover { text-decoration: underline; }
+  .bk-del-btn { font-size: 0.78rem; color: var(--red); cursor: pointer; background: none; border: none; }
+  .bk-del-btn:hover { text-decoration: underline; }
+
+  /* Run history */
+  .bk-runs { margin-top: 1.5rem; }
+  .bk-runs-toggle { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0; }
+  .bk-runs-toggle:hover { color: var(--text); }
+  .bk-runs-list { margin-top: 0.5rem; }
+  .bk-run-row { display: flex; align-items: center; gap: 1.25rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; flex-wrap: wrap; }
+  .bk-run-row:last-child { border-bottom: none; }
+
+  /* Empty state */
+  .bk-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .bk-empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .bk-empty-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; color: var(--text); }
+
+  /* Modal */
+  .bk-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+  .bk-modal { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; width: 90%; max-width: 420px; }
+  .bk-modal h3 { font-size: 1rem; font-weight: 700; margin: 0 0 1rem; }
+  .bk-modal label { font-size: 0.78rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+  .bk-modal input, .bk-modal select { width: 100%; background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.6rem; border-radius: 7px; font-size: 0.85rem; box-sizing: border-box; }
+  .bk-modal-btns { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }
+</style>
+
+<div class="bk-wrap">
+  <div class="bk-header">
+    <div class="bk-header-left">
+      <h1>📊 Bookkeeper</h1>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+      <button class="btn btn-outline btn-sm" id="bk-rebuild-btn" title="Rebuild vendor mapping from QBO history">🔄 Rebuild Mapping</button>
+      <button class="btn btn-gold btn-sm" id="bk-run-now-btn" title="Run bookkeeper now for selected company">▶ Run Now</button>
+    </div>
+  </div>
+  <div class="bk-summary" id="bk-summary">Loading…</div>
+
+  <div class="bk-tabs">
+    <button class="bk-tab active" data-tab="uncoded">Uncoded Transactions</button>
+    <button class="bk-tab" data-tab="sent-to-client">Sent to Client</button>
+    <button class="bk-tab" data-tab="runs">Recent Runs</button>
+    <button class="bk-tab" data-tab="settings">Settings</button>
+  </div>
+
+  <!-- ═══════════ TAB 1: UNCODED TRANSACTIONS ═══════════ -->
+  <div id="tab-uncoded">
+    <div class="bk-controls">
+      <select class="bk-select" id="bk-company-filter">
+        <option value="">All Companies</option>
+      </select>
+      <select class="bk-select" id="bk-status-filter">
+        <option value="pending">Pending</option>
+        <option value="coded">Coded</option>
+        <option value="all">All</option>
+      </select>
+      <select class="bk-select" id="bk-confidence-sort" onchange="renderUncoded()">
+        <option value="date_desc">Newest First</option>
+        <option value="confidence_desc">Confidence: High → Low</option>
+        <option value="confidence_asc">Confidence: Low → High</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+      <div style="display:flex;gap:0.4rem;">
+        <button class="btn btn-gold btn-sm" id="bk-dir-all" onclick="bk_setDirFilter('all',this)">All</button>
+        <button class="btn btn-outline btn-sm" id="bk-dir-out" onclick="bk_setDirFilter('out',this)">📉 Money Out</button>
+        <button class="btn btn-outline btn-sm" id="bk-dir-in" onclick="bk_setDirFilter('in',this)">📈 Money In</button>
+      </div>
+      <div style="display:flex;gap:1rem;align-items:center;">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" id="bk-show-checks" onchange="renderUncoded()"> Show checks
+        </label>
+        <button class="btn btn-outline btn-sm" id="bk-dir-snoozed" onclick="bk_setSnoozedFilter(this)">⏰ Snoozed</button>
+      </div>
+    </div>
+    <div id="bk-uncoded-list"></div>
+  </div>
+
+  <!-- ═══════════ TAB 2: SENT TO CLIENT ═══════════ -->
+  <div id="tab-sent-to-client" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="font-size:1rem;font-weight:700;">📤 Sent to Client — Awaiting Response</h2>
+      <button class="btn btn-outline btn-sm" onclick="loadSentToClient()">↻ Refresh</button>
+    </div>
+    <div id="bk-stc-list"><div style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div></div>
+  </div>
+
+  <!-- ═══════════ TAB 3: RECENT RUNS ═══════════ -->
+  <div id="tab-runs" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="font-size:1rem;font-weight:700;">📊 Bookkeeper Runs (Last 10 Days)</h2>
+      <button class="btn btn-outline btn-sm" onclick="loadRuns()">↻ Refresh</button>
+    </div>
+    <div id="bk-runs-list"></div>
+  </div>
+
+  <!-- ═══════════ TAB 4: COMPANY TOGGLES (Settings) ═══════════ -->
+  <div id="bk-company-toggles" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;display:none;">
+    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.6rem;">Auto-Bookkeeper per Company</div>
+    <div id="bk-toggles-list"></div>
+  </div>
+</div>
+
+<!-- Add/Edit Mapping Modal -->
+<div id="bk-modal" class="bk-modal-overlay" style="display:none;">
+  <div class="bk-modal">
+    <h3 id="bk-modal-title">Add Vendor Mapping</h3>
+    <label>Company</label>
+    <select id="bk-modal-company"></select>
+    <label>Vendor Name</label>
+    <input type="text" id="bk-modal-vendor" placeholder="e.g. Amazon Web Services">
+    <label>Direction</label>
+    <select id="bk-modal-direction">
+      <option value="expense">💸 Expense (Money Out)</option>
+      <option value="income">💰 Income (Money In)</option>
+    </select>
+    <label>Account</label>
+    <select id="bk-modal-account"><option value="">Loading accounts…</option></select>
+    <label>Notes (optional)</label>
+    <input type="text" id="bk-modal-notes" placeholder="Any notes…">
+    <div class="bk-modal-btns">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold btn-sm" id="bk-modal-save">Save Rule</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="bk-toast"></div>
+
+<script>
+const TOKEN = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+if (!TOKEN) { window.location.href = '/login'; }
+
+function apiFetch(url, opts) {
+  opts = opts || {};
+  return fetch(url, Object.assign({}, opts, {
+    headers: Object.assign({ 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, opts.headers || {})
+  }));
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, isError) {
+  const el = document.getElementById('bk-toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+function fmtMoney(n) { return '$' + Number(n||0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString() : '—'; }
+function bkDirection(txn) {
+  const type = String(txn?.txn_type || '').toLowerCase();
+  const acct = String(txn?.original_account || '').toLowerCase();
+  if (BK_INCOME_TYPES.includes(type)) return 'in';
+  if (acct.includes('income')) return 'in';
+  if (acct.includes('expense') || acct.includes('ask my accountant')) return 'out';
+  if (acct.includes('credit card')) return Number(txn?.amount || 0) < 0 ? 'in' : 'out';
+  return Number(txn?.amount || 0) >= 0 ? 'in' : 'out';
+}
+function bkAmountHtml(txn) {
+  const amt = Math.abs(Number(txn?.amount || 0));
+  const dir = bkDirection(txn);
+  const color = dir === 'in' ? 'var(--green)' : 'var(--red)';
+  return `<span style="color:${color};font-weight:700;">$${amt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`;
+}
+
+let companies = [];
+let coaCache = {}; // realmId → accounts[]
+let companyIdMap = {}; // realmId → company DB id
+let uncodedTxns = [];
+let mappings = [];
+let bkDirFilter = 'all';
+let bkSnoozedMode = false;
+
+const BK_INCOME_TYPES = ['deposit', 'salesreceipt', 'sales receipt', 'invoice', 'payment'];
+
+function bk_setDirFilter(dir, btn) {
+  bkDirFilter = dir;
+  bkSnoozedMode = false;
+  document.querySelectorAll('#tab-uncoded .btn').forEach(b => {
+    if (b.id && b.id.startsWith('bk-dir-')) b.className = 'btn btn-outline btn-sm';
+  });
+  if (btn) btn.className = 'btn btn-gold btn-sm';
+  loadUncoded();
+}
+
+async function bk_setSnoozedFilter(btn) {
+  bkSnoozedMode = true;
+  bkDirFilter = 'all';
+  document.querySelectorAll('#tab-uncoded .btn').forEach(b => {
+    if (b.id && b.id.startsWith('bk-dir-')) b.className = 'btn btn-outline btn-sm';
+  });
+  btn.className = 'btn btn-gold btn-sm';
+  await loadUncoded();
+}
+
+// ── Tab switching ───────────────────────────────────────────
+document.querySelectorAll('.bk-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.bk-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const tabName = tab.dataset.tab;
+    document.getElementById('tab-uncoded').style.display = tabName === 'uncoded' ? '' : 'none';
+    document.getElementById('tab-sent-to-client').style.display = tabName === 'sent-to-client' ? '' : 'none';
+    document.getElementById('tab-runs').style.display = tabName === 'runs' ? '' : 'none';
+    document.getElementById('bk-company-toggles').style.display = tabName === 'settings' ? '' : 'none';
+    if (tabName === 'runs') loadRuns();
+    if (tabName === 'sent-to-client') loadSentToClient();
+    if (tabName === 'settings') renderCompanyToggles();
+  });
+});
+
+// ── Load companies ──────────────────────────────────────────
+async function loadCompanies() {
+  try {
+    const r = await apiFetch('/api/bookkeeper/companies');
+    const data = await r.json();
+    companies = data.companies || [];
+    companyIdMap = {};
+    for (const c of companies) { if (c.realm_id && c.id) companyIdMap[c.realm_id] = c.id; }
+    const opts = companies.map(c => `<option value="${esc(c.realm_id)}">${esc(c.company_name || c.realm_id)}</option>`).join('');
+    document.getElementById('bk-company-filter').innerHTML = '<option value="">All Companies</option>' + opts;
+    document.getElementById('bk-map-company-filter').innerHTML = '<option value="">All Companies</option>' + opts;
+    document.getElementById('bk-modal-company').innerHTML = opts || '<option value="">No QBO companies</option>';
+  } catch (e) { console.error('Failed to load companies:', e); }
+}
+
+// ── Load CoA for a company (cached) ─────────────────────────
+async function loadCoA(realmId) {
+  if (coaCache[realmId]) return coaCache[realmId];
+  try {
+    const r = await apiFetch(`/api/bookkeeper/chart-of-accounts?realmId=${encodeURIComponent(realmId)}`);
+    const data = await r.json();
+    coaCache[realmId] = data.accounts || [];
+    return coaCache[realmId];
+  } catch (e) {
+    console.error('Failed to load CoA:', e);
+    return [];
+  }
+}
+
+function renderAccountOptions(accounts, selected) {
+  let html = '<option value="">— Select Account —</option>';
+  for (const a of accounts) {
+    if (a.isHeader) {
+      html += `<option disabled style="font-weight:700;color:var(--gold);background:var(--bg);">${esc(a.name)}</option>`;
+    } else {
+      html += `<option value="${esc(a.name)}" ${a.name===selected?'selected':''}>${esc(a.name)} (${esc(a.type)})</option>`;
+    }
+  }
+  return html;
+}
+
+// ── Overview / Summary ──────────────────────────────────────
+function updateOverviewSummary() {
+  try {
+    const el = document.getElementById('bk-summary');
+    const selectedRealmId = document.getElementById('bk-company-filter')?.value || '';
+    const bkShowChecks = document.getElementById('bk-show-checks')?.checked || false;
+
+    if (!selectedRealmId) {
+      const visibleRealmIds = new Set(uncodedTxns.map(t => t.realm_id).filter(Boolean));
+      if (uncodedTxns.length > 0) {
+        el.innerHTML = `<strong>${uncodedTxns.length}</strong> transaction${uncodedTxns.length!==1?'s':''} need review across <strong>${visibleRealmIds.size}</strong> company${visibleRealmIds.size!==1?'ies':'y'}`;
+      } else {
+        el.innerHTML = `✅ All caught up!`;
+      }
+      return;
+    }
+
+    const company = companies.find(c => c.realm_id === selectedRealmId);
+    const companyName = company?.company_name || selectedRealmId;
+    const hiddenChecks = !bkShowChecks
+      ? uncodedTxns.filter(t => (t.vendor_name||'').match(/^check\s*#?\s*\d+$/i) || (t.vendor_name||'').match(/^\d{3,6}$/)).length
+      : 0;
+    const checkPill = hiddenChecks > 0
+      ? ` <span style="display:inline-flex;align-items:center;padding:0.15rem 0.55rem;border-radius:999px;background:rgba(237,137,54,0.12);color:var(--orange);font-size:0.74rem;font-weight:700;margin-left:0.5rem;">${hiddenChecks} check${hiddenChecks!==1?'s':''} hidden</span>`
+      : '';
+
+    if (uncodedTxns.length > 0) {
+      el.innerHTML = `<strong>${uncodedTxns.length}</strong> transaction${uncodedTxns.length!==1?'s':''} need review in <strong>${esc(companyName)}</strong>${checkPill}`;
+    } else {
+      el.innerHTML = `✅ All caught up in <strong>${esc(companyName)}</strong>!`;
+    }
+  } catch (e) { console.error('Failed to update overview summary:', e); }
+}
+
+async function loadOverview() {
+  try {
+    const selectedRealmId = document.getElementById('bk-company-filter')?.value || '';
+    const status = document.getElementById('bk-status-filter')?.value || 'pending';
+    let url = `/api/bookkeeper/uncoded?status=${status}&showSnoozed=${bkSnoozedMode ? 'only' : 'false'}`;
+    if (selectedRealmId) url += `&realmId=${encodeURIComponent(selectedRealmId)}`;
+    const r = await apiFetch(url);
+    const data = await r.json();
+    uncodedTxns = data.transactions || [];
+    updateOverviewSummary();
+  } catch (e) { console.error('Failed to load overview:', e); }
+}
+
+// ── Uncoded Transactions ────────────────────────────────────
+async function loadUncoded() {
+  const realmId = document.getElementById('bk-company-filter').value;
+  const status = document.getElementById('bk-status-filter').value;
+  const wrap = document.getElementById('bk-uncoded-list');
+  wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Loading…</div>';
+
+  try {
+    let url = `/api/bookkeeper/uncoded?status=${status}&showSnoozed=${bkSnoozedMode ? 'only' : 'false'}`;
+    if (realmId) url += `&realmId=${encodeURIComponent(realmId)}`;
+    const r = await apiFetch(url);
+    const data = await r.json();
+    uncodedTxns = data.transactions || [];
+    renderUncoded();
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--red);padding:1rem 0;">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+// ── loadRuns / renderRuns / toggleRunDay are defined below near the Runs tab ──
+
+function renderRuns(runs, wrap) {
+  if (!runs.length) {
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:2rem;text-align:center;">No runs yet</div>';
+    return;
+  }
+
+  // Filter to last 10 days
+  const tenDaysAgo = new Date();
+  tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+  const recentRuns = runs.filter(r => {
+    if (!r.started_at) return false;
+    return new Date(r.started_at) >= tenDaysAgo;
+  });
+
+  if (!recentRuns.length) {
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:2rem;text-align:center;">No runs in the last 10 days</div>';
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  for (const run of recentRuns) {
+    const dateKey = run.started_at ? new Date(run.started_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
+    if (!byDate[dateKey]) byDate[dateKey] = [];
+    byDate[dateKey].push(run);
+  }
+
+  // Sort dates descending
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    // Parse back to Date for comparison
+    const dateA = new Date(a);
+    const dateB = new Date(b);
+    return dateB - dateA;
+  });
+
+  wrap.innerHTML = sortedDates.map(date => {
+    const dayRuns = byDate[date];
+    const totalFound = dayRuns.reduce((sum, r) => sum + (r.transactions_processed || 0), 0);
+    const totalAuto = dayRuns.reduce((sum, r) => sum + (r.transactions_coded || 0), 0);
+    const totalReview = dayRuns.reduce((sum, r) => sum + (r.transactions_uncoded || 0), 0);
+
+    return `
+      <div class="bk-run-day" style="margin-bottom:0.75rem;">
+        <button class="bk-run-day-header" onclick="toggleRunDay(this)" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-align:left;font-size:0.85rem;transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="bk-run-chevron" style="transition:transform 0.2s;">▶</span>
+            <strong style="color:var(--text);">${esc(date)}</strong>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);">
+            ${dayRuns.length} run${dayRuns.length!==1?'s':''} · ${totalFound} txns · <span style="color:var(--green);">${totalAuto} auto</span> · <span style="color:var(--orange);">${totalReview} review</span>
+          </div>
+        </button>
+        <div class="bk-run-day-body" style="display:none;margin-top:0.5rem;padding-left:1rem;">
+          ${dayRuns.map(r => {
+            const time = r.started_at ? new Date(r.started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+            const company = r.company_name || r.realm_id || 'Unknown';
+            const status = r.status === 'completed' ? '✅' : r.status === 'failed' ? '❌' : '⏳';
+            return `
+              <div class="bk-run-item" style="display:flex;align-items:center;gap:1rem;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.78rem;">
+                <span style="color:var(--muted);min-width:50px;">${time}</span>
+                <span style="font-weight:600;color:var(--gold);min-width:150px;">${esc(company)}</span>
+                <span>${r.transactions_processed || 0} found</span>
+                <span style="color:var(--green);">${r.transactions_coded || 0} auto</span>
+                <span style="color:var(--gold);">${r.transactions_uncoded || 0} review</span>
+                <span>${status}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleRunDay(btn) {
+  const body = btn.nextElementSibling;
+  const chevron = btn.querySelector('.bk-run-chevron');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    chevron.style.transform = 'rotate(90deg)';
+  } else {
+    body.style.display = 'none';
+    chevron.style.transform = '';
+  }
+}
+
+// ── loadRuns ─────────────────────────────────────────────────
+
+async function renderUncoded() {
+  const wrap = document.getElementById('bk-uncoded-list');
+
+  // Apply filters
+  const bkShowChecks = document.getElementById('bk-show-checks')?.checked || false;
+  let txnsToRender = uncodedTxns;
+
+  // Hide checks by default
+  if (!bkShowChecks) {
+    txnsToRender = txnsToRender.filter(t => !(t.vendor_name||'').match(/^check\s*#?\s*\d+$/i) && !(t.vendor_name||'').match(/^\d{3,6}$/));
+  }
+
+  updateOverviewSummary();
+
+  if (bkDirFilter === 'in') {
+    txnsToRender = txnsToRender.filter(t => BK_INCOME_TYPES.includes((t.txn_type||'').toLowerCase()) || (t.original_account||'').toLowerCase().includes('income'));
+  } else if (bkDirFilter === 'out') {
+    txnsToRender = txnsToRender.filter(t => !BK_INCOME_TYPES.includes((t.txn_type||'').toLowerCase()) && !(t.original_account||'').toLowerCase().includes('income'));
+  }
+
+  if (!txnsToRender.length) {
+    wrap.innerHTML = `
+      <div class="bk-empty">
+        <div class="bk-empty-icon">✅</div>
+        <div class="bk-empty-title">${bkDirFilter === 'all' ? 'All caught up!' : 'No transactions match this filter.'}</div>
+        <div>${bkDirFilter === 'all' ? 'No uncoded transactions to review.' : ''}</div>
+      </div>`;
+    return;
+  }
+
+  const confidenceSort = document.getElementById('bk-confidence-sort')?.value || 'date_desc';
+
+  if (confidenceSort === 'confidence_desc') {
+    txnsToRender = [...txnsToRender].sort((a, b) => {
+      const confDiff = (Number(b.ai_confidence) || 0) - (Number(a.ai_confidence) || 0);
+      if (confDiff !== 0) return confDiff;
+      return new Date(b.txn_date || b.report_date || 0) - new Date(a.txn_date || a.report_date || 0);
+    });
+  } else if (confidenceSort === 'confidence_asc') {
+    txnsToRender = [...txnsToRender].sort((a, b) => {
+      const confDiff = (Number(a.ai_confidence) || 0) - (Number(b.ai_confidence) || 0);
+      if (confDiff !== 0) return confDiff;
+      return new Date(b.txn_date || b.report_date || 0) - new Date(a.txn_date || a.report_date || 0);
+    });
+  }
+
+  // Pre-load CoA for all companies in the list
+  const realmIds = [...new Set(txnsToRender.map(t => t.realm_id))];
+  for (const rid of realmIds) { await loadCoA(rid); }
+
+  wrap.innerHTML = txnsToRender.map(t => {
+    const accounts = coaCache[t.realm_id] || [];
+    const confClass = t.ai_confidence >= 70 ? 'high' : t.ai_confidence >= 40 ? 'med' : 'low';
+    const isCoded = t.status === 'coded';
+    const isSkipped = t.status === 'skipped';
+    const isSentToClient = !!t.sent_to_client;
+    const companyName = t.company || t.company_name || '';
+
+    return `
+      <div class="bk-txn ${isCoded ? 'coded' : ''}" id="bk-txn-${t.id}">
+        <div class="bk-txn-top">
+          <div>
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.35rem;flex-wrap:wrap;">
+              <div class="bk-txn-vendor">${esc(t.vendor_name || 'Unknown Vendor')}</div>
+              ${companyName ? `<span class="bk-company-pill">${esc(companyName)}</span>` : ''}
+              ${isSentToClient ? `<span class="bk-company-pill" style="background:rgba(91,141,239,0.12);color:var(--blue,#5b8def);border-color:rgba(91,141,239,0.25);">📤 Sent to Client</span>` : ''}
+            </div>
+            <div class="bk-txn-meta">${esc(t.txn_date)} · ${esc(t.original_account)}${t._snoozed && t.snoozed_until ? ` · <span style="color:var(--gold);">⏰ Snoozed until ${new Date(t.snoozed_until).toLocaleDateString()}</span>` : ''}${isSentToClient && t.sent_to_client_at ? ` · <span style="color:var(--blue,#5b8def);">Sent ${new Date(t.sent_to_client_at).toLocaleDateString()}</span>` : ''}</div>
+            ${t.description ? `<div class="bk-txn-meta">Memo: ${esc(t.description)}</div>` : ''}
+          </div>
+          <div class="bk-txn-amount">${bkAmountHtml(t)}</div>
+        </div>
+        ${t.ai_suggested_account ? `
+          <div class="bk-txn-ai">
+            <div class="bk-txn-ai-label">🤖 AI Suggestion</div>
+            <span class="bk-txn-ai-account">${esc(t.ai_suggested_account)}</span>
+            <span class="bk-txn-ai-confidence ${confClass}">${t.ai_confidence}%</span>
+            ${t.ai_reasoning ? `<div class="bk-txn-ai-reasoning">${esc(t.ai_reasoning)}</div>` : ''}
+          </div>
+        ` : ''}
+        ${!isCoded && !isSkipped && !isSentToClient ? `
+          <div class="bk-txn-actions">
+            <select class="bk-select" id="bk-acct-${t.id}" style="flex:1;min-width:200px;">
+              ${renderAccountOptions(accounts, t.ai_suggested_account)}
+            </select>
+            <button class="btn btn-gold btn-sm" onclick="codeTxn(${t.id})">✓ Submit</button>
+            <button class="bk-txn-skip" onclick="snoozeTxn(${t.id})">Snooze 3d</button>
+            <button class="bk-txn-skip" style="color:var(--blue,#5b8def);border-color:rgba(91,141,239,0.3);" onclick="bk_sendToClient(${t.id}, '${t.realm_id}')">📤 Client</button>
+            <label class="bk-txn-save-mapping">
+              <input type="checkbox" id="bk-save-${t.id}" checked> Save mapping
+            </label>
+          </div>
+        ` : isSentToClient ? `
+          <div style="margin-top:0.5rem;font-size:0.82rem;color:var(--blue,#5b8def);">📤 Already sent to client, awaiting client coding</div>
+        ` : isCoded ? `
+          <div style="margin-top:0.5rem;font-size:0.82rem;color:var(--green);">✓ Coded to: ${esc(t.coded_account)}</div>
+        ` : `
+          <div style="margin-top:0.5rem;font-size:0.82rem;color:var(--muted);">Skipped</div>
+        `}
+      </div>`;
+  }).join('');
+}
+
+async function codeTxn(id) {
+  const select = document.getElementById('bk-acct-' + id);
+  const saveBox = document.getElementById('bk-save-' + id);
+  const accountName = select?.value;
+  if (!accountName) { toast('Select an account first', true); return; }
+
+  const card = document.getElementById('bk-txn-' + id);
+  const btn = card?.querySelector('.btn-gold');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  // Find other pending transactions with same vendor
+  const txn = uncodedTxns.find(t => t.id === id);
+  const sameVendor = txn ? uncodedTxns.filter(t =>
+    t.id !== id &&
+    t.status === 'pending' &&
+    t.vendor_name === txn.vendor_name &&
+    t.realm_id === txn.realm_id
+  ) : [];
+
+  try {
+    const r = await apiFetch('/api/bookkeeper/code', {
+      method: 'POST',
+      body: JSON.stringify({ uncodedId: id, accountName, saveMappingForVendor: saveBox?.checked !== false }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed');
+
+    if (txn) { txn.status = 'coded'; txn.coded_account = accountName; }
+    if (card) { card.classList.add('coded'); }
+
+    // Prompt to code all same-vendor transactions
+    if (sameVendor.length > 0) {
+      const vendorName = txn.vendor_name || 'this vendor';
+      if (confirm(`Code all ${sameVendor.length} other pending "${vendorName}" transaction${sameVendor.length !== 1 ? 's' : ''} to "${accountName}" too?`)) {
+        const items = sameVendor.map(t => ({ uncodedId: t.id, accountName, saveMappingForVendor: true }));
+        const bulkRes = await apiFetch('/api/bookkeeper/code-bulk', { method: 'POST', body: JSON.stringify({ items }) });
+        const bulkData = await bulkRes.json();
+        sameVendor.forEach(t => { t.status = 'coded'; t.coded_account = accountName; });
+        toast(`Coded ${1 + (bulkData.coded || 0)} transactions to ${accountName}`);
+      } else {
+        toast(`Coded to ${accountName}`);
+      }
+    } else {
+      toast(`Coded to ${accountName}`);
+    }
+
+    renderUncoded();
+    loadOverview();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Submit'; }
+    toast('Error: ' + e.message, true);
+  }
+}
+
+
+
+async function bk_sendToClient(uncodedId, realmId) {
+  const companyId = companyIdMap[realmId];
+  if (!companyId) { toast('Cannot find company for this transaction', true); return; }
+  try {
+    const r = await apiFetch(`/api/bookkeeper/company/${companyId}/send-to-client`, {
+      method: 'POST',
+      body: JSON.stringify({ uncodedId })
+    });
+    if (!r.ok) { const d = await r.json(); throw new Error(d.error || 'Failed'); }
+    uncodedTxns = uncodedTxns.filter(t => t.id !== uncodedId);
+    renderUncoded();
+    loadOverview();
+    toast('Sent to client for coding');
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+async function snoozeTxn(id) {
+  try {
+    const r = await apiFetch('/api/bookkeeper/snooze', { method: 'POST', body: JSON.stringify({ uncodedId: id, days: 3 }) });
+    if (!r.ok) throw new Error('Failed');
+    // Remove from local list so it disappears immediately
+    uncodedTxns = uncodedTxns.filter(t => t.id !== id);
+    renderUncoded();
+    loadOverview();
+    toast('Snoozed for 3 days');
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+// ── Vendor Mapping ──────────────────────────────────────────
+async function loadMappings() {
+  const realmId = document.getElementById('bk-map-company-filter').value;
+  const search = document.getElementById('bk-map-search').value;
+  const wrap = document.getElementById('bk-map-table-wrap');
+
+  try {
+    let url = '/api/bookkeeper/mappings?';
+    if (realmId) url += `realmId=${encodeURIComponent(realmId)}&`;
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    const r = await apiFetch(url);
+    const data = await r.json();
+    mappings = data.mappings || [];
+    document.getElementById('bk-map-count').textContent = `${mappings.length} rule${mappings.length!==1?'s':''}`;
+    renderMappings();
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--red);padding:1rem;">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderMappings() {
+  const wrap = document.getElementById('bk-map-table-wrap');
+  if (!mappings.length) {
+    wrap.innerHTML = '<div class="bk-empty"><div class="bk-empty-icon">📋</div><div class="bk-empty-title">No vendor mappings yet</div><div>Run the bookkeeper or add rules manually.</div></div>';
+    return;
+  }
+
+  const rows = mappings.map(m => {
+    const sourceClass = m.source === 'manual' ? 'bk-source-manual' : m.source === 'ai-research' ? 'bk-source-ai' : 'bk-source-auto';
+    const sourceIcon = m.source === 'manual' ? '👤' : m.source === 'ai-research' ? '🤖' : '📊';
+    const sourceLabel = m.source === 'manual' ? 'Manual' : m.source === 'ai-research' ? `AI ${m.confidence}%` : `Auto ${m.confidence}%`;
+    const lastUsed = m.last_used_at ? new Date(m.last_used_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+    const dirBadge = m.direction === 'income'
+      ? '<span style="font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:999px;background:rgba(62,207,142,0.1);color:var(--green);">Income</span>'
+      : '<span style="font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:999px;background:rgba(237,137,54,0.1);color:var(--orange);">Expense</span>';
+    return `<tr>
+      <td style="font-weight:600;">${esc(m.vendor_name)}</td>
+      <td>${dirBadge}</td>
+      <td>${esc(m.account_name)}</td>
+      <td>${esc(m.company_name || '')}</td>
+      <td><span class="bk-source ${sourceClass}">${sourceIcon} ${sourceLabel}</span></td>
+      <td style="text-align:center;">${m.usage_count || 0}×</td>
+      <td style="font-size:0.78rem;color:var(--muted);">${lastUsed}</td>
+      <td>
+        <button class="bk-edit-btn" onclick="editMapping(${m.id})">✏️</button>
+        <button class="bk-del-btn" onclick="deleteMapping(${m.id},'${esc(m.vendor_name)}')">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table class="bk-table">
+      <thead><tr>
+        <th>Vendor</th><th>Dir</th><th>→ Account</th><th>Company</th><th>Source</th><th>Used</th><th>Last Used</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function deleteMapping(id, vendorName) {
+  if (!confirm(`Delete mapping for "${vendorName}"?`)) return;
+  try {
+    const r = await apiFetch(`/api/bookkeeper/mappings/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Failed');
+    toast('Mapping deleted');
+    loadMappings();
+    loadOverview();
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+function editMapping(id) {
+  const m = mappings.find(x => x.id === id);
+  if (!m) return;
+  openModal(m.realm_id, m.vendor_name, m.account_name, m.notes, m.direction);
+}
+
+// ── Modal ───────────────────────────────────────────────────
+async function openModal(realmId, vendorName, accountName, notes, direction) {
+  document.getElementById('bk-modal').style.display = '';
+  document.getElementById('bk-modal-title').textContent = vendorName ? 'Edit Vendor Mapping' : 'Add Vendor Mapping';
+  document.getElementById('bk-modal-vendor').value = vendorName || '';
+  document.getElementById('bk-modal-notes').value = notes || '';
+  document.getElementById('bk-modal-direction').value = direction || 'expense';
+
+  // Set company
+  if (realmId) document.getElementById('bk-modal-company').value = realmId;
+
+  // Load CoA for the selected company
+  const rid = document.getElementById('bk-modal-company').value;
+  if (rid) {
+    const accounts = await loadCoA(rid);
+    document.getElementById('bk-modal-account').innerHTML = renderAccountOptions(accounts, accountName);
+  }
+}
+
+function closeModal() {
+  document.getElementById('bk-modal').style.display = 'none';
+}
+
+document.getElementById('bk-modal-company').addEventListener('change', async function() {
+  const accounts = await loadCoA(this.value);
+  document.getElementById('bk-modal-account').innerHTML = renderAccountOptions(accounts, '');
+});
+
+document.getElementById('bk-modal-save').addEventListener('click', async () => {
+  const realmId = document.getElementById('bk-modal-company').value;
+  const vendorName = document.getElementById('bk-modal-vendor').value.trim();
+  const accountName = document.getElementById('bk-modal-account').value;
+  const notes = document.getElementById('bk-modal-notes').value.trim();
+  const direction = document.getElementById('bk-modal-direction').value;
+
+  if (!realmId || !vendorName || !accountName) { toast('Fill in all required fields', true); return; }
+
+  try {
+    const r = await apiFetch('/api/bookkeeper/mappings', {
+      method: 'POST',
+      body: JSON.stringify({ realmId, vendorName, accountName, direction, notes }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Failed');
+    toast('Mapping saved');
+    closeModal();
+    loadMappings();
+    loadOverview();
+  } catch (e) { toast('Error: ' + e.message, true); }
+});
+
+// Close modal on overlay click
+document.getElementById('bk-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Run History ─────────────────────────────────────────────
+async function loadSentToClient() {
+  const wrap = document.getElementById('bk-stc-list');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div>';
+  try {
+    const r = await apiFetch('/api/bookkeeper/sent-to-client');
+    const data = await r.json();
+    const clients = data.clients || [];
+    if (!clients.length) {
+      wrap.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">No transactions currently awaiting client response.</div>';
+      return;
+    }
+    // uses top-level esc(), fmtMoney(), fmtDate()
+    let html = '';
+    for (const client of clients) {
+      const sentDates = client.transactions.map(t => new Date(t.sent_to_client_at||0));
+      const oldestSent = sentDates.length ? new Date(Math.min(...sentDates)) : null;
+      const daysWaiting = oldestSent ? Math.floor((Date.now() - oldestSent) / 86400000) : 0;
+      const waitBadge = daysWaiting >= 3
+        ? `<span style="background:rgba(239,68,68,0.15);color:#f87171;font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:20px;margin-left:0.5rem;">⏰ ${daysWaiting}d waiting</span>`
+        : daysWaiting > 0 ? `<span style="background:rgba(201,168,76,0.12);color:var(--gold);font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:20px;margin-left:0.5rem;">${daysWaiting}d waiting</span>` : '';
+      html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;overflow:hidden;">
+        <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <span style="font-weight:700;font-size:0.92rem;">${esc(client.name)}</span>${waitBadge}
+            <span style="margin-left:0.75rem;font-size:0.78rem;color:var(--muted);">${esc(client.email)}</span>
+          </div>
+          <span style="font-size:0.78rem;color:var(--muted);font-weight:600;">${client.transactions.length} pending</span>
+        </div>
+        <table class="bk-table" style="border:none;border-radius:0;">
+          <thead><tr>
+            <th>Company</th><th>Date</th><th>Vendor</th><th>Amount</th><th>Original Account</th><th>Sent</th><th></th>
+          </tr></thead>
+          <tbody id="stc-tbody-${client.personId}">`;
+      for (const t of client.transactions) {
+        html += `<tr data-stc-id="${t.id}" data-realm-id="${esc(t.realm_id)}" data-vendor="${esc(t.vendor_name||'')}">
+          <td style="font-size:0.8rem;color:var(--muted);">${esc(t.company_name||'')}</td>
+          <td>${fmtDate(t.txn_date)}</td>
+          <td style="font-weight:600;">${esc(t.vendor_name||'Unknown')}</td>
+          <td>${fmtMoney(t.amount)}</td>
+          <td style="font-size:0.8rem;color:var(--muted);">${esc(t.original_account||'')}</td>
+          <td style="font-size:0.78rem;color:var(--muted);">${fmtDate(t.sent_to_client_at)}</td>
+          <td><button class="btn btn-outline btn-sm" onclick="stc_openCode(${t.id})">Code</button></td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
+    }
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:#f87171;padding:1rem;">Error loading: ${e.message}</div>`;
+  }
+}
+
+async function stc_openCode(uncodedId) {
+  // Toggle off if already open
+  const existing = document.getElementById(`stc-code-row-${uncodedId}`);
+  if (existing) { existing.remove(); return; }
+
+  const row = document.querySelector(`tr[data-stc-id="${uncodedId}"]`);
+  if (!row) return;
+  const realmId = row.dataset.realmId;
+  const codeBtn = row.querySelector('.btn-outline');
+  if (codeBtn) { codeBtn.disabled = true; codeBtn.textContent = '...'; }
+
+  try {
+    const res = await apiFetch(`/api/bookkeeper/chart-of-accounts?realmId=${realmId}`);
+    if (!res.ok) throw new Error('Failed to fetch accounts');
+    const data = await res.json();
+
+    let optHtml = '<option value="">Select account…</option>';
+    let lastHeader = null;
+    for (const a of data.accounts) {
+      if (a.isHeader) {
+        if (lastHeader !== null) optHtml += '</optgroup>';
+        optHtml += `<optgroup label="${a.name}">`;
+        lastHeader = a.name;
+      } else {
+        optHtml += `<option value="${a.name}">${a.name}</option>`;
+      }
+    }
+    if (lastHeader !== null) optHtml += '</optgroup>';
+
+    const expandRow = document.createElement('tr');
+    expandRow.id = `stc-code-row-${uncodedId}`;
+    expandRow.style.cssText = 'background:rgba(201,168,76,0.04);';
+    expandRow.innerHTML = `
+      <td colspan="7" style="padding:0.75rem 1rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+          <select id="stc-select-${uncodedId}" style="flex:1;min-width:220px;max-width:400px;background:var(--input-bg,#1a1d2e);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.83rem;">${optHtml}</select>
+          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.78rem;color:var(--muted);white-space:nowrap;">
+            <input type="checkbox" id="stc-save-map-${uncodedId}" checked> Save mapping
+          </label>
+          <button class="btn btn-gold btn-sm" onclick="stc_saveCode(${uncodedId}, '${realmId}')">&#10003; Submit</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('stc-code-row-${uncodedId}').remove()">Cancel</button>
+        </div>
+      </td>`;
+    row.parentNode.insertBefore(expandRow, row.nextSibling);
+    setTimeout(() => { const s = document.getElementById(`stc-select-${uncodedId}`); if(s) s.focus(); }, 50);
+  } catch(e) {
+    alert('Failed to load accounts: ' + e.message);
+  } finally {
+    if (codeBtn) { codeBtn.disabled = false; codeBtn.textContent = 'Code'; }
+  }
+}
+
+async function stc_saveCode(uncodedId, realmId) {
+  const select = document.getElementById(`stc-select-${uncodedId}`);
+  const saveMap = document.getElementById(`stc-save-map-${uncodedId}`);
+  if (!select || !select.value) { alert('Please select an account'); return; }
+  const accountName = select.value;
+  const saveBtn = document.querySelector(`#stc-code-row-${uncodedId} .btn-gold`);
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+  try {
+    const res = await apiFetch('/api/bookkeeper/code', {
+      method: 'POST',
+      body: JSON.stringify({ uncodedId, accountName, saveMappingForVendor: saveMap?.checked !== false })
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+    // Remove both rows and reload
+    document.getElementById(`stc-code-row-${uncodedId}`)?.remove();
+    const txnRow = document.querySelector(`tr[data-stc-id="${uncodedId}"]`);
+    if (txnRow) txnRow.remove();
+    // If no rows left for this tbody, reload the whole tab
+    loadSentToClient();
+  } catch(e) {
+    alert('Error: ' + e.message);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '✓ Submit'; }
+  }
+}
+
+async function loadRuns() {
+  try {
+    const r = await apiFetch('/api/bookkeeper/runs?limit=10');
+    const data = await r.json();
+    const runs = data.runs || [];
+    const wrap = document.getElementById('bk-runs-list');
+    if (!runs.length) {
+      wrap.innerHTML = '<div style="padding:0.5rem 0;color:var(--muted);font-size:0.82rem;">No runs yet.</div>';
+      return;
+    }
+    wrap.innerHTML = runs.map(r => {
+      const date = new Date(r.started_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      const statusIcon = r.status === 'completed' ? '✅' : r.status === 'failed' ? '❌' : '⏳';
+      // Link company name to CRM company page bookkeeping tab
+      const companyLink = r.company_id && r.company_name
+        ? `<a href="/crm/company/${r.company_id}#bookkeeping" style="color:var(--gold);text-decoration:none;font-weight:600;">${esc(r.company_name)}</a>`
+        : esc(r.company_name || r.realm_id);
+      return `<div class="bk-run-row">
+        <span style="min-width:110px;">${date}</span>
+        <span style="min-width:140px;">${companyLink}</span>
+        <span>${r.txns_found || 0} found</span>
+        <span style="color:var(--green);">${r.txns_auto_coded || 0} auto</span>
+        <span style="color:var(--gold);">${r.txns_ai_coded || 0} AI</span>
+        <span style="color:var(--orange);">${r.txns_manual_review || 0} review</span>
+        <span>${statusIcon}</span>
+      </div>`;
+    }).join('');
+  } catch (e) { console.error('Failed to load runs:', e); }
+}
+
+// ── Manual triggers ─────────────────────────────────────────
+document.getElementById('bk-run-now-btn').addEventListener('click', async () => {
+  const realmId = document.getElementById('bk-company-filter').value;
+  const btn = document.getElementById('bk-run-now-btn');
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  try {
+    if (realmId) {
+      // Single company
+      const selectedCompany = companies.find(c => c.realm_id === realmId);
+      if (selectedCompany && !selectedCompany.auto_bookkeeper_enabled) {
+        throw new Error(`Auto-Bookkeeper is not enabled for ${selectedCompany.company_name || 'this company'}. Turn it on first, then rerun.`);
+      }
+      const r = await apiFetch('/api/bookkeeper/run-now', { method: 'POST', body: JSON.stringify({ realmId }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      toast(`Run complete: ${data.txns_found} found, ${data.txns_auto_coded} auto, ${data.txns_ai_coded} AI, ${data.txns_manual_review} review`);
+    } else {
+      // All enabled companies
+      const enabledCompanies = companies.filter(c => !!c.auto_bookkeeper_enabled);
+      if (!enabledCompanies.length) {
+        throw new Error('No auto-bookkeeper enabled companies to run');
+      }
+
+      let totalFound = 0, totalCoded = 0, totalReview = 0;
+      for (const c of enabledCompanies) {
+        try {
+          btn.textContent = `⏳ Running ${esc(c.company_name || '')}...`;
+          const r = await apiFetch('/api/bookkeeper/run-now', { method: 'POST', body: JSON.stringify({ realmId: c.realm_id }) });
+          const data = await r.json();
+          if (r.ok) {
+            totalFound += data.txns_found || 0;
+            totalCoded += (data.txns_auto_coded || 0) + (data.txns_ai_coded || 0);
+            totalReview += data.txns_manual_review || 0;
+          }
+        } catch(e) { console.warn('Run failed for', c.company_name, e.message); }
+      }
+      const disabledCount = companies.length - enabledCompanies.length;
+      const suffix = disabledCount > 0 ? `, ${disabledCount} disabled skipped` : '';
+      toast(`All auto-enabled companies done: ${totalFound} found, ${totalCoded} coded, ${totalReview} review${suffix}`);
+    }
+    loadUncoded();
+    loadOverview();
+  } catch (e) { toast('Error: ' + e.message, true); }
+  finally { btn.disabled = false; btn.textContent = '▶ Run Now'; }
+});
+
+document.getElementById('bk-rebuild-btn').addEventListener('click', async () => {
+  const realmId = document.getElementById('bk-company-filter').value;
+  const btn = document.getElementById('bk-rebuild-btn');
+  btn.disabled = true; btn.textContent = '⏳ Rebuilding…';
+  try {
+    if (realmId) {
+      // Single company
+      const r = await apiFetch('/api/bookkeeper/rebuild-mapping', { method: 'POST', body: JSON.stringify({ realmId }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      toast(`Mapping rebuilt: ${data.mappingsCreated} rules created/updated`);
+    } else {
+      // All companies
+      let totalCreated = 0;
+      for (const c of companies) {
+        try {
+          btn.textContent = `⏳ Rebuilding ${esc(c.company_name || '')}...`;
+          const r = await apiFetch('/api/bookkeeper/rebuild-mapping', { method: 'POST', body: JSON.stringify({ realmId: c.realm_id }) });
+          const data = await r.json();
+          if (r.ok) totalCreated += data.mappingsCreated||0;
+        } catch(e) { console.warn('Rebuild failed for', c.company_name, e.message); }
+      }
+      toast(`All companies rebuilt: ${totalCreated} total rules created/updated`);
+    }
+    loadMappings();
+    loadOverview();
+  } catch (e) { toast('Error: ' + e.message, true); }
+  finally { btn.disabled = false; btn.textContent = '🔄 Rebuild Mapping'; }
+});
+
+// ── Filter change handlers ──────────────────────────────────
+document.getElementById('bk-company-filter').addEventListener('change', async () => { await loadUncoded(); await loadOverview(); });
+document.getElementById('bk-status-filter').addEventListener('change', async () => { await loadUncoded(); await loadOverview(); });
+
+// ── Company Toggles (Settings tab) ──────────────────────────
+function renderCompanyToggles() {
+  const wrap = document.getElementById('bk-toggles-list');
+  if (!companies.length) {
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">No QBO-connected companies found.</div>';
+    return;
+  }
+  wrap.innerHTML = companies.map(c => {
+    const enabled = !!c.auto_bookkeeper_enabled;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);">
+      <div>
+        <span style="font-weight:600;font-size:0.9rem;">${esc(c.company_name || c.realm_id)}</span>
+        <span style="font-size:0.75rem;color:var(--muted);margin-left:0.5rem;">${enabled ? '✅ Active' : '⚪ Inactive'}</span>
+      </div>
+      <button class="btn btn-sm ${enabled ? 'btn-danger' : 'btn-gold'}" onclick="toggleCompany('${esc(c.realm_id)}', ${!enabled})">
+        ${enabled ? 'Disable' : 'Enable'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function toggleCompany(realmId, enabled) {
+  try {
+    const r = await apiFetch('/api/bookkeeper/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ realmId, enabled }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Failed');
+    const c = companies.find(x => x.realm_id === realmId);
+    if (c) c.auto_bookkeeper_enabled = enabled;
+    renderCompanyToggles();
+    toast(enabled ? 'Auto-bookkeeper enabled' : 'Auto-bookkeeper disabled');
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+// ── Boot ────────────────────────────────────────────────────
+(async function() {
+  await loadCompanies();
+  await loadOverview();
+  await loadUncoded();
+})();
+</script>
+
+<%- include('partials/shell-close') %>

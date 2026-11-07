@@ -1,0 +1,33 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+<link rel="stylesheet" href="/advisor-today.css?v=349a0e9535">
+
+<div class="td-wrap">
+  <header class="td-head">
+    <h1 class="td-title" id="td-greeting">Today</h1>
+    <p class="td-sub" id="td-sentence">&nbsp;</p>
+  </header>
+
+  <section class="td-season" id="td-season" aria-label="Tax season"></section>
+
+  <div class="td-grid">
+    <div class="td-main">
+      <h2 class="td-h2">Needs you</h2>
+      <div id="td-needs"><div class="td-skel"></div><div class="td-skel"></div><div class="td-skel"></div></div>
+    </div>
+    <aside class="td-side">
+      <section class="td-panel">
+        <div class="td-panel-head"><h2 class="td-h3">Inbox</h2><a href="/messages" class="td-link">View all</a></div>
+        <div id="td-inbox"><div class="td-skel sm"></div><div class="td-skel sm"></div></div>
+      </section>
+      <section class="td-panel">
+        <div class="td-panel-head"><h2 class="td-h3">My Work</h2><a href="/my-work" class="td-link">View all</a></div>
+        <div id="td-mywork"><div class="td-skel sm"></div></div>
+      </section>
+      <section class="td-panel" id="td-accepted"></section>
+    </aside>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+<script src="/js/advisor-today.js?v=8d425fe592"></script>
+<%- include('partials/shell-close') %>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Page not found</title>
+  <style>
+    :root { --bg: #f7f7f5; --text: #1c1c1c; --muted: #6b6b6b; --line: #d9d9d4; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #111214; --text: #ececec; --muted: #9a9a9a; --line: #2c2d31; } }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, sans-serif; text-align: center; padding: 0 16px; }
+    h1 { font-size: 1.4rem; margin: 0 0 .5rem; }
+    p { color: var(--muted); margin: 0 0 1.5rem; }
+    button { font: inherit; padding: .5rem 1.1rem; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Page not found</h1>
+    <p>This page doesn't exist or you don't have access to it.</p>
+    <button type="button" onclick="history.length > 1 ? history.back() : location.assign('/')">Go back</button>
+  </main>
+</body>
+</html>

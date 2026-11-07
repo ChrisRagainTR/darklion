@@ -1,0 +1,258 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<style>
+  .mw-wrap { padding: 1.5rem 2rem; }
+  .mw-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; }
+  .mw-top h1 { font-size: 1.25rem; font-weight: 800; }
+  .mw-counts { display: flex; gap: 0.5rem; align-items: center; }
+  .mw-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: rgba(143,163,184,0.12); color: var(--muted); }
+  .mw-pill.overdue { background: rgba(245,101,101,0.12); color: var(--red); }
+  .mw-pill.total { background: rgba(201,168,76,0.14); color: var(--gold); }
+
+  .mw-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .mw-filter { display: flex; align-items: center; gap: 0.4rem; }
+  .mw-filter label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .mw-filter select { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.85rem; cursor: pointer; }
+  .mw-filter select:focus { outline: none; border-color: var(--gold); }
+
+  .mw-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .mw-table th { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0.65rem 1rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .mw-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.86rem; vertical-align: middle; }
+  .mw-table tbody tr:last-child td { border-bottom: none; }
+  .mw-table tbody tr { cursor: pointer; transition: background 0.1s; }
+  .mw-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .mw-table tbody tr.row-overdue td { background: rgba(245,101,101,0.04); }
+  .mw-table tbody tr.row-overdue:hover td { background: rgba(245,101,101,0.07); }
+
+  .mw-kind { display: inline-flex; align-items: center; padding: 0.18rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+  .mw-kind.pipeline_job { background: rgba(62,207,142,0.12); color: var(--green); }
+  .mw-kind.task { background: rgba(201,168,76,0.14); color: var(--gold); }
+  .mw-prio { display: inline-flex; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+  .mw-prio.urgent { background: rgba(245,101,101,0.14); color: var(--red); }
+  .mw-prio.high { background: rgba(237,137,54,0.14); color: var(--orange); }
+  .mw-prio.normal { color: var(--muted); }
+  .mw-due-overdue { color: var(--red); font-weight: 600; }
+  .mw-due-soon { color: var(--orange); font-weight: 600; }
+  .mw-muted { color: var(--muted); }
+  .mw-title { font-weight: 600; }
+  .mw-entity-link { color: var(--gold); text-decoration: none; font-weight: 600; }
+  .mw-entity-link:hover { color: var(--gold-light); text-decoration: underline; }
+
+  .mw-empty { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .mw-empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .mw-empty-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.4rem; }
+  .mw-loading { padding: 3rem; text-align: center; color: var(--muted); }
+</style>
+
+<div class="mw-wrap">
+  <div class="mw-top">
+    <h1>My Work</h1>
+    <div class="mw-counts" id="mw-counts">
+      <span class="mw-pill total"><span id="mw-count-total">0</span> total</span>
+      <span class="mw-pill overdue" id="mw-count-overdue-pill" style="display:none;">
+        <span id="mw-count-overdue">0</span> overdue
+      </span>
+    </div>
+  </div>
+
+  <div class="mw-filters">
+    <div class="mw-filter">
+      <label for="mw-f-source">Source</label>
+      <select id="mw-f-source">
+        <option value="all">All</option>
+        <option value="pipeline_job">Pipeline jobs</option>
+        <option value="task">Tasks</option>
+      </select>
+    </div>
+    <div class="mw-filter">
+      <label for="mw-f-priority">Priority</label>
+      <select id="mw-f-priority">
+        <option value="all">All</option>
+        <option value="urgent">Urgent</option>
+        <option value="high">High</option>
+        <option value="normal">Normal</option>
+      </select>
+    </div>
+    <div class="mw-filter">
+      <label for="mw-f-due">Due</label>
+      <select id="mw-f-due">
+        <option value="all">All</option>
+        <option value="overdue">Overdue</option>
+        <option value="today">Today</option>
+        <option value="week">This week</option>
+        <option value="none">No due date</option>
+      </select>
+    </div>
+    <div class="mw-filter">
+      <label for="mw-f-entity">Entity</label>
+      <select id="mw-f-entity">
+        <option value="all">All</option>
+        <option value="person">Person</option>
+        <option value="company">Company</option>
+        <option value="relationship">Relationship</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="mw-content" class="mw-loading">Loading…</div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // Local apiFetch — shell-globals loads after this script, so apiFetch
+  // isn't defined yet. Match the pipelines.ejs pattern: page scripts are self-contained.
+  var token = (window.DLAuth ? window.DLAuth.token() : localStorage.getItem('dl_token'));
+  if (!token) { window.location.replace('/login'); return; }
+
+  function apiFetch(url, opts) {
+    opts = opts || {};
+    var headers = { 'Authorization': 'Bearer ' + token };
+    if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+    return fetch(url, Object.assign({}, opts, { headers: Object.assign(headers, opts.headers || {}) }))
+      .then(function(res) {
+        if (res.status === 401) { localStorage.removeItem('dl_token'); window.location.replace('/login?expired=1'); throw new Error('Unauthorized'); }
+        return res;
+      });
+  }
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  var allItems = [];
+
+  function fmtDue(dueDate, today) {
+    if (!dueDate) return '<span class="mw-muted">—</span>';
+    if (dueDate < today) return '<span class="mw-due-overdue">' + dueDate + '</span>';
+    var d = new Date(dueDate + 'T00:00:00');
+    var t = new Date(today + 'T00:00:00');
+    var diffDays = Math.round((d - t) / 86400000);
+    if (diffDays <= 3) return '<span class="mw-due-soon">' + dueDate + '</span>';
+    return dueDate;
+  }
+
+  function fmtAge(createdAt) {
+    if (!createdAt) return '';
+    var ms = Date.now() - new Date(createdAt).getTime();
+    var mins = Math.floor(ms / 60000);
+    if (mins < 60) return mins + 'm';
+    var hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h';
+    var days = Math.floor(hours / 24);
+    if (days < 30) return days + 'd';
+    var months = Math.floor(days / 30);
+    return months + 'mo';
+  }
+
+  function endOfWeek(today) {
+    var d = new Date(today + 'T00:00:00');
+    var dow = d.getDay(); // 0=Sun
+    var daysUntilSat = 6 - dow;
+    d.setDate(d.getDate() + daysUntilSat);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function applyFilters(items) {
+    var src = document.getElementById('mw-f-source').value;
+    var prio = document.getElementById('mw-f-priority').value;
+    var due = document.getElementById('mw-f-due').value;
+    var ent = document.getElementById('mw-f-entity').value;
+    var today = new Date().toISOString().slice(0, 10);
+    var weekEnd = endOfWeek(today);
+
+    return items.filter(function(it) {
+      if (src !== 'all' && it.kind !== src) return false;
+      if (prio !== 'all' && (it.priority || 'normal') !== prio) return false;
+      if (ent !== 'all' && it.entity.type !== ent) return false;
+      if (due === 'overdue') { if (!it.dueDate || it.dueDate >= today) return false; }
+      else if (due === 'today') { if (it.dueDate !== today) return false; }
+      else if (due === 'week') { if (!it.dueDate || it.dueDate < today || it.dueDate > weekEnd) return false; }
+      else if (due === 'none') { if (it.dueDate) return false; }
+      return true;
+    });
+  }
+
+  function render() {
+    var content = document.getElementById('mw-content');
+    var items = applyFilters(allItems);
+    var today = new Date().toISOString().slice(0, 10);
+
+    if (!allItems.length) {
+      content.className = 'mw-empty';
+      content.innerHTML =
+        '<div class="mw-empty-icon">🦁</div>' +
+        '<div class="mw-empty-title">Nothing assigned to you.</div>' +
+        '<div>You\'re all caught up.</div>';
+      return;
+    }
+
+    if (!items.length) {
+      content.className = 'mw-empty';
+      content.innerHTML =
+        '<div class="mw-empty-title">No matching items.</div>' +
+        '<div>Try clearing your filters.</div>';
+      return;
+    }
+
+    content.className = '';
+    var rows = items.map(function(it) {
+      var overdue = it.dueDate && it.dueDate < today;
+      var kindLabel = it.kind === 'pipeline_job' ? 'Pipeline' : 'Task';
+      var prio = it.priority || 'normal';
+      var pipeline = it.pipelineName
+        ? esc(it.pipelineName) + (it.pipelineTaxYear ? ' <span class="mw-muted">' + esc(it.pipelineTaxYear) + '</span>' : '')
+        : '<span class="mw-muted">—</span>';
+      return '<tr class="' + (overdue ? 'row-overdue' : '') + '" data-link="' + esc(it.link) + '">' +
+        '<td><span class="mw-kind ' + it.kind + '">' + kindLabel + '</span></td>' +
+        '<td class="mw-title">' + esc(it.title || '') + '</td>' +
+        '<td><a class="mw-entity-link" href="' + esc(it.link) + '" onclick="event.stopPropagation();">' + esc(it.entity.name) + '</a></td>' +
+        '<td>' + pipeline + '</td>' +
+        '<td>' + (it.stageName ? esc(it.stageName) : '<span class="mw-muted">—</span>') + '</td>' +
+        '<td>' + (prio === 'normal' ? '<span class="mw-prio normal">—</span>' : '<span class="mw-prio ' + prio + '">' + prio + '</span>') + '</td>' +
+        '<td>' + fmtDue(it.dueDate, today) + '</td>' +
+        '<td class="mw-muted">' + fmtAge(it.createdAt) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    content.innerHTML =
+      '<table class="mw-table">' +
+        '<thead><tr>' +
+          '<th>Type</th><th>Title</th><th>Entity</th><th>Pipeline</th>' +
+          '<th>Stage</th><th>Priority</th><th>Due</th><th>Age</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>';
+
+    content.querySelectorAll('tbody tr').forEach(function(tr) {
+      tr.addEventListener('click', function() {
+        var link = tr.getAttribute('data-link');
+        if (link) window.location.href = link;
+      });
+    });
+  }
+
+  function load() {
+    apiFetch('/api/my-work').then(function(r) { return r.json(); }).then(function(data) {
+      allItems = data.items || [];
+      var counts = data.counts || { overdue: 0, total: 0 };
+      document.getElementById('mw-count-total').textContent = counts.total;
+      document.getElementById('mw-count-overdue').textContent = counts.overdue;
+      document.getElementById('mw-count-overdue-pill').style.display = counts.overdue > 0 ? '' : 'none';
+      render();
+    }).catch(function(err) {
+      var content = document.getElementById('mw-content');
+      content.className = 'mw-empty';
+      content.innerHTML = '<div class="mw-empty-title">Failed to load.</div><div>' + esc(err.message || 'Unknown error') + '</div>';
+    });
+  }
+
+  ['mw-f-source', 'mw-f-priority', 'mw-f-due', 'mw-f-entity'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', render);
+  });
+
+  load();
+})();
+</script>
+
+<%- include('partials/shell-globals') %>
+<%- include('partials/shell-close') %>

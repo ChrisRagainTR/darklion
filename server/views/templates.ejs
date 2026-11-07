@@ -1,0 +1,198 @@
+<%- include('partials/shell-top', { title: title, activeNav: activeNav }) %>
+
+<div style="max-width:860px;margin:0 auto;padding:2rem 1.5rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;">
+    <div>
+      <div style="font-size:1.25rem;font-weight:700;">Message Templates</div>
+      <div style="font-size:0.84rem;color:var(--muted);margin-top:0.25rem;">Pre-written messages your team can load when composing</div>
+    </div>
+    <button class="btn btn-gold" onclick="openNew()">+ New Template</button>
+  </div>
+
+  <div id="templates-list">
+    <div class="loading-state"><div class="loading-spinner"></div><div style="margin-top:0.5rem;">Loading…</div></div>
+  </div>
+</div>
+
+<!-- New / Edit Modal -->
+<div class="modal-overlay" id="tmpl-modal">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;width:95%;">
+    <h2 id="tmpl-modal-title">New Template</h2>
+    <div id="tmpl-error" style="display:none;color:var(--red);font-size:0.82rem;margin-bottom:0.75rem;"></div>
+    <div class="form-group">
+      <label>Template Name <span style="color:var(--muted);font-weight:400;font-size:0.78rem;">(staff-facing only)</span></label>
+      <input type="text" class="form-control" id="tmpl-name" placeholder="e.g. Tax Return Ready, Welcome, Document Request…">
+    </div>
+    <div class="form-group">
+      <label>Message Body</label>
+      <div style="margin-bottom:0.5rem;">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">Insert Variable — click to insert at cursor</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+          <button type="button" class="tmpl-var-chip" onclick="insertVar('{First Name}')">👤 First Name</button>
+          <button type="button" class="tmpl-var-chip" onclick="insertVar('{Last Name}')">👤 Last Name</button>
+          <button type="button" class="tmpl-var-chip" onclick="insertVar('{Full Name}')">👤 Full Name</button>
+          <button type="button" class="tmpl-var-chip" onclick="insertVar('{Company Name}')">🏢 Company Name</button>
+          <button type="button" class="tmpl-var-chip" onclick="insertVar('{Firm Name}')">🏛 Firm Name</button>
+        </div>
+      </div>
+      <textarea class="form-control" id="tmpl-body" rows="10" placeholder="Write the template message here… Use the buttons above to insert personalization variables." style="resize:vertical;font-family:inherit;font-size:0.88rem;line-height:1.6;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="tmpl-submit" onclick="submitTemplate()">Save Template</button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/shell-globals') %>
+
+<style>
+  .tmpl-var-chip {
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--gold);
+    border-radius: 20px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    font-family: inherit;
+  }
+  .tmpl-var-chip:hover {
+    background: rgba(201,168,76,0.2);
+    border-color: rgba(201,168,76,0.6);
+  }
+</style>
+
+<script>
+  let templates = [];
+  let editingId = null;
+
+  function insertVar(tag) {
+    const ta = document.getElementById('tmpl-body');
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = ta.value.slice(0, start);
+    const after = ta.value.slice(end);
+    ta.value = before + tag + after;
+    // Place cursor after the inserted tag
+    const newPos = start + tag.length;
+    ta.setSelectionRange(newPos, newPos);
+    ta.focus();
+  }
+
+  async function loadTemplates() {
+    try {
+      const res = await apiFetch('/api/templates');
+      templates = await res.json();
+      renderList();
+    } catch(e) {
+      document.getElementById('templates-list').innerHTML = '<div style="color:var(--red);padding:1rem;">Failed to load templates.</div>';
+    }
+  }
+
+  function renderList() {
+    const el = document.getElementById('templates-list');
+    if (!templates.length) {
+      el.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--muted);">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">📝</div>
+        <div style="font-weight:700;color:var(--text);margin-bottom:0.5rem;">No templates yet</div>
+        <div style="font-size:0.84rem;margin-bottom:1.5rem;">Create your first template to use in client messages</div>
+        <button class="btn btn-gold" onclick="openNew()">+ New Template</button>
+      </div>`;
+      return;
+    }
+    el.innerHTML = templates.map(t => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:0.75rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.6rem;">
+          <div style="font-weight:700;font-size:0.95rem;">${esc(t.name)}</div>
+          <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+            <button class="btn btn-outline btn-sm" onclick="openEdit(${t.id})">Edit</button>
+            <button class="btn btn-sm" style="background:transparent;border:1px solid rgba(245,101,101,0.4);color:var(--red);" onclick="deleteTemplate(${t.id})">Delete</button>
+          </div>
+        </div>
+        <div style="font-size:0.84rem;color:var(--muted);white-space:pre-wrap;line-height:1.55;max-height:80px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">${esc(t.body)}</div>
+        <div style="font-size:0.72rem;color:rgba(143,163,184,0.5);margin-top:0.6rem;">Created ${new Date(t.created_at).toLocaleDateString()}</div>
+      </div>
+    `).join('');
+  }
+
+  function openNew() {
+    editingId = null;
+    document.getElementById('tmpl-modal-title').textContent = 'New Template';
+    document.getElementById('tmpl-name').value = '';
+    document.getElementById('tmpl-body').value = '';
+    document.getElementById('tmpl-error').style.display = 'none';
+    document.getElementById('tmpl-submit').disabled = false;
+    document.getElementById('tmpl-submit').textContent = 'Save Template';
+    document.getElementById('tmpl-modal').classList.add('open');
+    setTimeout(() => document.getElementById('tmpl-name').focus(), 50);
+  }
+
+  function openEdit(id) {
+    const t = templates.find(x => x.id === id);
+    if (!t) return;
+    editingId = id;
+    document.getElementById('tmpl-modal-title').textContent = 'Edit Template';
+    document.getElementById('tmpl-name').value = t.name;
+    document.getElementById('tmpl-body').value = t.body;
+    document.getElementById('tmpl-error').style.display = 'none';
+    document.getElementById('tmpl-submit').disabled = false;
+    document.getElementById('tmpl-submit').textContent = 'Save Changes';
+    document.getElementById('tmpl-modal').classList.add('open');
+    setTimeout(() => document.getElementById('tmpl-name').focus(), 50);
+  }
+
+  function closeModal() {
+    document.getElementById('tmpl-modal').classList.remove('open');
+  }
+
+  async function submitTemplate() {
+    const btn = document.getElementById('tmpl-submit');
+    const errEl = document.getElementById('tmpl-error');
+    const name = document.getElementById('tmpl-name').value.trim();
+    const body = document.getElementById('tmpl-body').value.trim();
+    errEl.style.display = 'none';
+    if (!name) { errEl.textContent = 'Name is required'; errEl.style.display = ''; return; }
+    if (!body) { errEl.textContent = 'Message body is required'; errEl.style.display = ''; return; }
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const url = editingId ? `/api/templates/${editingId}` : '/api/templates';
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await apiFetch(url, { method, body: JSON.stringify({ name, body }) });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+      btn.textContent = '✓ Saved';
+      setTimeout(() => { closeModal(); loadTemplates(); }, 400);
+    } catch(e) {
+      errEl.textContent = e.message;
+      errEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = editingId ? 'Save Changes' : 'Save Template';
+    }
+  }
+
+  async function deleteTemplate(id) {
+    const t = templates.find(x => x.id === id);
+    const confirmed = await window.dlConfirm(
+      `Delete <strong>${esc(t ? t.name : 'this template')}</strong>? This cannot be undone.`,
+      { title: 'Delete Template', confirmLabel: 'Delete', danger: true }
+    );
+    if (!confirmed) return;
+    try {
+      const res = await apiFetch(`/api/templates/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed');
+      toast('Template deleted');
+      loadTemplates();
+    } catch(e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  loadTemplates();
+</script>
+
+<%- include('partials/shell-close') %>

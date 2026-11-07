@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1117">
+  <title>Client App</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/favicon.png">
+  <link rel="stylesheet" href="/mobile-app.css?v=20260516-5">
+</head>
+<body>
+  <div class="app-shell" id="app-shell">
+    <section class="screen auth-screen" id="auth-screen" aria-labelledby="login-title">
+      <div class="brand-lockup">
+        <img src="/lion-logo.png" alt="" class="brand-logo">
+        <div>
+          <div class="brand-kicker">Your firm</div>
+          <h1 id="login-title">Secure client app</h1>
+        </div>
+      </div>
+
+      <form class="login-card" id="login-form">
+        <label>
+          <span>Email</span>
+          <input id="login-email" name="email" type="email" autocomplete="email" inputmode="email" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="primary-btn" id="login-submit">Sign in</button>
+        <p class="form-error" id="login-error" role="alert"></p>
+      </form>
+
+      <div class="app-store-card">
+        <p>For the best iPhone experience, install the client portal app and sign in with your existing portal login.</p>
+        <a href="#" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+          <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" alt="Download on the App Store">
+        </a>
+      </div>
+    </section>
+
+    <section class="screen main-screen hidden" id="main-screen" aria-live="polite">
+      <header class="app-header">
+        <div>
+          <div class="eyebrow" id="today-label">Client app</div>
+          <h1 id="welcome-title">Welcome back</h1>
+        </div>
+        <button type="button" class="icon-btn" id="sign-out-btn" aria-label="Sign out">↗</button>
+      </header>
+
+      <main class="content" id="view-home">
+        <div class="loading-card" id="home-loading">
+          <div class="spinner"></div>
+          <span>Loading your secure app…</span>
+        </div>
+
+        <div id="home-content" class="hidden">
+          <section class="hero-card" id="hero-card">
+            <div class="hero-copy">
+              <div class="eyebrow">Next step</div>
+              <h2 id="hero-title">You’re all caught up</h2>
+              <p id="hero-subtitle">No tax return actions are waiting right now.</p>
+            </div>
+            <button type="button" class="primary-btn compact" id="hero-action">Review</button>
+          </section>
+
+          <section class="quick-grid" aria-label="App summary">
+            <button type="button" class="metric-card" data-nav="messages">
+              <span class="metric-icon">💬</span>
+              <strong id="unread-count">0</strong>
+              <span>Unread messages</span>
+            </button>
+            <button type="button" class="metric-card" data-nav="review">
+              <span class="metric-icon">✍️</span>
+              <strong id="tax-action-count">0</strong>
+              <span>Returns to review/sign</span>
+            </button>
+          </section>
+
+          <section class="section-card">
+            <div class="section-heading">
+              <h2>Tax return actions</h2>
+              <span id="tax-summary-label">0 pending</span>
+            </div>
+            <div class="task-list" id="tax-task-list"></div>
+          </section>
+        </div>
+      </main>
+
+      <main class="content hidden" id="view-messages">
+        <section class="messages-shell" id="messages-shell">
+          <div class="messages-inbox" id="messages-list-panel">
+            <div class="messages-topbar">
+              <div>
+                <div class="eyebrow">Secure chat</div>
+                <h2>Messages</h2>
+              </div>
+              <button type="button" class="refresh-circle" id="messages-refresh-btn" aria-label="Refresh messages">↻</button>
+            </div>
+            <div class="message-search-shell" aria-hidden="true">
+              <span>⌕</span>
+              <div>Search conversations</div>
+            </div>
+            <div class="mini-loading" id="messages-loading"><div class="spinner"></div><span>Loading team…</span></div>
+            <div class="contact-list imessage-list" id="contact-list"></div>
+          </div>
+
+          <div class="chat-screen hidden" id="thread-panel">
+            <div class="chat-header">
+              <button type="button" class="back-btn chat-back" id="thread-back-btn" aria-label="Back to messages">‹</button>
+              <div class="chat-person">
+                <div class="avatar chat-avatar" id="thread-avatar">?</div>
+                <div class="thread-title-wrap">
+                  <h2 id="thread-title">Messages</h2>
+                  <p id="thread-subtitle">Secure conversation</p>
+                </div>
+              </div>
+            </div>
+            <div class="thread-messages chat-transcript" id="thread-messages">
+              <div class="mini-loading"><div class="spinner"></div><span>Loading conversation…</span></div>
+            </div>
+            <form class="message-composer chat-composer" id="message-form">
+              <div class="composer-attachments" id="composer-attachments"></div>
+              <div class="composer-row imessage-composer-row">
+                <button type="button" class="attach-btn" id="attach-btn" aria-label="Attach file">＋</button>
+                <textarea id="message-body" rows="1" placeholder="Secure message"></textarea>
+                <button type="submit" class="send-btn" id="message-send-btn" aria-label="Send message">↑</button>
+              </div>
+              <input type="file" id="message-files" multiple hidden>
+              <p class="form-error" id="message-error" role="alert"></p>
+            </form>
+          </div>
+        </section>
+      </main>
+
+      <main class="content hidden" id="view-review">
+        <section class="review-shell">
+          <div class="messages-panel" id="review-list-panel">
+            <div class="section-heading messages-heading">
+              <h2>Review &amp; Sign</h2>
+              <button type="button" class="text-btn" id="review-refresh-btn">Refresh</button>
+            </div>
+            <div class="mini-loading hidden" id="review-loading"><div class="spinner"></div><span>Loading returns…</span></div>
+            <div class="review-list" id="review-list"></div>
+          </div>
+
+          <div class="messages-panel review-detail-panel hidden" id="review-detail-panel">
+            <div class="thread-header">
+              <button type="button" class="back-btn" id="review-back-btn" aria-label="Back to returns">‹</button>
+              <div class="avatar">✍️</div>
+              <div class="thread-title-wrap">
+                <h2 id="review-detail-title">Tax return</h2>
+                <p id="review-detail-subtitle">Secure review packet</p>
+              </div>
+            </div>
+            <div class="review-detail-scroll" id="review-detail-content"></div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Primary">
+        <button type="button" class="nav-btn active" data-nav="home"><span>⌂</span>Home</button>
+        <button type="button" class="nav-btn" data-nav="messages"><span>💬</span>Messages</button>
+        <button type="button" class="nav-btn" data-nav="review"><span>✍️</span>Review</button>
+      </nav>
+    </section>
+  </div>
+
+  <div class="toast hidden" id="app-toast" role="status" aria-live="polite"></div>
+
+  <div class="modal-backdrop hidden" id="changes-modal" role="dialog" aria-modal="true" aria-labelledby="changes-title">
+    <form class="modal-card" id="changes-form">
+      <h2 id="changes-title">Request changes</h2>
+      <p>Tell your advisor team what needs another look. This will notify our team.</p>
+      <textarea class="review-note" id="changes-note" placeholder="Example: Please check the estimated payment amount…" required></textarea>
+      <p class="form-error" id="changes-error" role="alert"></p>
+      <div class="modal-actions">
+        <button type="button" class="secondary-btn" id="changes-cancel-btn">Cancel</button>
+        <button type="submit" class="danger-btn" id="changes-submit-btn">Send request</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/js/mobile-app.js?v=20261009-s3c"></script>
+</body>
+</html>

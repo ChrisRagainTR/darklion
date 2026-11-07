@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Proposal</title>
+  <link rel="icon" type="image/png" href="/lion-logo.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0f1923; --gold: #c9a84c; --gold-light: #e2c068;
+      --text: #1a202c; --muted: #718096; --border: #e2e8f0;
+      --card-bg: #ffffff; --page-bg: #f7fafc;
+      --green: #38a169; --blue: #3182ce; --red: #e53e3e;
+    }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--page-bg); color: var(--text); min-height: 100vh; }
+
+    /* Header */
+    .site-header { background: var(--navy); padding: 0.9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+    .site-header-logo { height: 56px; max-width: 280px; object-fit: contain; }
+    .site-logo { color: #fff; font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em; }
+    .site-logo span { color: var(--gold); }
+    .secure-badge { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3); color: var(--gold); font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 999px; }
+
+    /* Hero */
+    .hero { background: linear-gradient(135deg, var(--navy) 0%, #1a2535 100%); padding: 2.5rem 1.5rem; text-align: center; color: #fff; }
+    .hero-eyebrow { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 0.5rem; }
+    .hero h1 { font-size: 1.75rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .hero-subtitle { font-size: 0.9rem; color: rgba(255,255,255,0.7); }
+
+    /* Step Indicator */
+    .steps-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0.9rem 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0; overflow-x: auto; }
+    .step-item { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+    .step-num { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #cbd5e0; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: #a0aec0; }
+    .step-num.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .step-num.done { background: var(--green); border-color: var(--green); color: #fff; }
+    .step-label { font-size: 0.8rem; font-weight: 600; color: #a0aec0; }
+    .step-label.active { color: var(--navy); }
+    .step-connector { width: 40px; height: 2px; background: #e2e8f0; margin: 0 0.4rem; flex-shrink: 0; }
+    .step-connector.done { background: var(--green); }
+
+    /* Content */
+    .content { max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem; }
+
+    /* Step panels */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* Package cards */
+    .packages-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; align-items: start; }
+    .pkg-card { background: var(--card-bg); border: 2px solid var(--border); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.15s; position: relative; }
+    .pkg-card:hover { border-color: #c9a84c50; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .pkg-card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.15); }
+    .pkg-card.recommended::before { content: '⭐ Most Popular'; position: absolute; top: -10px; left: 1rem; background: var(--gold); color: var(--navy); font-size: 0.65rem; font-weight: 800; padding: 0.15rem 0.6rem; border-radius: 999px; }
+    .pkg-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .pkg-select { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cbd5e0; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; }
+    .pkg-select.checked { background: var(--gold); border-color: var(--gold); }
+    .pkg-select.checked::after { content: '✓'; font-size: 0.65rem; font-weight: 800; color: var(--navy); }
+    .pkg-check-icon { width: 20px; height: 20px; border-radius: 4px; border: 2px solid #cbd5e0; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; }
+    .pkg-check-icon.checked { background: var(--gold); border-color: var(--gold); }
+    .pkg-check-icon.checked::after { content: '✓'; font-size: 0.65rem; font-weight: 800; color: var(--navy); }
+    .pkg-info { flex: 1; }
+    .pkg-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.1rem; }
+    .pkg-subtitle { font-size: 0.78rem; color: var(--muted); }
+    .pkg-price { font-size: 1.1rem; font-weight: 800; color: var(--navy); text-align: right; flex-shrink: 0; }
+    .pkg-price .per { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
+    .pkg-bullets { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
+    .pkg-bullet { font-size: 0.82rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+    .pkg-bullet::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
+
+    /* Extras sections */
+    .extras-section { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+    .extras-title { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem; }
+    .extras-item { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid #f0f4f8; font-size: 0.85rem; }
+    .extras-item:last-child { border-bottom: none; }
+    .extras-price { font-weight: 600; color: var(--navy); }
+
+    .wealth-total { background: var(--navy); color: #fff; border-radius: 8px; padding: 0.75rem 1rem; margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+    .wealth-total-label { font-size: 0.85rem; }
+    .wealth-total-price { font-size: 1.2rem; font-weight: 800; color: var(--gold); }
+
+    /* Info form */
+    .info-form { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+    .form-control { width: 100%; border: 1.5px solid var(--border); border-radius: 7px; padding: 0.5rem 0.75rem; font-size: 0.9rem; color: var(--text); background: #fff; outline: none; transition: border-color 0.15s; font-family: inherit; }
+    .form-control:focus { border-color: var(--gold); }
+    textarea.form-control { resize: vertical; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* Confirm */
+    .confirm-pkg-card { background: var(--navy); color: #fff; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .confirm-pkg-card .pkg-name { color: #fff; }
+    .confirm-pkg-card .pkg-price { color: var(--gold); }
+    .confirm-info-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+    .confirm-info-row { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid #f0f4f8; font-size: 0.85rem; }
+    .confirm-info-row:last-child { border-bottom: none; }
+    .confirm-info-label { color: var(--muted); }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.7rem 1.5rem; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.15s; text-decoration: none; font-family: inherit; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-gold { background: var(--gold); color: var(--navy); width: 100%; }
+    .btn-gold:not(:disabled):hover { background: var(--gold-light); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+    .btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+    .btn-row { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+    .btn-row .btn-outline { flex: 0 0 auto; }
+    .btn-row .btn-gold { flex: 1; }
+
+    /* States */
+    .accepted-state, .error-state, .loading-state, .expired-state { text-align: center; padding: 3rem 1rem; }
+    .state-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .state-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .state-sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .app-store-nudge { max-width: 360px; margin: 1.25rem auto 0; padding: 1rem; border: 1px solid #eadfbf; border-radius: 10px; background: #fffaf0; }
+    .app-store-nudge-title { font-size: 0.86rem; font-weight: 800; color: var(--navy); margin-bottom: 0.35rem; }
+    .app-store-nudge p { font-size: 0.8rem; color: var(--muted); line-height: 1.45; margin-bottom: 0.75rem; }
+    .app-store-nudge img { display: block; width: 150px; max-width: 100%; height: auto; margin: 0 auto; border: 0; }
+    .spin { display: inline-block; width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: var(--navy); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 760px) {
+      .packages-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .hero h1 { font-size: 1.35rem; }
+      .form-grid-2 { grid-template-columns: 1fr; }
+      .content { padding: 1.25rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <img src="/lion-logo.png" alt="Your firm" class="site-header-logo" onerror="this.style.display='none';document.getElementById('fallback-logo').style.display=''">
+  <div id="fallback-logo" style="display:none;" class="site-logo">Dark<span>Lion</span></div>
+  <div class="secure-badge">🔒 Secure Proposal</div>
+</header>
+
+<div id="root">
+  <div class="loading-state">
+    <div class="spin"></div>
+    <p style="margin-top:1rem;color:var(--muted);">Loading your proposal…</p>
+  </div>
+</div>
+
+<script>
+const token = location.pathname.split('/').pop();
+const API = '/api/proposals/public/' + token;
+const CLIENT_APP_STORE_URL = window.DARKLION_APP_STORE_URL || '';
+const APP_STORE_BADGE_URL = 'https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83';
+
+let proposal = null;
+let step = 1;
+let selectedTierIndex = -1;     // tax: single
+let selectedTierIndices = [];   // wealth: multi
+let clientInfo = {};
+
+async function init() {
+  try {
+    const r = await fetch(API);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showError(err.error || 'This proposal could not be found.');
+      return;
+    }
+    proposal = await r.json();
+
+    if (proposal.status === 'signed') {
+      showSigned();
+      return;
+    }
+    if (proposal.status === 'accepted') {
+      showAccepted();
+      return;
+    }
+
+    renderProposal();
+  } catch(e) {
+    showError('Failed to load proposal. Please try again.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('root').innerHTML = `
+    <div class="error-state">
+      <div class="state-icon">😕</div>
+      <div class="state-title">Proposal Not Found</div>
+      <div class="state-sub">${escHtml(msg)}</div>
+      <p style="font-size:0.85rem;color:var(--muted);">If you believe this is an error, please contact your advisor.</p>
+    </div>`;
+}
+
+function showAccepted() {
+  // Accepted but not yet signed — can still change package
+  document.getElementById('root').innerHTML = `
+    <div class="hero" style="padding:1.5rem;">
+      <div class="hero-eyebrow">Proposal for ${escHtml(proposal.client_name||'')}</div>
+      <h1>${escHtml(proposal.title||'Service Engagement Proposal')}</h1>
+    </div>
+    <div class="content">
+      <div class="accepted-state">
+        <div class="state-icon">🎉</div>
+        <div class="state-title">Proposal Accepted!</div>
+        <div class="state-sub">Thank you. Your advisor has been notified. Please sign the engagement letter to complete the process.</div>
+        <a href="/p/${token}/sign" class="btn btn-gold" style="max-width:320px;margin:0 auto;">Sign Engagement Letter →</a>
+        ${appStoreNudge('Next: add the iPhone app', 'Install the client portal app so you can receive messages, requests, and notifications from your advisor.')}
+        <div style="margin-top:1rem;">
+          <button class="btn btn-outline" style="font-size:0.82rem;" onclick="resetAcceptance()">← Choose a Different Package</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function showSigned() {
+  // Fully signed — download only, no ability to change anything
+  document.getElementById('root').innerHTML = `
+    <div class="hero" style="padding:1.5rem;">
+      <div class="hero-eyebrow">Engagement Letter — ${escHtml(proposal.client_name||'')}</div>
+      <h1>${escHtml(proposal.title||'Service Engagement Proposal')}</h1>
+    </div>
+    <div class="content">
+      <div class="accepted-state">
+        <div class="state-icon">✅</div>
+        <div class="state-title">Engagement Letter Signed</div>
+        <div class="state-sub">Your engagement has been fully executed. You can download your signed copy below.</div>
+        <a href="/p/${token}/sign?download=1" target="_blank" class="btn btn-gold" style="max-width:320px;margin:0 auto;">⬇ Download Signed Copy</a>
+        ${appStoreNudge('Use the client portal on iPhone', 'Download the client portal app for secure messages, document uploads, requests, and notifications.')}
+        <p style="margin-top:1.25rem;font-size:0.82rem;color:var(--muted);">Questions? Contact your advisor directly.</p>
+      </div>
+    </div>`;
+}
+
+function appStoreNudge(title, body) {
+  return `
+        <div class="app-store-nudge">
+          <div class="app-store-nudge-title">${escHtml(title)}</div>
+          <p>${escHtml(body)}</p>
+          <a href="${CLIENT_APP_STORE_URL}" target="_blank" rel="noopener" aria-label="Download the client app on the App Store">
+            <img src="${APP_STORE_BADGE_URL}" alt="Download on the App Store" />
+          </a>
+        </div>`;
+}
+
+async function resetAcceptance() {
+  if (!confirm('This will reset your package selection. Are you sure?')) return;
+  try {
+    const r = await fetch(API + '/reset', { method: 'POST' });
+    if (r.ok) { proposal.status = 'viewed'; renderProposal(); }
+  } catch(e) {}
+}
+
+function renderProposal() {
+  const p = proposal;
+  const tiers = p.tiers || [];
+  const isWealth = p.engagement_type === 'wealth';
+  const aumFeeLabel = formatAumFee(p.aum_fee_percent) + '% AUM';
+
+  document.getElementById('root').innerHTML = `
+    <div class="hero">
+      <div class="hero-eyebrow">Proposal for ${escHtml(p.client_name||'')}</div>
+      <h1>${escHtml(p.title||'Service Engagement Proposal')}</h1>
+      <div class="hero-subtitle">${isWealth ? 'Wealth Management Services' : 'Tax & Advisory Services'}</div>
+    </div>
+
+    <div class="steps-bar" id="steps-bar">
+      <div class="step-item">
+        <div class="step-num active" id="step-num-1">1</div>
+        <div class="step-label active" id="step-lbl-1">Select Package</div>
+      </div>
+      <div class="step-connector" id="conn-1"></div>
+      <div class="step-item">
+        <div class="step-num" id="step-num-2">2</div>
+        <div class="step-label" id="step-lbl-2">Your Information</div>
+      </div>
+      <div class="step-connector" id="conn-2"></div>
+      <div class="step-item">
+        <div class="step-num" id="step-num-3">3</div>
+        <div class="step-label" id="step-lbl-3">Confirm</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- STEP 1 -->
+      <div class="step-panel active" id="panel-1">
+        <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:1rem;">Choose Your Package</h2>
+        <div class="packages-grid" id="packages-grid">
+          ${tiers.map((t, i) => {
+            const price = parseFloat(t.price) || 0;
+            return `<div class="pkg-card ${t.recommended ? 'recommended' : ''}" id="pkg-card-${i}" onclick="${isWealth ? `toggleWealth(${i})` : `selectTax(${i})`}">
+              <div class="pkg-header">
+                <div class="${isWealth ? 'pkg-check-icon' : 'pkg-select'}" id="pkg-sel-${i}"></div>
+                <div class="pkg-info">
+                  <div class="pkg-name">${escHtml(t.name||'')}</div>
+                  <div class="pkg-subtitle">${escHtml(t.subtitle||'')}</div>
+                </div>
+                <div class="pkg-price">
+                  ${price > 0 ? `$${price.toFixed(0)}<span class="per">/mo</span>` : `<span style="font-size:0.82rem;color:var(--navy);font-weight:800;">${aumFeeLabel}</span>`}
+                </div>
+              </div>
+              <div class="pkg-bullets">
+                ${(t.bullets||[]).map(b => `<div class="pkg-bullet">${escHtml(b)}</div>`).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        ${isWealth && (p.add_ons||[]).length ? `
+        <div class="extras-section">
+          <div class="extras-title">Available Add-Ons</div>
+          ${p.add_ons.map(a => `<div class="extras-item"><span>${escHtml(a.description)}</span><span class="extras-price">+$${parseFloat(a.monthlyPrice||0).toFixed(0)}/mo</span></div>`).join('')}
+        </div>` : ''}
+
+        ${!isWealth && (p.add_ons||[]).length ? `
+        <div class="extras-section">
+          <div class="extras-title">Available Add-Ons</div>
+          ${p.add_ons.map(a => `<div class="extras-item"><span>${escHtml(a.description)}</span><span class="extras-price">+$${parseFloat(a.monthlyPrice||0).toFixed(0)}/mo</span></div>`).join('')}
+        </div>` : ''}
+
+        ${(p.backwork||[]).length ? `
+        <div class="extras-section">
+          <div class="extras-title">Back Work / One-Time Fees</div>
+          ${p.backwork.map(b => `<div class="extras-item"><span>${escHtml(b.description)}</span><span class="extras-price">$${parseFloat(b.flatFee||0).toFixed(0)}</span></div>`).join('')}
+        </div>` : ''}
+
+        ${isWealth ? `<div class="wealth-total" id="wealth-total" style="display:none">
+          <span class="wealth-total-label">Selected Total</span>
+          <span class="wealth-total-price" id="wealth-total-val">$0/mo</span>
+        </div>` : ''}
+
+        <div style="margin-top:1.5rem;">
+          <button class="btn btn-gold" id="step1-next" onclick="goToStep2()" disabled>Continue →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-panel" id="panel-2">
+        <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:1rem;">Your Information</h2>
+        <div class="info-form">
+          ${isWealth ? `
+          <div class="form-group"><label>Your Phone *</label><input type="tel" class="form-control" id="inf-phone" value="${escHtml(p.client_phone||'')}" placeholder="(239) 555-0100"></div>
+          <div class="form-group"><label>Address *</label><input type="text" class="form-control" id="inf-addr1" value="${escHtml(p.client_address||'')}" placeholder="123 Main St"></div>
+          <div class="form-group"><label>City, State, ZIP *</label><input type="text" class="form-control" id="inf-csz" value="${escHtml(p.client_city_state_zip||'')}" placeholder="City, ST 12345"></div>
+          <div class="form-group"><label>Additional Notes</label><textarea class="form-control" id="inf-notes" rows="3" placeholder="Anything you'd like your advisor to know…"></textarea></div>
+          ` : `
+          <div class="form-group"><label>Company / Entity Name *</label><input type="text" class="form-control" id="inf-company" placeholder="Smith Family Trust"></div>
+          <div class="form-group"><label>Entity Type *</label>
+            <select class="form-control" id="inf-entity">
+              <option value="">— Select —</option>
+              <option>S-Corp</option>
+              <option>C-Corp</option>
+              <option>Partnership</option>
+              <option>Sole Prop</option>
+              <option>Trust</option>
+              <option>Individual Only</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Owners / Principals</label><textarea class="form-control" id="inf-owners" rows="2" placeholder="e.g. John Smith (100%), or John & Jane Smith"></textarea></div>
+          <div class="form-group"><label>Additional Notes</label><textarea class="form-control" id="inf-notes" rows="3" placeholder="Anything you'd like your advisor to know…"></textarea></div>
+          `}
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-gold" onclick="goToStep3()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-panel" id="panel-3">
+        <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:1rem;">Review &amp; Confirm</h2>
+        <div id="confirm-content"></div>
+        <button class="btn btn-gold" id="accept-btn" onclick="acceptProposal()" style="margin-top:1rem;">Accept Proposal</button>
+        <div style="margin-top:0.75rem;">
+          <button class="btn btn-outline" style="width:100%;" onclick="goToStep(2)">← Back</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Pre-select advisor recommendations.
+  if (!isWealth) {
+    const recIdx = (p.tiers||[]).findIndex(t => t.recommended);
+    if (recIdx >= 0) selectTax(recIdx);
+  } else {
+    const recIndices = (p.tiers||[])
+      .map((t, i) => t.recommended ? i : -1)
+      .filter(i => i >= 0);
+    recIndices.forEach(i => toggleWealth(i));
+  }
+}
+
+function formatAumFee(value) {
+  const num = value != null ? parseFloat(value) : 0.69;
+  if (!Number.isFinite(num)) return '0.69';
+  return num.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function formatWealthPriceSummary(selectedTiers) {
+  const fixedTotal = selectedTiers.reduce((sum, t) => sum + (parseFloat(t.price)||0), 0);
+  const hasAum = selectedTiers.some(t => !(parseFloat(t.price) > 0));
+  const parts = [];
+  if (fixedTotal > 0) parts.push('$' + fixedTotal.toFixed(0) + '/mo');
+  if (hasAum) parts.push(formatAumFee(proposal.aum_fee_percent) + '% AUM');
+  return parts.length ? parts.join(' + ') : '$0/mo';
+}
+
+function selectTax(i) {
+  selectedTierIndex = i;
+  const tiers = proposal.tiers || [];
+  tiers.forEach((_, j) => {
+    const card = document.getElementById('pkg-card-' + j);
+    const sel = document.getElementById('pkg-sel-' + j);
+    if (!card || !sel) return;
+    card.classList.toggle('selected', j === i);
+    sel.className = 'pkg-select' + (j === i ? ' checked' : '');
+  });
+  document.getElementById('step1-next').disabled = false;
+}
+
+function toggleWealth(i) {
+  const idx = selectedTierIndices.indexOf(i);
+  if (idx >= 0) selectedTierIndices.splice(idx, 1);
+  else selectedTierIndices.push(i);
+
+  const tiers = proposal.tiers || [];
+  tiers.forEach((_, j) => {
+    const card = document.getElementById('pkg-card-' + j);
+    const sel = document.getElementById('pkg-sel-' + j);
+    if (!card || !sel) return;
+    const checked = selectedTierIndices.includes(j);
+    card.classList.toggle('selected', checked);
+    sel.className = 'pkg-check-icon' + (checked ? ' checked' : '');
+  });
+
+  // Update total
+  const selectedTiers = selectedTierIndices.map(j => tiers[j]).filter(Boolean);
+  const totEl = document.getElementById('wealth-total');
+  const totValEl = document.getElementById('wealth-total-val');
+  if (totEl) totEl.style.display = selectedTierIndices.length ? '' : 'none';
+  if (totValEl) totValEl.textContent = formatWealthPriceSummary(selectedTiers);
+
+  document.getElementById('step1-next').disabled = selectedTierIndices.length === 0;
+}
+
+function goToStep(n) {
+  step = n;
+  document.querySelectorAll('.step-panel').forEach((p,i) => p.classList.toggle('active', i+1 === n));
+  for (let i = 1; i <= 3; i++) {
+    const numEl = document.getElementById('step-num-' + i);
+    const lblEl = document.getElementById('step-lbl-' + i);
+    if (!numEl) continue;
+    if (i < n) { numEl.className = 'step-num done'; numEl.textContent = '✓'; }
+    else if (i === n) { numEl.className = 'step-num active'; numEl.textContent = i; }
+    else { numEl.className = 'step-num'; numEl.textContent = i; }
+    if (lblEl) lblEl.className = 'step-label' + (i === n ? ' active' : '');
+    const connEl = document.getElementById('conn-' + i);
+    if (connEl) connEl.className = 'step-connector' + (i < n ? ' done' : '');
+  }
+  window.scrollTo(0, 0);
+}
+
+function goToStep2() {
+  const isWealth = proposal.engagement_type === 'wealth';
+  if (!isWealth && selectedTierIndex < 0) return;
+  if (isWealth && selectedTierIndices.length === 0) return;
+  goToStep(2);
+}
+
+function goToStep3() {
+  const isWealth = proposal.engagement_type === 'wealth';
+  // Validate
+  if (isWealth) {
+    if (!document.getElementById('inf-phone')?.value.trim()) { alert('Phone is required'); return; }
+    if (!document.getElementById('inf-addr1')?.value.trim()) { alert('Address is required'); return; }
+    if (!document.getElementById('inf-csz')?.value.trim()) { alert('City/State/ZIP is required'); return; }
+    clientInfo = {
+      contact_phone: document.getElementById('inf-phone').value.trim(),
+      address_line1: document.getElementById('inf-addr1').value.trim(),
+      client_city_state_zip: document.getElementById('inf-csz').value.trim(),
+      additional_notes: document.getElementById('inf-notes')?.value.trim() || '',
+    };
+  } else {
+    if (!document.getElementById('inf-company')?.value.trim()) { alert('Company name is required'); return; }
+    if (!document.getElementById('inf-entity')?.value) { alert('Entity type is required'); return; }
+    clientInfo = {
+      company_name: document.getElementById('inf-company').value.trim(),
+      entity_type: document.getElementById('inf-entity').value,
+      owners: document.getElementById('inf-owners')?.value.trim() || '',
+      additional_notes: document.getElementById('inf-notes')?.value.trim() || '',
+    };
+  }
+
+  // Render confirm
+  const tiers = proposal.tiers || [];
+  const isW = proposal.engagement_type === 'wealth';
+  let selectedTiers = isW
+    ? selectedTierIndices.map(i => tiers[i]).filter(Boolean)
+    : [tiers[selectedTierIndex]].filter(Boolean);
+
+  const totalPrice = selectedTiers.reduce((s,t) => s + (parseFloat(t.price)||0), 0);
+  const priceStr = isW ? formatWealthPriceSummary(selectedTiers) : (totalPrice > 0 ? '$' + totalPrice.toFixed(0) + '/mo' : '$0/mo');
+
+  const confirmHtml = `
+    <div class="confirm-pkg-card">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${totalPrice > 0 ? 'var(--gold)' : 'rgba(255,255,255,0.5)'};margin-bottom:0.25rem;">Selected Package</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="pkg-name">${selectedTiers.map(t=>escHtml(t.name||'')).join(' + ')}</div>
+        <div class="pkg-price">${priceStr}</div>
+      </div>
+      <div class="pkg-bullets" style="margin-top:0.75rem;">
+        ${selectedTiers.flatMap(t => (t.bullets||[]).map(b => `<div class="pkg-bullet" style="color:rgba(255,255,255,0.7)">${escHtml(b)}</div>`)).join('')}
+      </div>
+    </div>
+    <div class="confirm-info-card">
+      <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">Your Information</div>
+      ${Object.entries(clientInfo).filter(([k,v]) => v && k !== 'additional_notes').map(([k,v]) =>
+        `<div class="confirm-info-row"><span class="confirm-info-label">${k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</span><span>${escHtml(v)}</span></div>`
+      ).join('')}
+      ${clientInfo.additional_notes ? `<div class="confirm-info-row"><span class="confirm-info-label">Notes</span><span>${escHtml(clientInfo.additional_notes)}</span></div>` : ''}
+    </div>
+  `;
+  document.getElementById('confirm-content').innerHTML = confirmHtml;
+  goToStep(3);
+}
+
+async function acceptProposal() {
+  const btn = document.getElementById('accept-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  const isWealth = proposal.engagement_type === 'wealth';
+  const tiers = proposal.tiers || [];
+  const selectedTierNames = isWealth
+    ? selectedTierIndices.map(i => tiers[i]?.name || '')
+    : [tiers[selectedTierIndex]?.name || ''];
+
+  const payload = {
+    ...clientInfo,
+    selected_tier_index: isWealth ? (selectedTierIndices[0] ?? null) : selectedTierIndex,
+    selected_tier_indices: isWealth ? selectedTierIndices : [],
+    selected_tier_names: selectedTierNames,
+    contact_name: clientInfo.company_name || proposal.client_name,
+    contact_email: proposal.client_email || '',
+  };
+
+  try {
+    const r = await fetch(API + '/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to accept proposal');
+    }
+    proposal.status = 'accepted';
+    showAccepted();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Accept Proposal';
+    alert(e.message || 'Failed to submit. Please try again.');
+  }
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

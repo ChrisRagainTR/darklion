@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DarkLion API Reference</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1923; color: #e8edf2; line-height: 1.6; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; flex-shrink: 0; background: #0b1219; border-right: 1px solid #1e2738; padding: 1.5rem 1rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar h1 { font-size: 1rem; font-weight: 800; color: #c9a84c; margin-bottom: 0.25rem; }
+    .sidebar .version { font-size: 0.72rem; color: #8fa3b8; margin-bottom: 1.5rem; }
+    .sidebar-section { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #8fa3b8; margin: 1rem 0 0.4rem; }
+    .sidebar a { display: block; font-size: 0.83rem; color: #c5d4e0; text-decoration: none; padding: 0.25rem 0.5rem; border-radius: 4px; margin-bottom: 0.1rem; }
+    .sidebar a:hover { background: rgba(201,168,76,0.1); color: #c9a84c; }
+    .content { flex: 1; padding: 2rem 3rem; max-width: 900px; }
+    h2 { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 2.5rem 0 1rem; padding-top: 1rem; border-top: 1px solid #1e2738; }
+    h2:first-child { border-top: none; margin-top: 0; }
+    h3 { font-size: 1rem; font-weight: 700; color: #e8edf2; margin: 1.5rem 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    p { color: #c5d4e0; font-size: 0.9rem; margin-bottom: 0.75rem; }
+    .method { display: inline-block; font-size: 0.7rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
+    .method-get { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+    .method-post { background: rgba(74,144,217,0.15); color: #4a90d9; }
+    .method-put { background: rgba(237,137,54,0.15); color: #ed8936; }
+    .method-patch { background: rgba(159,122,234,0.15); color: #9f7aea; }
+    .method-delete { background: rgba(245,101,101,0.15); color: #f56565; }
+    .endpoint-path { font-family: 'SF Mono', monospace; font-size: 0.88rem; color: #c9a84c; }
+    .endpoint-desc { font-size: 0.83rem; color: #8fa3b8; margin: 0.25rem 0 0.75rem; }
+    .params-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 1rem; }
+    .params-table th { text-align: left; color: #8fa3b8; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.4rem 0.75rem; border-bottom: 1px solid #1e2738; }
+    .params-table td { padding: 0.4rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #c5d4e0; vertical-align: top; }
+    .params-table td:first-child { font-family: 'SF Mono', monospace; color: #c9a84c; white-space: nowrap; }
+    .params-table td:nth-child(2) { color: #4a90d9; font-size: 0.78rem; }
+    code { font-family: 'SF Mono', monospace; background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; color: #c9a84c; }
+    pre { background: #0b1219; border: 1px solid #1e2738; border-radius: 8px; padding: 1rem; font-family: 'SF Mono', monospace; font-size: 0.8rem; overflow-x: auto; margin-bottom: 1rem; color: #c5d4e0; line-height: 1.5; }
+    .auth-box { background: rgba(201,168,76,0.07); border: 1px solid rgba(201,168,76,0.25); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.88rem; color: #c5d4e0; }
+    .badge { display: inline-block; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 4px; text-transform: uppercase; margin-left: 0.4rem; vertical-align: middle; }
+    .badge-required { background: rgba(245,101,101,0.15); color: #f56565; }
+    .badge-optional { background: rgba(255,255,255,0.08); color: #8fa3b8; }
+    .section-intro { color: #8fa3b8; font-size: 0.88rem; margin-bottom: 1.25rem; line-height: 1.6; }
+    hr { border: none; border-top: 1px solid #1e2738; margin: 0.5rem 0; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <h1>DarkLion API</h1>
+    <div class="version">v1.0 · darklion.ai</div>
+    <div class="sidebar-section">Getting Started</div>
+    <a href="#authentication">Authentication</a>
+    <a href="#base-url">Base URL</a>
+    <a href="#errors">Errors</a>
+    <div class="sidebar-section">Emma Context</div>
+    <a href="#emma-context">GET /api/emma/context</a>
+    <a href="#emma-relationship">GET /api/emma/relationship/:id</a>
+    <a href="#emma-engagements">GET /api/emma/engagement-letters</a>
+    <a href="#emma-messages">GET /api/emma/messages/:threadId</a>
+    <div class="sidebar-section">Relationships</div>
+    <a href="#relationships-list">List relationships</a>
+    <a href="#relationships-get">Get relationship</a>
+    <a href="#relationships-snapshot">Get snapshot</a>
+    <div class="sidebar-section">People</div>
+    <a href="#people-list">List people</a>
+    <a href="#people-get">Get person</a>
+    <a href="#people-update">Update person</a>
+    <div class="sidebar-section">Companies</div>
+    <a href="#companies-list">List companies</a>
+    <a href="#companies-get">Get company</a>
+    <div class="sidebar-section">Messages</div>
+    <a href="#messages-list">List threads</a>
+    <a href="#global-inbox">Global inbox</a>
+    <a href="#inbox-thread-detail">Inbox thread detail</a>
+    <a href="#messages-reply">Reply to thread</a>
+    <a href="#messages-create">Create thread</a>
+    <div class="sidebar-section">Summaries</div>
+    <a href="#summaries-month">Monthly summary calendar</a>
+    <a href="#summaries-date">Daily summary detail</a>
+    <div class="sidebar-section">Agent Connections</div>
+    <a href="#agent-connections">Connection contract</a>
+    <a href="#agent-connection-save">Create/update connection</a>
+    <a href="#agent-callback-inbox-draft">Inbox draft callback</a>
+    <a href="#agent-chat-callback">Chat reply callback</a>
+    <a href="#agent-drafts">Review drafts</a>
+    <div class="sidebar-section">Agent Work API</div>
+    <a href="#agent-work">Overview</a>
+    <a href="#remote-mcp">Remote MCP + OAuth</a>
+    <a href="#agent-work-companies">Company discovery</a>
+    <a href="#agent-work-crm-search">CRM search</a>
+    <a href="#agent-work-revenue-forecast">Revenue forecast</a>
+    <a href="#agent-work-inbox-summary">Inbox summary</a>
+    <a href="#agent-work-inbox-thread">Inbox thread detail</a>
+    <a href="#agent-work-inbox-draft">Create inbox draft</a>
+    <a href="#agent-work-activity-log">Activity log</a>
+    <a href="#agent-work-team-summary">Team Chat summary</a>
+    <a href="#agent-work-team-messages">Team Chat messages</a>
+    <a href="#agent-work-team-reply">Team Chat reply</a>
+    <a href="#agent-work-transaction-search">Transaction search</a>
+    <a href="#agent-work-transaction-backfill">Transaction backfill</a>
+    <div class="sidebar-section">Documents</div>
+    <a href="#docs-list">List documents</a>
+    <a href="#docs-move">Move document</a>
+    <a href="#docs-delete">Delete document</a>
+    <div class="sidebar-section">Pipelines</div>
+    <a href="#pipeline-jobs">List pipeline jobs</a>
+    <a href="#pipeline-move">Move job stage</a>
+    <a href="#pipeline-stages">List stages</a>
+    <div class="sidebar-section">Tax Deliveries</div>
+    <a href="#tax-list">List deliveries</a>
+    <a href="#tax-send">Send delivery</a>
+    <a href="#tax-summary">Get AI summary</a>
+    <div class="sidebar-section">Proposals</div>
+    <a href="#proposals-list">List proposals</a>
+    <a href="#proposals-stats">Get stats</a>
+    <div class="sidebar-section">Emma Chat</div>
+    <a href="#emma-context-prompt">PUT/GET context prompt</a>
+    <a href="#emma-session">Get/create session</a>
+    <a href="#emma-briefing">Generate briefing</a>
+    <a href="#emma-message">Send message</a>
+    <div class="sidebar-section">Staff</div>
+    <a href="#staff-list">List staff users</a>
+  </nav>
+
+  <main class="content">
+    <h2 id="authentication">Authentication</h2>
+    <p class="section-intro">DarkLion APIs support two authentication methods: JWT tokens (for the web app) and API keys (for Emma and external integrations). For Emma, always use an API key.</p>
+
+    <div class="auth-box">
+      <strong style="color:#c9a84c;">API Key Authentication</strong><br>
+      Include your API key in the <code>Authorization</code> header as a Bearer token.<br><br>
+      <code>Authorization: Bearer dlk_your_api_key_here</code>
+    </div>
+    <div class="auth-box">
+      <strong style="color:#c9a84c;">Remote MCP OAuth 2.1</strong><br>
+      MCP clients connect to <code>https://your-darklion.example/mcp</code> using Authorization Code with mandatory S256 PKCE. OAuth tokens are bound to that exact resource, firm, active staff identity, client, and granted <code>darklion:read</code>, <code>darklion:write</code>, and <code>darklion:communicate</code> scopes. They are not general API credentials.
+    </div>
+
+    <p>API keys are generated in <strong>Settings → API Keys</strong>. Keys start with <code>dlk_</code> and are shown only once at creation — store them securely. For Agent Work endpoints, assign the key to the staff/agent identity it should act as.</p>
+    <div class="auth-box">
+      <strong style="color:#c9a84c;">Staff-scoped agent calls</strong><br>
+      Agent Work endpoints are scoped to the staff/agent identity assigned to the API key in Settings → API Keys. Older general endpoints that support staff scoping may still accept <code>staff_user_id</code> where documented.<br><br>
+      <code>Authorization: Bearer dlk_staff_scoped_key</code>
+    </div>
+    <div class="auth-box">
+      <strong style="color:#c9a84c;">Connected-agent callback tokens</strong><br>
+      Agent callback endpoints do not use <code>dlk_</code> API keys. They authenticate with the per-connection <code>dla_...</code> callback token in <code>X-DarkLion-Agent-Token</code> or <code>X-Agent-Token</code>. Callback tokens are tied to one staff user's connected agent and cannot be read back after creation.
+    </div>
+
+    <h2 id="base-url">Base URL</h2>
+    <p>All API endpoints are relative to:</p>
+    <pre>https://your-darklion.example</pre>
+    <p>Or your firm's custom subdomain if configured (e.g., <code>https://my.yourfirm.com</code>).</p>
+
+    <h2 id="errors">Errors</h2>
+    <p>The API uses standard HTTP status codes. Error responses return JSON:</p>
+    <pre>{ "error": "Human-readable error message" }</pre>
+    <table class="params-table">
+      <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>400</td><td>Bad request — missing or invalid parameters</td></tr>
+        <tr><td>401</td><td>Unauthorized — invalid or missing API key</td></tr>
+        <tr><td>403</td><td>Forbidden — you don't have access to this resource</td></tr>
+        <tr><td>404</td><td>Not found — resource doesn't exist</td></tr>
+        <tr><td>500</td><td>Server error — something went wrong on our end</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="emma-context">Emma Context & Deep Dive Endpoints</h2>
+    <p class="section-intro">Emma has three layers of data access: firm-wide context for briefings, relationship deep dives for client-specific questions, engagement letter contract data, and full message thread contents.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma/context</span></h3>
+    <p class="endpoint-desc">Firm-wide snapshot for morning briefings. Pipeline, unsigned returns, stalled messages, proposals, new clients, expiring engagements, birthdays.</p>
+
+    <h3 id="emma-relationship"><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma/relationship/:id</span></h3>
+    <p class="endpoint-desc">Everything about a specific relationship: people, companies, active engagement letter contract terms (monthly fees, services, term end date), message threads with last message preview, tax deliveries with signer status, proposals, and documents. Use this when a user asks about a specific client.</p>
+    <table class="params-table">
+      <thead><tr><th>Response Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>relationship</td><td>object</td><td>Relationship record</td></tr>
+        <tr><td>people</td><td>array</td><td>All people with contact info and portal status</td></tr>
+        <tr><td>companies</td><td>array</td><td>All companies with EIN and entity type</td></tr>
+        <tr><td>contracts</td><td>array</td><td>Active engagement letters with monthly_line_items, total_monthly, services, term_end_date, ai_summary</td></tr>
+        <tr><td>messages</td><td>array</td><td>Recent threads with last message body and unread count</td></tr>
+        <tr><td>tax_deliveries</td><td>array</td><td>Tax returns with signer status (signed/approved)</td></tr>
+        <tr><td>proposals</td><td>array</td><td>Recent proposals with monthly price</td></tr>
+        <tr><td>documents</td><td>array</td><td>Recent documents by year/category</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="emma-engagements"><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma/engagement-letters</span></h3>
+    <p class="endpoint-desc">All active engagement letters across the entire firm, with full extracted contract data: client name, services elected, monthly line items, total monthly fee, one-time fees, term end date, and AI summary. Use this to answer billing and contract questions.</p>
+
+    <h3 id="emma-messages"><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma/messages/:threadId</span></h3>
+    <p class="endpoint-desc">Full contents of a message thread — every message in order with sender type (staff/client), body, and timestamps. Get thread IDs from <code>/api/emma/relationship/:id</code> or <code>/api/messages</code>.</p>
+
+    <h3 id="emma-context-old"><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma/context</span> (detail)</h3>
+    <p class="endpoint-desc">Returns a comprehensive snapshot of the firm for Emma's daily briefing. No parameters required.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma/context</span></h3>
+    <p class="endpoint-desc">Returns a comprehensive snapshot of the firm for Emma's daily briefing. No parameters required.</p>
+    <p><strong>Response fields:</strong></p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>firm_summary</td><td>object</td><td>Total counts: relationships, people, companies, open threads, MRR</td></tr>
+        <tr><td>pipeline.by_stage</td><td>object</td><td>Pipeline jobs grouped by stage name, each with entity/relationship info</td></tr>
+        <tr><td>pipeline.total_active</td><td>number</td><td>Total active pipeline jobs</td></tr>
+        <tr><td>urgent.unsigned_tax_returns</td><td>array</td><td>Tax returns sent but not yet signed, with days waiting</td></tr>
+        <tr><td>urgent.stalled_messages</td><td>array</td><td>Message threads with no staff reply for 48+ hours</td></tr>
+        <tr><td>urgent.open_proposals</td><td>array</td><td>Proposals in sent/viewed status</td></tr>
+        <tr><td>needs_attention.new_clients_no_pipeline</td><td>array</td><td>New relationships (last 30 days) with no pipeline job</td></tr>
+        <tr><td>needs_attention.expiring_engagements</td><td>array</td><td>Engagement letters expiring within 60 days</td></tr>
+        <tr><td>needs_attention.birthdays_this_month</td><td>array</td><td>Clients with birthdays this month</td></tr>
+        <tr><td>recent_activity</td><td>array</td><td>Tax delivery activity in the last 7 days</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="relationships-list">Relationships</h2>
+    <p class="section-intro">Relationships are the top-level client groupings. Each relationship can have multiple people and companies attached to it.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/relationships</span></h3>
+    <p class="endpoint-desc">List all relationships for the firm. Supports search and filtering.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>search</td><td>string <span class="badge badge-optional">optional</span></td><td>Filter by relationship name</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="relationships-get"><span class="method method-get">GET</span> <span class="endpoint-path">/api/relationships/:id</span></h3>
+    <p class="endpoint-desc">Get a single relationship with all associated people and companies.</p>
+
+    <h3 id="relationships-snapshot"><span class="method method-get">GET</span> <span class="endpoint-path">/api/relationships/:id/snapshot</span></h3>
+    <p class="endpoint-desc">Get a rich snapshot of a relationship including recent tax deliveries, message threads, activity feed, and active engagement letters.</p>
+
+    <h2 id="people-list">People</h2>
+    <p class="section-intro">Individual people attached to relationships. People can be portal users, signers on tax returns, and message recipients.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/people</span></h3>
+    <p class="endpoint-desc">List all people for the firm.</p>
+
+    <h3 id="people-get"><span class="method method-get">GET</span> <span class="endpoint-path">/api/people/:id</span></h3>
+    <p class="endpoint-desc">Get a single person with full details.</p>
+
+    <h3 id="people-update"><span class="method method-put">PUT</span> <span class="endpoint-path">/api/people/:id</span></h3>
+    <p class="endpoint-desc">Update a person's details. Send only the fields you want to update.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>first_name</td><td>string</td><td>First name</td></tr>
+        <tr><td>last_name</td><td>string</td><td>Last name</td></tr>
+        <tr><td>email</td><td>string</td><td>Email address</td></tr>
+        <tr><td>phone</td><td>string</td><td>Phone number</td></tr>
+        <tr><td>notes</td><td>string</td><td>Internal staff notes</td></tr>
+        <tr><td>portal_enabled</td><td>boolean</td><td>Enable/disable portal access</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="companies-list">Companies</h2>
+    <p class="section-intro">Companies are business entities attached to relationships. Tax deliveries and documents are often associated with companies.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/companies</span></h3>
+    <p class="endpoint-desc">List all companies for the firm.</p>
+
+    <h3 id="companies-get"><span class="method method-get">GET</span> <span class="endpoint-path">/api/companies/:id</span></h3>
+    <p class="endpoint-desc">Get a single company with full details including linked people.</p>
+
+    <h2 id="messages-list">Messages</h2>
+    <p class="section-intro">The messaging system uses threads. Each thread belongs to a person and contains a history of messages between staff and client.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/messages</span></h3>
+    <p class="endpoint-desc">List message threads.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>person_id</td><td>number <span class="badge badge-optional">optional</span></td><td>Filter by person</td></tr>
+        <tr><td>status</td><td>string <span class="badge badge-optional">optional</span></td><td>open | closed</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="messages-reply"><span class="method method-post">POST</span> <span class="endpoint-path">/api/messages/:threadId/reply</span></h3>
+    <p class="endpoint-desc">Send a reply to an existing message thread.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>body</td><td>string <span class="badge badge-required">required</span></td><td>Message body text</td></tr>
+        <tr><td>internal</td><td>boolean <span class="badge badge-optional">optional</span></td><td>If true, message is internal note only (not sent to client)</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="messages-create"><span class="method method-post">POST</span> <span class="endpoint-path">/api/messages</span></h3>
+    <p class="endpoint-desc">Create a new message thread.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>person_id</td><td>number <span class="badge badge-required">required</span></td><td>Person to message</td></tr>
+        <tr><td>subject</td><td>string <span class="badge badge-required">required</span></td><td>Thread subject</td></tr>
+        <tr><td>body</td><td>string <span class="badge badge-required">required</span></td><td>Initial message body</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="global-inbox">Global Inbox API</h2>
+    <p class="section-intro">The inbox API is staff-scoped. Staff JWT requests automatically use the logged-in staff user. API-token requests must pass <code>staff_user_id</code> so agents only inspect one staff member’s assigned inbox at a time. Threads are matched against <code>message_threads.staff_user_id</code> / <code>assigned_to</code>; archived threads are hidden unless explicitly requested by status or <code>include_archived=true</code>.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/inbox</span></h3>
+    <p class="endpoint-desc">List recent inbox threads assigned to the scoped staff user, sorted by latest message descending.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>staff_user_id</td><td>number <span class="badge badge-optional">API token only</span></td><td>Required for API-token auth; ignored for staff JWT auth, which uses the logged-in user.</td></tr>
+        <tr><td>limit</td><td>number <span class="badge badge-optional">optional</span></td><td>1-100, default 50</td></tr>
+        <tr><td>offset</td><td>number <span class="badge badge-optional">optional</span></td><td>Pagination offset, default 0</td></tr>
+        <tr><td>search</td><td>string <span class="badge badge-optional">optional</span></td><td>Search subject, client name/email, relationship name, or message body</td></tr>
+        <tr><td>from_email</td><td>string <span class="badge badge-optional">optional</span></td><td>Filter by client/person email</td></tr>
+        <tr><td>unread</td><td>boolean <span class="badge badge-optional">optional</span></td><td>true for threads with unread client messages</td></tr>
+        <tr><td>status</td><td>string <span class="badge badge-optional">optional</span></td><td>Filter by status, e.g. <code>open</code>, <code>resolved</code>, or <code>archived</code>. If omitted, archived threads are excluded.</td></tr>
+        <tr><td>include_archived</td><td>boolean <span class="badge badge-optional">optional</span></td><td>Set to <code>true</code> to include archived threads when no explicit status filter is passed.</td></tr>
+      </tbody>
+    </table>
+    <pre>{
+  "threads": [{
+    "thread_id": 44,
+    "relationship_id": 25,
+    "client_name": "Jane Smith",
+    "person_name": "Jane Smith",
+    "subject": "Tax return question",
+    "last_message_preview": "Thanks, I uploaded it...",
+    "last_message_at": "2026-05-02T10:00:00.000Z",
+    "unread_count": 1,
+    "status": "open"
+  }],
+  "pagination": { "limit": 50, "offset": 0, "count": 1, "total": 1 }
+}</pre>
+
+    <h3 id="inbox-thread-detail"><span class="method method-get">GET</span> <span class="endpoint-path">/api/inbox/threads/:id?staff_user_id=123</span></h3>
+    <p class="endpoint-desc">Fetch one thread by ID with all messages and client/relationship context, only if assigned to the scoped staff user. API-token auth must pass <code>staff_user_id</code>. Returns thread metadata plus ordered messages, including internal-note flags.</p>
+
+    <h3><span class="method method-put">PUT</span> <span class="endpoint-path">/api/inbox/threads/:id/archive?staff_user_id=123</span></h3>
+    <p class="endpoint-desc">Archive an inbox thread assigned to the scoped staff user. Staff JWT requests use the logged-in user; API-token agents must pass <code>staff_user_id</code>. Returns <code>{ ok: true, thread_id, subject, status: "archived" }</code>.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/inbox/messages/:id?staff_user_id=123</span></h3>
+    <p class="endpoint-desc">Fetch one message by ID with thread, client, and relationship context, only if its thread is assigned to the scoped staff user. API-token auth must pass <code>staff_user_id</code>. Use this when an agent has a message ID but not the parent thread ID.</p>
+
+    <h2 id="summaries-month">Conversation Summaries</h2>
+    <p class="section-intro">Daily conversation summaries show what happened in other staff inboxes. API-token callers must pass <code>staff_user_id</code>; DarkLion returns the same scoped view that staff user sees in the UI, excluding that staff member's own threads to avoid duplicating their inbox.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/summaries?month=YYYY-MM&amp;staff_user_id=123</span></h3>
+    <p class="endpoint-desc">Returns calendar rows for days with visible summarized conversations for the scoped staff user.</p>
+    <table class="params-table">
+      <thead><tr><th>Query Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>month</td><td>string <span class="badge badge-optional">optional</span></td><td>Month in <code>YYYY-MM</code> format. Defaults to the current month.</td></tr>
+        <tr><td>staff_user_id</td><td>number <span class="badge badge-required">required for API keys</span></td><td>Staff user whose summary view should be used. JWT staff users are scoped automatically.</td></tr>
+      </tbody>
+    </table>
+    <pre>[{ "date": "2026-05-03", "viewed": false, "thread_count": 4 }]</pre>
+
+    <h3 id="summaries-date"><span class="method method-get">GET</span> <span class="endpoint-path">/api/summaries/:date?staff_user_id=123</span></h3>
+    <p class="endpoint-desc">Fetches a daily summary for the scoped staff user. The response excludes that staff member's own conversations, recomputes <code>thread_count</code>, and marks the summary viewed for that staff user. Summary detail contains <code>summary_json.by_staff</code>, with each visible staff block containing staff name/id and summarized threads (<code>thread_id</code>, client name, subject, bullet summary, message count).</p>
+    <pre>{
+  "summary_json": {
+    "date": "2026-05-03",
+    "thread_count": 2,
+    "by_staff": [{
+      "staff_user_id": 2,
+      "staff_name": "Nick",
+      "threads": [{ "thread_id": 44, "client_name": "Jane Smith", "subject": "Tax question", "bullets": "• Client uploaded documents" }]
+    }]
+  }
+}</pre>
+
+    <h2 id="agent-connections">Staff-Owned Agent Connections</h2>
+    <p class="section-intro">Agent connections let each logged-in staff member connect their own external agent to DarkLion. Management endpoints require staff JWT authentication and are scoped to the current staff user; API-token-only auth is rejected. Callback endpoints use the per-connection callback token, not a staff JWT. DarkLion stores agent secrets encrypted and never returns callback token hashes or auth secrets.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-connections/mine</span></h3>
+    <p class="endpoint-desc">Returns the current staff user's saved agent connection, or <code>null</code> if none exists. Secrets and callback token hashes are never returned.</p>
+    <p>Response: <code>{ connection }</code></p>
+
+    <h3 id="agent-connection-save"><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-connections/mine</span></h3>
+    <p class="endpoint-desc">Create or update the current staff user's connection. The callback token is returned only when the connection is first created or <code>rotate_callback_token</code> is true; store it in the external agent because it cannot be read back later.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>agent_name</td><td>string <span class="badge badge-required">required</span></td><td>Display name for the connected staff agent.</td></tr>
+        <tr><td>provider</td><td>string <span class="badge badge-optional">optional</span></td><td>Provider label, defaults to <code>webhook</code>.</td></tr>
+        <tr><td>endpoint_url</td><td>string <span class="badge badge-optional">optional</span></td><td>External agent endpoint DarkLion can call in future wake/chat flows.</td></tr>
+        <tr><td>auth_type</td><td>string <span class="badge badge-optional">optional</span></td><td><code>none</code> | <code>bearer</code> | <code>api_key</code>.</td></tr>
+        <tr><td>auth_secret</td><td>string <span class="badge badge-optional">optional</span></td><td>Stored encrypted when <code>auth_type</code> is not <code>none</code>. Omit to keep the existing secret on update.</td></tr>
+        <tr><td>session_key</td><td>string <span class="badge badge-optional">optional</span></td><td>External session/thread identifier.</td></tr>
+        <tr><td>status</td><td>string <span class="badge badge-optional">optional</span></td><td><code>connected</code> | <code>paused</code> | <code>disabled</code> | <code>error</code>. Defaults to <code>paused</code>.</td></tr>
+        <tr><td>capabilities</td><td>object <span class="badge badge-optional">optional</span></td><td>Boolean flags. Existing flags include <code>chat</code>, <code>inbox_drafts</code>, <code>summaries</code>, <code>tasks</code>. Agent Work API flags default enabled unless explicitly set false: <code>inbox_read</code>, <code>inbox_drafts</code>, <code>team_chat_read</code>, <code>team_chat_send</code>, <code>activity_log_read</code>.</td></tr>
+        <tr><td>preferences_json</td><td>object <span class="badge badge-optional">optional</span></td><td>Staff-specific agent preferences.</td></tr>
+        <tr><td>rotate_callback_token</td><td>boolean <span class="badge badge-optional">optional</span></td><td>When true, issues a new <code>dla_...</code> callback token and invalidates the old one.</td></tr>
+      </tbody>
+    </table>
+    <pre>{
+  "connection": {
+    "id": 12,
+    "agent_name": "Emma",
+    "provider": "webhook",
+    "status": "connected",
+    "callback_token": "dla_returned_only_on_create_or_rotation"
+  }
+}</pre>
+
+    <h3><span class="method method-patch">PATCH</span> <span class="endpoint-path">/api/agent-connections/mine/status</span></h3>
+    <p class="endpoint-desc">Enable, pause, or disable the current staff user's connection.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>status</td><td>string <span class="badge badge-required">required</span></td><td><code>connected</code> | <code>paused</code> | <code>disabled</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="agent-callback-inbox-draft"><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-callbacks/inbox-draft</span></h3>
+    <p class="endpoint-desc">Preferred callback URL for connected staff agents to post a suggested inbox reply draft into DarkLion. The alias <code>/api/agent-connections/callbacks/inbox-draft</code> exists for compatibility, but <code>/api/agent-callbacks/inbox-draft</code> is the documented contract.</p>
+    <p>Authenticate with the callback token in <code>X-DarkLion-Agent-Token</code> (or <code>X-Agent-Token</code>). The matching connection must be <code>connected</code>, and the target thread must belong to that staff user.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>thread_id</td><td>number <span class="badge badge-required">required</span></td><td>Message thread ID assigned to the connected staff user.</td></tr>
+        <tr><td>draft_body</td><td>string <span class="badge badge-required">required</span></td><td>Suggested reply text to show in the staff inbox.</td></tr>
+        <tr><td>confidence</td><td>number <span class="badge badge-optional">optional</span></td><td>Agent confidence score, if available.</td></tr>
+        <tr><td>notes</td><td>string <span class="badge badge-optional">optional</span></td><td>Internal notes shown with the draft. <code>agent_notes</code> is also accepted.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl -X POST https://your-darklion.example/api/agent-callbacks/inbox-draft \
+  -H "Content-Type: application/json" \
+  -H "X-DarkLion-Agent-Token: dla_your_callback_token" \
+  -d '{"thread_id":123,"draft_body":"Suggested client reply","confidence":0.87}'</pre>
+    <p>Success response: <code>{ "ok": true, "draft_id": 456 }</code></p>
+
+    <h3 id="agent-chat-callback"><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-callbacks/chat-reply</span></h3>
+    <p class="endpoint-desc">Async chat callback for connected agents. When DarkLion sends a <code>chat.message.received</code> wake to the connected agent, the payload includes <code>chat_message_id</code> and a <code>callback_url</code>. Post the final answer here to replace the in-app “sent to agent” placeholder and push the answer live via Pusher.</p>
+    <p>Authenticate with <code>X-DarkLion-Agent-Token</code> or <code>X-Agent-Token</code>. The connection must be <code>connected</code>.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>chat_message_id</td><td>string <span class="badge badge-required">required</span></td><td>ID from the original wake payload.</td></tr>
+        <tr><td>reply</td><td>string <span class="badge badge-required">required</span></td><td>Final assistant reply. Aliases accepted: <code>message</code>, <code>text</code>, <code>content</code>, <code>response</code>.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl -X POST https://your-darklion.example/api/agent-callbacks/chat-reply \
+  -H "Content-Type: application/json" \
+  -H "X-DarkLion-Agent-Token: dla_your_callback_token" \
+  -d '{"chat_message_id":"msg_abc123","reply":"Here is the answer..."}'</pre>
+    <p>Success response: <code>{ "ok": true }</code>. Duplicate callbacks for the same <code>chat_message_id</code> return <code>{ "ok": true, "duplicate": true }</code>.</p>
+
+    <h3 id="agent-drafts"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-connections/drafts/:threadId</span></h3>
+    <p class="endpoint-desc">List pending agent drafts for a thread visible to the current staff user. Staff JWT only.</p>
+
+    <h3><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-connections/drafts/:threadId/generate</span></h3>
+    <p class="endpoint-desc">Manually request a native Emma draft for a visible inbox thread. Queues an <code>emma_draft_jobs</code> worker job and returns <code>202 Accepted</code> with the queued job. The worker gathers thread history, client/relationship profile, documents, extracted tax data, bookkeeping context, Blueleaf snapshots, and pipeline/work context before creating a pending <code>message_drafts</code> record. Staff JWT only.</p>
+    <p>Response: <code>{ "job": { "id": 123, "status": "queued", "thread_id": 44 } }</code></p>
+
+    <h3><span class="method method-patch">PATCH</span> <span class="endpoint-path">/api/agent-connections/drafts/:draftId</span></h3>
+    <p class="endpoint-desc">Update a pending draft after staff review.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>status</td><td>string <span class="badge badge-required">required</span></td><td><code>pending</code> | <code>accepted</code> | <code>edited_sent</code> | <code>discarded</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="agent-work">Agent Work API</h2>
+    <p class="section-intro">Agent Work endpoints let a staff agent poll DarkLion on a schedule without being woken by DarkLion. They authenticate with normal <code>dlk_...</code> API keys from Settings → API Keys. The key must be assigned to the staff/agent identity it should act as. V1 allows live firm revenue forecasting, firm-wide activity log review, Inbox read + draft creation for client-facing messages, Team Chat read + direct internal replies, and fast company transaction search.</p>
+
+    <div class="auth-box">
+      <strong style="color:#c9a84c;">Agent Work Auth</strong><br>
+      <code>Authorization: Bearer dlk_your_api_key_here</code><br><br>
+      The API key must be assigned to a Staff / Agent Identity in Settings → API Keys. Every request is written to <code>agent_audit_events</code>. Polling read endpoints do not mark Inbox or Team Chat messages as read.
+    </div>
+
+    <h3 id="remote-mcp">Remote MCP + OAuth</h3>
+    <p class="endpoint-desc">The remote MCP exposes 62 narrow tools across supported CRM, documents, work, communications, bookkeeping records, tax records, proposals, billing configuration, investments, engagement letters, transactions, Inbox, and Team Chat operations. OAuth discovery is available at <code>/.well-known/oauth-protected-resource/mcp</code> and <code>/.well-known/oauth-authorization-server</code>. Client send/reply requires the separate <code>darklion:communicate</code> grant; existing connections must reconnect and re-authorize.</p>
+
+    <h3 id="agent-work-companies"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/companies</span></h3>
+    <p class="endpoint-desc">List active companies visible to the scoped staff identity. Requires <code>transactions_read</code> and respects staff-level company restrictions. Use the returned <code>id</code> or <code>realm_id</code> with transaction tools.</p>
+
+    <h3 id="agent-work-crm-search"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/crm/search?q=Smith&amp;limit=10</span></h3>
+    <p class="endpoint-desc">Search the authorized firm's relationship names, linked people, spouse names, emails, and active companies. Requires <code>crm_read</code>. Results are grouped into <code>relationships</code>, <code>people</code>, and <code>companies</code>; the per-group limit is capped at 25.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/status</span></h3>
+    <p class="endpoint-desc">Validate the token and return the scoped firm/staff identity, effective capabilities, and resource-specific notes for endpoints with side effects.</p>
+    <pre>curl https://your-darklion.example/api/agent-work/status \
+  -H "Authorization: Bearer dlk_your_api_key_here"</pre>
+    <pre>{
+  "ok": true,
+  "firm_id": 1,
+  "staff_user_id": 1,
+  "agent_connection_id": null,
+  "agent_name": "API Agent",
+  "capabilities": {
+    "agent_work": true,
+    "inbox_read": true,
+    "inbox_drafts": true,
+    "team_chat_read": true,
+    "team_chat_send": true,
+    "documents_read": true,
+    "activity_log_read": true,
+    "transactions_read": true,
+    "transactions_write": true,
+    "revenue_read": true,
+    "general_api": true,
+    "summaries_read": true,
+    "crm_read": true
+  },
+  "resources": {
+    "summaries": {
+      "calendar_read": true,
+      "detail_read": true,
+      "detail_marks_viewed": false
+    },
+    "revenue_forecast": {
+      "read": true,
+      "live_sources": true
+    },
+    "crm": {
+      "search": true
+    }
+  }
+}</pre>
+    <p class="endpoint-desc"><code>summaries_read</code> covers the Conversation Summaries calendar and detail endpoints. Both Agent Work adapter reads are side-effect free.</p>
+
+    <h3 id="agent-work-revenue-forecast"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/revenue-forecast?year=2027</span></h3>
+    <p class="endpoint-desc">Return the same live recurring-revenue figures used by DarkLion's Revenue Forecast page, with forecast-friendly monthly aggregates. Requires <code>revenue_read</code>. The optional year defaults to the current year and may be up to ten years in the future.</p>
+    <pre>curl "https://your-darklion.example/api/agent-work/revenue-forecast?year=2027" \
+  -H "Authorization: Bearer dlk_your_api_key_here"</pre>
+    <pre>{
+  "generated_at": "2026-07-30T14:15:00.000Z",
+  "year": 2027,
+  "totals": {
+    "annual": 312000,
+    "collected": 0,
+    "pastDue": 0,
+    "upcoming": 312000
+  },
+  "monthly_totals": [{
+    "month": "2027-01",
+    "collected": 0,
+    "past_due": 0,
+    "upcoming": 26000,
+    "projected": 26000
+  }],
+  "customers": [{
+    "name": "Example Client",
+    "source": "stripe",
+    "monthlyAmount": 1000,
+    "annual": 12000,
+    "months": [{ "status": "upcoming", "amount": 1000 }]
+  }],
+  "assumptions": {
+    "sources": ["stripe_active_subscriptions", "stripe_past_due_subscriptions", "aum_billing"],
+    "annual_definition": "Current monthly recurring amount multiplied by 12.",
+    "projected_definition": "Paid, past-due, or upcoming recurring revenue assigned to each month.",
+    "baseline_assumption": "Current recurring amounts continue unchanged; churn, growth, cancellations, and AUM market movement are not modeled.",
+    "excludes": ["one_time_revenue", "unsigned_proposals", "non_recurring_qbo_revenue"]
+  }
+}</pre>
+    <p class="endpoint-desc">Use <code>monthly_totals[].projected</code> as the monthly recurring-revenue baseline. The baseline does not itself model churn, growth, cancellations, AUM market movement, one-time revenue, unsigned proposals, or non-recurring QBO revenue.</p>
+
+    <h3 id="agent-work-inbox-summary"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/inbox/summary</span></h3>
+    <p class="endpoint-desc">Return counts for visible Inbox threads, unread client messages, and pending drafts for the connected staff user.</p>
+    <pre>{
+  "summary": { "open_threads": 12, "unread_messages": 3, "pending_drafts": 2 }
+}</pre>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/inbox/threads?unread=true&amp;limit=25</span></h3>
+    <p class="endpoint-desc">List My Inbox threads assigned or shared to the connected staff user. Use <code>unread=true</code> for polling only unread client messages.</p>
+    <pre>{
+  "threads": [{
+    "id": 44,
+    "subject": "Tax question",
+    "person": { "id": 233, "firstName": "Tracy", "lastName": "Kaiser", "email": "tracy@example.com" },
+    "lastPreview": "Can you clarify...",
+    "unreadCount": 1,
+    "pendingDraftCount": 0
+  }]
+}</pre>
+
+    <h3 id="agent-work-inbox-thread"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/inbox/threads/:threadId</span></h3>
+    <p class="endpoint-desc">Fetch thread profile, recent messages, and pending agent drafts. This is read-only and does not mark client messages read.</p>
+
+    <h3 id="agent-work-inbox-draft"><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-work/inbox/threads/:threadId/draft</span></h3>
+    <p class="endpoint-desc">Create a pending draft for staff review. This does not send anything to the client.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>draft_body</td><td>string <span class="badge badge-required">required</span></td><td>Suggested client reply text.</td></tr>
+        <tr><td>confidence</td><td>number <span class="badge badge-optional">optional</span></td><td>Agent confidence score.</td></tr>
+        <tr><td>notes</td><td>string <span class="badge badge-optional">optional</span></td><td>Internal notes for staff.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl -X POST https://your-darklion.example/api/agent-work/inbox/threads/44/draft \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dlk_your_api_key_here" \
+  -d '{"draft_body":"Thanks — we will review this and follow up.","confidence":0.91}'</pre>
+
+    <h3 id="agent-work-activity-log"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/activity-log?date=2026-06-19&amp;include_summaries=true</span></h3>
+    <p class="endpoint-desc">Return a firm-wide, append-only daily activity feed for agents. Use this before nightly workflow checks to find organizer submissions, document uploads, statement uploads, tax return delivery/signing activity, pipeline trigger movement, and cached client/Team Chat summaries. Requires <code>activity_log_read</code>.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>date</td><td>date <span class="badge badge-optional">optional</span></td><td>Eastern business date, <code>YYYY-MM-DD</code>. Defaults to today when <code>since</code>/<code>until</code> are omitted.</td></tr>
+        <tr><td>since</td><td>date-time <span class="badge badge-optional">optional</span></td><td>Lower <code>occurred_at</code> bound for cursor-style reads.</td></tr>
+        <tr><td>until</td><td>date-time <span class="badge badge-optional">optional</span></td><td>Upper <code>occurred_at</code> bound for cursor-style reads.</td></tr>
+        <tr><td>event_type</td><td>string <span class="badge badge-optional">optional</span></td><td>Repeatable or comma-separated event type filter.</td></tr>
+        <tr><td>include_summaries</td><td>boolean <span class="badge badge-optional">optional</span></td><td>Default true. Set false to return events only.</td></tr>
+        <tr><td>limit</td><td>number <span class="badge badge-optional">optional</span></td><td>Default 100, max 500. Message summaries do not count against this limit.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl "https://your-darklion.example/api/agent-work/activity-log?date=2026-06-19&amp;event_type=organizer_submitted&amp;include_summaries=true" \
+  -H "Authorization: Bearer dlk_your_api_key_here"</pre>
+    <pre>{
+  "date": "2026-06-19",
+  "events": [{
+    "event_type": "organizer_submitted",
+    "title": "2025 tax organizer submitted",
+    "person_id": 42,
+    "tax_year": "2025",
+    "source_table": "tax_organizers",
+    "source_id": "9"
+  }],
+  "message_summaries": { "client_threads": [], "team_chats": [] },
+  "generated_at": "2026-06-20T02:05:00.000Z"
+}</pre>
+
+    <h3 id="agent-work-team-summary"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/team-chat/summary</span></h3>
+    <p class="endpoint-desc">Return unread Team Chat counts and unread conversations visible to the connected staff user.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/team-chat/conversations?unread=true&amp;limit=50</span></h3>
+    <p class="endpoint-desc">List Team Chat conversations visible to the connected staff user. Use <code>unread=true</code> for polling.</p>
+
+    <h3 id="agent-work-team-messages"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/team-chat/conversations/:conversationId/messages</span></h3>
+    <p class="endpoint-desc">Fetch recent Team Chat messages and attachment metadata. This is read-only and does not mark the conversation read.</p>
+
+    <h3 id="agent-work-team-reply"><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-work/team-chat/conversations/:conversationId/reply</span></h3>
+    <p class="endpoint-desc">Send an internal Team Chat reply as the connected staff user. This is allowed in v1 because Team Chat is internal.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>body</td><td>string <span class="badge badge-required">required</span></td><td>Message text. Aliases accepted: <code>message</code> or <code>text</code>.</td></tr>
+        <tr><td>client_nonce</td><td>string <span class="badge badge-optional">optional</span></td><td>Idempotency key. If omitted, DarkLion generates one.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl -X POST https://your-darklion.example/api/agent-work/team-chat/conversations/12/reply \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dlk_your_api_key_here" \
+  -d '{"body":"I checked the inbox — two client replies need review."}'</pre>
+
+    <h3 id="agent-work-transaction-search"><span class="method method-get">GET</span> <span class="endpoint-path">/api/agent-work/companies/:companyId/transactions/search</span></h3>
+    <p class="endpoint-desc">Fast company transaction search for agents. Optimized for vendor/payee and amount filtering across coded transaction history plus latest uncoded bookkeeper review rows. Requires the API key/agent capability <code>transactions_read</code> to not be disabled.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>vendor</td><td>string <span class="badge badge-optional">optional</span></td><td>Vendor/payee search. Also checks description and original account text.</td></tr>
+        <tr><td>q</td><td>string <span class="badge badge-optional">optional</span></td><td>Alias/general text search when vendor is unknown.</td></tr>
+        <tr><td>amount</td><td>number <span class="badge badge-optional">optional</span></td><td>Exact absolute amount match. Defaults to ±$0.01 tolerance.</td></tr>
+        <tr><td>amount_near</td><td>number <span class="badge badge-optional">optional</span></td><td>Fuzzy absolute amount match. Defaults to ±5% or ±$1, whichever is greater.</td></tr>
+        <tr><td>tolerance</td><td>number <span class="badge badge-optional">optional</span></td><td>Override exact/near amount tolerance.</td></tr>
+        <tr><td>amount_min</td><td>number <span class="badge badge-optional">optional</span></td><td>Minimum absolute amount.</td></tr>
+        <tr><td>amount_max</td><td>number <span class="badge badge-optional">optional</span></td><td>Maximum absolute amount.</td></tr>
+        <tr><td>date_from</td><td>date <span class="badge badge-optional">optional</span></td><td>YYYY-MM-DD lower transaction-date bound.</td></tr>
+        <tr><td>date_to</td><td>date <span class="badge badge-optional">optional</span></td><td>YYYY-MM-DD upper transaction-date bound.</td></tr>
+        <tr><td>status</td><td>string <span class="badge badge-optional">optional</span></td><td>Filter by status, e.g. <code>categorized</code>, <code>pending</code>, <code>coded</code>.</td></tr>
+        <tr><td>source</td><td>string <span class="badge badge-optional">optional</span></td><td><code>transactions</code> or <code>bookkeeper_uncoded</code>.</td></tr>
+        <tr><td>include_uncoded</td><td>boolean <span class="badge badge-optional">optional</span></td><td>Default true. Set false to search only coded transaction history.</td></tr>
+        <tr><td>limit</td><td>number <span class="badge badge-optional">optional</span></td><td>Default 25, max 100.</td></tr>
+        <tr><td>offset</td><td>number <span class="badge badge-optional">optional</span></td><td>Pagination offset.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl "https://your-darklion.example/api/agent-work/companies/123/transactions/search?vendor=home%20depot&amp;amount_near=250&amp;tolerance=20&amp;date_from=2025-01-01" \
+  -H "Authorization: Bearer dlk_your_api_key_here"</pre>
+
+    <h3><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-work/transactions/search</span></h3>
+    <p class="endpoint-desc">Same search engine as the GET endpoint, but with an agent-friendly JSON body. Use <code>company_id</code> or <code>realm_id</code>.</p>
+    <pre>curl -X POST https://your-darklion.example/api/agent-work/transactions/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dlk_your_api_key_here" \
+  -d '{
+    "company_id": 29,
+    "vendor": "staples",
+    "amount": { "near": 75, "tolerance": 15 },
+    "date_range": { "from": "2025-01-01", "to": "2025-12-31" },
+    "limit": 10
+  }'</pre>
+    <pre>{
+  "company": { "id": 29, "realm_id": "9130352500120646", "company_name": "Example Co" },
+  "count": 1,
+  "total_count": 1,
+  "transactions": [{
+    "id": 155,
+    "source": "transactions",
+    "transaction_id": "3178",
+    "date": "2025-04-12",
+    "vendor": "Staples",
+    "amount": 62.18,
+    "description": "Staples Office Supplies",
+    "original_account": "Uncategorized Expense",
+    "coded_account": "Office Supplies",
+    "doc_number": "1023",
+    "memo": "April rent",
+    "qbo_txn_type": "Purchase",
+    "status": "categorized"
+  }]
+}</pre>
+
+    <h3 id="agent-work-transaction-backfill"><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-work/companies/:companyId/transactions/backfill</span></h3>
+    <p class="endpoint-desc">Pull historical QBO transactions into DarkLion's searchable transaction table. Use this when search returns no results for a connected company with no local transaction history yet. Requires the API key/agent capability <code>transactions_write</code> to not be disabled.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>months</td><td>number <span class="badge badge-optional">optional</span></td><td>Lookback window. Default 24, max 84.</td></tr>
+        <tr><td>types</td><td>array <span class="badge badge-optional">optional</span></td><td>QBO entity types to pull. Defaults to Purchase, Bill, Deposit, SalesReceipt, Invoice, Payment, JournalEntry, CreditMemo, VendorCredit, RefundReceipt.</td></tr>
+      </tbody>
+    </table>
+    <pre>curl -X POST https://your-darklion.example/api/agent-work/companies/123/transactions/backfill \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dlk_your_api_key_here" \
+  -d '{"months":24}'</pre>
+    <pre>{
+  "ok": true,
+  "company": { "id": 123, "realm_id": "1234567890123456", "company_name": "Example Company" },
+  "start_date": "2024-05-13",
+  "months": 24,
+  "fetched": 214,
+  "inserted": 214,
+  "updated": 0,
+  "errors": [],
+  "by_type": { "Purchase": { "fetched": 52, "inserted": 52, "updated": 0 } }
+}</pre>
+
+    <h3><span class="method method-post">POST</span> <span class="endpoint-path">/api/agent-work/transactions/backfill</span></h3>
+    <p class="endpoint-desc">JSON-body variant. Pass <code>company_id</code> or <code>realm_id</code>, plus optional <code>months</code> and <code>types</code>.</p>
+
+    <h3>Recommended polling flow</h3>
+    <pre>Daily or when preparing a forecast:
+1. GET /api/agent-work/revenue-forecast?year=YYYY
+
+Every 15 minutes:
+1. GET /api/agent-work/activity-log?include_summaries=true
+2. GET /api/agent-work/inbox/summary
+3. GET /api/agent-work/inbox/threads?unread=true
+4. GET /api/agent-work/inbox/threads/:threadId
+5. POST /api/agent-work/inbox/threads/:threadId/draft when a client reply is useful
+6. GET /api/agent-work/team-chat/summary
+7. GET /api/agent-work/team-chat/conversations?unread=true
+8. GET /api/agent-work/team-chat/conversations/:conversationId/messages
+9. POST /api/agent-work/team-chat/conversations/:conversationId/reply when the agent should answer internally</pre>
+
+    <h2 id="docs-list">Documents</h2>
+    <p class="section-intro">Documents are stored in S3 and organized by owner (person or company), year, category (tax/other), and section (firm_uploaded or client_uploaded). API responses never expose raw S3 credentials; download/open fields are protected DarkLion URLs that mint short-lived signed S3 links.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/documents</span></h3>
+    <p class="endpoint-desc">List documents.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>owner_type</td><td>string <span class="badge badge-optional">optional</span></td><td>person | company. Required with owner_id unless relationship_id is provided.</td></tr>
+        <tr><td>owner_id</td><td>number <span class="badge badge-optional">optional</span></td><td>ID of the person or company. Required with owner_type unless relationship_id is provided.</td></tr>
+        <tr><td>relationship_id</td><td>number <span class="badge badge-optional">optional</span></td><td>List documents for all people and companies in a relationship. Returns <code>{ documents: [...] }</code> with API download URLs.</td></tr>
+        <tr><td>year</td><td>string <span class="badge badge-optional">optional</span></td><td>Filter by tax year e.g. "2025"</td></tr>
+        <tr><td>category</td><td>string <span class="badge badge-optional">optional</span></td><td>Alias for folder_category.</td></tr>
+        <tr><td>folder_category</td><td>string <span class="badge badge-optional">optional</span></td><td>tax | other</td></tr>
+        <tr><td>folder_section</td><td>string <span class="badge badge-optional">optional</span></td><td>firm_uploaded | client_uploaded</td></tr>
+        <tr><td>doc_type</td><td>string <span class="badge badge-optional">optional</span></td><td>Filter by document type when available.</td></tr>
+        <tr><td>is_delivered</td><td>boolean <span class="badge badge-optional">optional</span></td><td>Filter documents already attached/delivered through tax delivery.</td></tr>
+      </tbody>
+    </table>
+    <pre>{
+  "documents": [{
+    "id": 105,
+    "display_name": "2025 Form 1040.pdf",
+    "relationship_id": 25,
+    "person_name": "Jane Smith",
+    "folder_category": "tax",
+    "download_url": "/api/documents/105/download",
+    "open_url": "/api/documents/105/open"
+  }]
+}</pre>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/documents/:id</span></h3>
+    <p class="endpoint-desc">Get metadata for one document, including owner context, relationship context when applicable, and API download/open URLs.</p>
+    <p>Response: <code>{ "document": { ... } }</code></p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/documents/:id/download</span></h3>
+    <p class="endpoint-desc">Returns a signed S3 download URL for the actual stored file. The response is JSON, not the file bytes: <code>{ "url": "https://..." }</code>. Alias: <code>GET /api/documents/:id/url</code>.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/documents/:id/open</span></h3>
+    <p class="endpoint-desc">Redirects directly to the signed S3 URL with HTTP 302. Useful for browser/open-in-new-tab flows.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/documents/:id/extracted_data</span></h3>
+    <p class="endpoint-desc">Returns normalized parsed tax data for a PDF document. Uses linked tax delivery report data when available; otherwise extracts and analyzes the actual PDF live. Includes AGI, taxable income, total tax, filing status, tax year, form type, source, and raw extracted JSON.</p>
+    <pre>{
+  "document_id": 105,
+  "extraction_status": "completed",
+  "adjusted_gross_income": 120000,
+  "taxable_income": 95000,
+  "total_tax": 18000,
+  "filing_status": "married_filing_jointly",
+  "tax_year": "2025",
+  "form_type": "1040",
+  "source": "tax_delivery_report_data"
+}</pre>
+
+    <h3 id="docs-move"><span class="method method-put">PUT</span> <span class="endpoint-path">/api/documents/:id</span></h3>
+    <p class="endpoint-desc">Update document metadata including moving between folders.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>display_name</td><td>string <span class="badge badge-optional">optional</span></td><td>Rename the document</td></tr>
+        <tr><td>year</td><td>string <span class="badge badge-optional">optional</span></td><td>Move to a different tax year folder</td></tr>
+        <tr><td>folder_section</td><td>string <span class="badge badge-optional">optional</span></td><td>firm_uploaded | client_uploaded</td></tr>
+        <tr><td>folder_category</td><td>string <span class="badge badge-optional">optional</span></td><td>tax | other</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="docs-delete"><span class="method method-delete">DELETE</span> <span class="endpoint-path">/api/documents/:id</span></h3>
+    <p class="endpoint-desc">Permanently delete a document from S3 and the database. If attached to a draft tax delivery, the delivery and attached files are deleted too. If attached to a non-draft/signed delivery, the API returns 409 until the request is repeated with <code>{ "confirm_delete": "DELETE" }</code>. This protects signed/sent delivery records from accidental removal.</p>
+    <pre>// first attempt on protected delivery document
+{ "error": "Document is attached to a sent/signed tax delivery", "requires_confirmation": true }
+
+// confirmed request body
+{ "confirm_delete": "DELETE" }</pre>
+
+    <h2 id="pipeline-jobs">Pipelines</h2>
+    <p class="section-intro">Pipelines track workflow progress for clients. Each client entity (person or company) can have one or more pipeline jobs moving through stages.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/pipelines/jobs</span></h3>
+    <p class="endpoint-desc">List active pipeline jobs. Returns jobs with their current stage, entity, and relationship info.</p>
+
+    <h3 id="pipeline-move"><span class="method method-put">PUT</span> <span class="endpoint-path">/api/pipelines/jobs/:id</span></h3>
+    <p class="endpoint-desc">Update a pipeline job — most commonly used to advance to the next stage.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>current_stage_id</td><td>number <span class="badge badge-optional">optional</span></td><td>ID of the new stage to move the job to</td></tr>
+        <tr><td>status</td><td>string <span class="badge badge-optional">optional</span></td><td>active | complete | archived</td></tr>
+        <tr><td>title</td><td>string <span class="badge badge-optional">optional</span></td><td>Update job title</td></tr>
+      </tbody>
+    </table>
+    <p>To advance a job to the next stage, you need the stage ID. Get stages for a pipeline template with <code>GET /api/pipelines/templates/:id/stages</code> (see below).</p>
+
+    <h3 id="pipeline-stages"><span class="method method-get">GET</span> <span class="endpoint-path">/api/pipelines/templates/:id/stages</span></h3>
+    <p class="endpoint-desc">List all stages for a pipeline template, ordered by position. Use this to get stage IDs for moving jobs.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>number</td><td>Stage ID — use this in PUT /jobs/:id to move a job</td></tr>
+        <tr><td>name</td><td>string</td><td>Stage name (e.g. "CPA Return Review")</td></tr>
+        <tr><td>position</td><td>number</td><td>Order in the pipeline (0 = first)</td></tr>
+        <tr><td>color</td><td>string</td><td>Stage color for UI display</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="tax-list">Tax Deliveries</h2>
+    <p class="section-intro">Tax deliveries are the end-to-end workflow for delivering a completed tax return to a client for review and e-signature.</p>
+
+    <p><strong>Delivery statuses:</strong> <code>draft</code> → <code>sent</code> → <code>approved</code> → <code>signed</code> → <code>complete</code>. If changes requested: <code>needs_changes</code>.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/tax-deliveries</span></h3>
+    <p class="endpoint-desc">List tax deliveries for a company or person.</p>
+    <table class="params-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>company_id</td><td>number</td><td>Filter by company (use one of these)</td></tr>
+        <tr><td>person_id</td><td>number</td><td>Filter by person</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="tax-send"><span class="method method-post">POST</span> <span class="endpoint-path">/api/tax-deliveries/:id/send</span></h3>
+    <p class="endpoint-desc">Send a draft tax delivery to the client. This notifies signers via email and creates a portal message thread. Delivery must be in <code>draft</code> status.</p>
+
+    <h3 id="tax-summary"><span class="method method-get">GET</span> <span class="endpoint-path">/api/tax-deliveries/:id/summary</span></h3>
+    <p class="endpoint-desc">Get the AI-generated tax summary for a delivery (if generated).</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>status</td><td>string</td><td>none | processing | completed | error</td></tr>
+        <tr><td>data</td><td>object | null</td><td>Full ReportData object when completed (see Tax Summary Schema below)</td></tr>
+      </tbody>
+    </table>
+
+    <h3><span class="method method-post">POST</span> <span class="endpoint-path">/api/tax-deliveries/:id/generate-summary</span></h3>
+    <p class="endpoint-desc">Trigger AI analysis of the attached PDF. Runs asynchronously — poll <code>/summary</code> for status. Requires a review document to be attached.</p>
+
+    <h2 id="proposals-list">Proposals</h2>
+    <p class="section-intro">Proposals are the engagement letter / service agreement workflow. Clients select a tier, provide their info, and e-sign the LOE.</p>
+
+    <p><strong>Proposal statuses:</strong> <code>draft</code> → <code>sent</code> → <code>viewed</code> → <code>accepted</code> → <code>signed</code></p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/proposals</span></h3>
+    <p class="endpoint-desc">List all proposals for the firm. Supports filtering by status.</p>
+
+    <h3 id="proposals-stats"><span class="method method-get">GET</span> <span class="endpoint-path">/api/proposals/stats</span></h3>
+    <p class="endpoint-desc">Get proposal statistics: total, sent, accepted/signed, and signed MRR.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>total</td><td>number</td><td>Total proposals</td></tr>
+        <tr><td>sent</td><td>number</td><td>Proposals in sent status</td></tr>
+        <tr><td>accepted_signed</td><td>number</td><td>Proposals accepted or signed</td></tr>
+        <tr><td>mrr</td><td>number</td><td>Monthly recurring revenue from signed engagements</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="emma-context-prompt">Emma Context Prompt</h2>
+    <p class="section-intro">Emma pushes a structured firm context document to DarkLion on a schedule (overnight deep refresh + hourly during business hours). The built-in Claude assistant reads this context when answering staff questions — so staff get instant responses powered by Emma's deep analysis. Accepts API token auth.</p>
+
+    <h3><span class="method method-put">PUT</span> <span class="endpoint-path">/api/emma-chat/context</span></h3>
+    <p class="endpoint-desc">Emma pushes the current firm context prompt. Overwrites the previous version. Claude will use this on every staff message until the next update.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>context</td><td>string <span class="badge badge-required">required</span></td><td>The full context document — pipeline status, per-staff tasks, urgent items, client details, staff directory. Can be 5,000–15,000 tokens.</td></tr>
+        <tr><td>updated_at</td><td>string <span class="badge badge-optional">optional</span></td><td>ISO timestamp of when this context was generated. Shown to Claude so it knows how fresh the data is.</td></tr>
+      </tbody>
+    </table>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma-chat/context</span></h3>
+    <p class="endpoint-desc">Read back the current stored context. Emma uses this to verify what's live and diff against planned updates.</p>
+    <p>Response: <code>{ context, updated_at, updated_by }</code></p>
+
+    <h2 id="emma-session">Emma Chat</h2>
+    <p class="section-intro">The Emma Chat API powers the live AI assistant in the DarkLion dashboard. The live chat currently answers directly through DarkLion's built-in Emma/Claude flow; connected-agent infrastructure remains available for wakes, async callbacks, inbox drafts, and future routing. Sessions are per-user per-day and auto-purge after 3 days. <strong>Note:</strong> Staff-facing session/message endpoints require JWT authentication because Emma needs a <code>userId</code> to store per-user sessions. API token auth is only supported on the explicitly documented <code>*-for/:userId</code> and context endpoints.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma-chat/session</span></h3>
+    <p class="endpoint-desc">Get or create today's session for the current user. Returns the session record including any existing messages. Also triggers 3-day cleanup of old sessions.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>number</td><td>Session ID</td></tr>
+        <tr><td>session_date</td><td>string</td><td>Today's date (YYYY-MM-DD)</td></tr>
+        <tr><td>messages</td><td>array</td><td>Array of message objects with role, content, timestamp</td></tr>
+        <tr><td>briefing_generated</td><td>boolean</td><td>Whether morning briefing has been generated today</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="emma-briefing"><span class="method method-post">POST</span> <span class="endpoint-path">/api/emma-chat/briefing</span></h3>
+    <p class="endpoint-desc">Generate Emma's morning briefing for today. Pulls full firm context (<code>/api/emma/context</code>), sends to Claude Haiku, and stores the result. Only generates once per day — subsequent calls return the cached briefing.</p>
+    <p>No request body required. Response:</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>messages</td><td>array</td><td>Session messages including the new briefing</td></tr>
+        <tr><td>already_generated</td><td>boolean</td><td>True if briefing was cached from an earlier call today</td></tr>
+      </tbody>
+    </table>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/emma-chat/session-for/:userId</span></h3>
+    <p class="endpoint-desc">Emma reads a staff member's current session — all messages sent to and from them today. Use this to monitor what staff are asking and whether Emma's briefings were received. Accepts API token auth.</p>
+    <p>Response: <code>{ user, user_id, session_date, messages, briefing_generated }</code></p>
+
+    <h3><span class="method method-post">POST</span> <span class="endpoint-path">/api/emma-chat/reply-for/:userId</span></h3>
+    <p class="endpoint-desc">Emma injects a message directly into a staff member's chat as if he typed it. The message appears as an assistant bubble in the dashboard. Use this to proactively push updates, answer questions Emma detected via monitoring, or send follow-ups.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>message</td><td>string <span class="badge badge-required">required</span></td><td>The message text Emma wants to inject</td></tr>
+      </tbody>
+    </table>
+
+    <h3><span class="method method-post">POST</span> <span class="endpoint-path">/api/emma-chat/briefing-for/:userId</span></h3>
+    <p class="endpoint-desc">Emma uses this to push a personalized morning briefing into a specific staff member's chat session. Accepts API token auth — Emma can call this with his <code>dlk_</code> token. Get user IDs from <code>GET /api/staff</code>. Only generates once per day per user; subsequent calls return the cached briefing.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>userId (path)</td><td>number <span class="badge badge-required">required</span></td><td>firm_users.id of the staff member to brief</td></tr>
+      </tbody>
+    </table>
+    <p>Response: <code>{ ok, user, messages, already_generated }</code></p>
+
+    <h3 id="emma-message"><span class="method method-post">POST</span> <span class="endpoint-path">/api/emma-chat/message</span></h3>
+    <p class="endpoint-desc">Send a message to Emma. Emma receives the current firm context plus recent conversation history, can use approved internal tools, and stores the response in the session. Available tools include scoped inbox lookup, message detail lookup, relationship/document lookup, document extracted tax data, and safe email-style draft generation. Draft tools create suggested copy only; humans still review and send client communications.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>message</td><td>string <span class="badge badge-required">required</span></td><td>The user's message text</td></tr>
+      </tbody>
+    </table>
+    <p>Response:</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>reply</td><td>string</td><td>Emma's response text</td></tr>
+        <tr><td>messages</td><td>array</td><td>Full updated conversation history for this session</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="staff-list">Staff</h2>
+    <p class="section-intro">The staff endpoint returns all accepted firm users. Emma uses this to build per-staff task lists and assignments.</p>
+
+    <h3><span class="method method-get">GET</span> <span class="endpoint-path">/api/staff</span></h3>
+    <p class="endpoint-desc">List all accepted staff users for the firm.</p>
+    <table class="params-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>number</td><td>User ID</td></tr>
+        <tr><td>name</td><td>string</td><td>Full name</td></tr>
+        <tr><td>display_name</td><td>string</td><td>Display/preferred name</td></tr>
+        <tr><td>email</td><td>string</td><td>Email address</td></tr>
+        <tr><td>role</td><td>string</td><td>owner | admin | staff</td></tr>
+        <tr><td>last_login_at</td><td>string</td><td>Last login timestamp</td></tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #1e2738;color:#8fa3b8;font-size:0.82rem;">
+      DarkLion API v1.0 · Built by <a href="https://ledgerhq.pro" style="color:#c9a84c;">LedgerHQ</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

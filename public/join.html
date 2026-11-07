@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Join DarkLion</title>
+    <link rel="stylesheet" href="/public-offer.css" />
+    <script defer src="/public-offer.js"></script>
+    <script defer src="/join.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="wordmark" href="/">DarkLion</a
+      ><a href="/login">Already a member? Sign in</a>
+    </header>
+    <main class="narrow">
+      <span class="eyebrow">Start your firm's membership</span>
+      <h1>One place for your firm<br />and your clients.</h1>
+      <p class="lead">
+        Messages, documents, tax workflows, and useful AI summaries. Bring your
+        team; give every client a place to connect.
+      </p>
+      <p class="price">
+        $19 <small>/ month + $5 per active staff member</small>
+      </p>
+      <p class="note">
+        Owners count as staff. Client portal accounts are included.
+      </p>
+      <ol class="note" id="join-steps">
+        <li>Confirm your work email.</li>
+        <li>Create your firm workspace and password.</li>
+        <li>Secure your sign-in with an authenticator app.</li>
+        <li>Activate your membership through secure Stripe checkout.</li>
+      </ol>
+      <div
+        id="status"
+        class="status"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+      <form class="card" id="start-form" hidden>
+        <h2>Get started</h2>
+        <label for="start-email">Work email</label
+        ><input
+          id="start-email"
+          type="email"
+          required
+          maxlength="254"
+          autocomplete="email"
+        /><button id="start">Email me a signup link</button>
+        <p class="note">
+          This becomes the firm owner's sign-in. The link works once and
+          expires in 48 hours.
+        </p>
+      </form>
+      <form class="card" id="join-form" hidden>
+        <h2>Create your workspace</h2>
+        <p id="invited-email"></p>
+        <label for="name">Firm name</label
+        ><input
+          id="name"
+          required
+          minlength="2"
+          maxlength="100"
+          autocomplete="organization"
+        /><label for="owner-name">Your name</label
+        ><input
+          id="owner-name"
+          required
+          minlength="2"
+          maxlength="100"
+          autocomplete="name"
+        /><label for="slug">Firm code</label
+        ><input
+          id="slug"
+          required
+          pattern="[a-z0-9][a-z0-9-]{2,49}"
+          minlength="3"
+          maxlength="50"
+          autocapitalize="none"
+        />
+        <p class="note">
+          A short code, such as oak-street-tax, that your staff and clients use
+          to find your firm.
+        </p>
+        <label for="password">Create a password</label
+        ><input
+          id="password"
+          type="password"
+          required
+          minlength="12"
+          maxlength="128"
+          autocomplete="new-password"
+        /><label
+          ><input id="terms" type="checkbox" required />I agree to the
+          <a id="terms-link" target="_blank" rel="noopener">terms</a> and
+          <a id="privacy-link" target="_blank" rel="noopener">privacy notice</a
+          >.</label
+        ><button id="create">Create workspace</button>
+      </form>
+    </main>
+  </body>
+</html>

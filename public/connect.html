@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="same-origin" />
+  <script src="/js/portal-session.js?v=s3c-20261009"></script>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <title>Connect Your QuickBooks — DarkLion</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0f1923;
+      --charcoal: #1c2b3a;
+      --card: #1e2f40;
+      --gold: #c9a84c;
+      --gold-light: #e2c068;
+      --text: #e8edf2;
+      --muted: #8fa3b8;
+      --border: rgba(201,168,76,0.2);
+      --green: #3ecf8e;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      padding: 1.2rem 2rem;
+      background: rgba(15,25,35,0.95);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .nav-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .nav-name span { color: var(--gold); }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .connect-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 3rem;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .qb-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(45, 184, 101, 0.1);
+      border: 1px solid rgba(45,184,101,0.25);
+      color: var(--green);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.9rem;
+      border-radius: 50px;
+      margin-bottom: 1.8rem;
+    }
+
+    .qb-badge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+
+    .connect-desc {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+      line-height: 1.65;
+    }
+
+    .permissions-box {
+      background: rgba(15,25,35,0.6);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 10px;
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+
+    .permissions-box h3 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+
+    .perm-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .perm-item:last-child { margin-bottom: 0; }
+
+    .perm-icon {
+      width: 20px;
+      height: 20px;
+      background: rgba(201,168,76,0.15);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .perm-text {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .perm-text strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .btn-connect {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 0.9rem 2.2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    .btn-connect:hover {
+      background: var(--gold-light);
+      transform: translateY(-1px);
+    }
+
+    .redirect-note {
+      color: var(--muted);
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .redirect-note::before {
+      content: '&#x1F512;';
+      font-size: 0.75rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+    }
+
+    .footer-links a:hover { color: var(--gold); }
+
+    @media (max-width: 500px) {
+      .connect-card { padding: 2rem 1.5rem; }
+      h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-brand" href="/">
+      <img src="/lion-logo.png" alt="DarkLion" width="36" height="36" style="display:block;flex-shrink:0;">
+      <span class="nav-name">Dark<span>Lion</span></span>
+    </a>
+  </nav>
+
+  <main>
+    <div class="connect-card">
+      <div class="qb-badge">QuickBooks Online</div>
+      <h1>Connect Your QuickBooks</h1>
+      <p class="connect-desc">
+        DarkLion uses read/write access to your QuickBooks Online account to categorize transactions, reconcile accounts, and research vendors automatically.
+      </p>
+
+      <div class="permissions-box">
+        <h3>Access Requested</h3>
+        <div class="perm-item">
+          <div class="perm-icon">&#x1F4D6;</div>
+          <div class="perm-text"><strong>Read transactions</strong> &mdash; View your existing transactions, chart of accounts, and financial data to power AI categorization.</div>
+        </div>
+        <div class="perm-item">
+          <div class="perm-icon">&#x270F;&#xFE0F;</div>
+          <div class="perm-text"><strong>Write accounting data</strong> &mdash; Update transaction categories, add memos, and post reconciliation entries on your behalf.</div>
+        </div>
+        <div class="perm-item">
+          <div class="perm-icon">&#x1F3E2;</div>
+          <div class="perm-text"><strong>Vendor &amp; account info</strong> &mdash; Read vendor names and account details to enrich and accurately categorize each transaction.</div>
+        </div>
+      </div>
+
+      <a href="#" id="connect-btn" class="btn-connect" style="pointer-events:none;opacity:0.5;">Loading&hellip;</a>
+
+      <script>
+        (async function() {
+          try {
+            const cfg = await (await fetch('/api/config')).json();
+            const btn = document.getElementById('connect-btn');
+            btn.textContent = 'Authorize QuickBooks Access';
+            btn.style.pointerEvents = '';
+            btn.style.opacity = '';
+            btn.onclick = async function(e) {
+              e.preventDefault();
+              var params = new URLSearchParams(window.location.search);
+              var companyId = params.get('company_id') || '';
+              // The server issues a signed, short-lived state tied to this firm and company.
+              // Staff use their saved token; clients use the portal session cookie
+              // (plus a Bearer header only if this page load was handed a portal token).
+              var staffToken = localStorage.getItem('dl_token');
+              var portalHeaders = window.PortalSession ? window.PortalSession.headers() : {};
+              btn.style.pointerEvents = 'none';
+              btn.textContent = 'Starting…';
+              try {
+                var res = await fetch(staffToken ? '/auth/qbo-state' : '/auth/qbo-state/portal', {
+                  method: 'POST',
+                  headers: Object.assign({ 'Content-Type': 'application/json' }, staffToken ? { 'Authorization': 'Bearer ' + staffToken } : portalHeaders),
+                  body: JSON.stringify({ company_id: companyId || null }),
+                });
+                var data = await res.json().catch(function() { return {}; });
+                if (res.status === 401) { btn.textContent = 'Please sign in first, then try again.'; btn.style.pointerEvents = ''; return; }
+                if (!res.ok || !data.state) throw new Error(data.error || 'Could not start the connection');
+                var redirectUri = encodeURIComponent(cfg.qb_redirect_uri);
+                window.location.href = 'https://appcenter.intuit.com/connect/oauth2?client_id=' + cfg.qb_client_id + '&response_type=code&scope=com.intuit.quickbooks.accounting&redirect_uri=' + redirectUri + '&state=' + encodeURIComponent(data.state);
+              } catch (err) {
+                btn.textContent = err.message || 'Connection unavailable';
+                btn.style.pointerEvents = '';
+              }
+            };
+          } catch(e) {
+            document.getElementById('connect-btn').textContent = 'Connection unavailable';
+          }
+        })();
+      </script>
+      <p class="redirect-note">You will be redirected to Intuit to authorize access</p>
+    </div>
+  </main>
+
+  <footer>
+    <ul class="footer-links">
+      <li><a href="/privacy.html">Privacy Policy</a></li>
+      <li><a href="/terms.html">Terms of Service</a></li>
+      <li><a href="/">&#x2190; Back to Home</a></li>
+    </ul>
+  </footer>
+
+</body>
+</html>
