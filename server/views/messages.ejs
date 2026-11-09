@@ -20,9 +20,26 @@
       margin-bottom: 0.5rem;
     }
     .inbox-search:focus { outline: none; border-color: var(--gold); }
-    .client-search-heading { padding: 0.6rem 1rem 0.3rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
     .client-search-card .thread-card-subject { color: var(--gold); }
     .new-conversation-empty { color: var(--muted); padding: 2rem 1rem; font-size: 0.85rem; text-align: center; }
+    .new-msg-btn { background: var(--gold); border: none; color: var(--navy, #0f1117); border-radius: 6px; padding: 0.32rem 0.7rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .new-msg-btn:hover { filter: brightness(1.08); }
+    .pick-client-head { display: flex; justify-content: space-between; align-items: center; }
+    .pick-client-x { background: none; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 0 0.25rem; }
+    .pick-client-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--gold); border-radius: 8px; margin-top: -0.5rem; }
+    .pick-client-list:empty { display: none; }
+    .pick-client-item { padding: 0.55rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+    .pick-client-item:last-child { border-bottom: none; }
+    .pick-client-item:hover { background: rgba(201,168,76,0.12); }
+    .pick-client-item > div { min-width: 0; }
+    .pick-client-name { font-size: 0.85rem; color: var(--text); }
+    .pick-client-detail { font-size: 0.74rem; color: var(--muted); margin-top: 0.12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pick-pill { font-size: 0.66rem; font-weight: 700; border-radius: 10px; padding: 0.12rem 0.45rem; white-space: nowrap; flex-shrink: 0; }
+    .pick-pill.new { background: rgba(62,207,142,0.14); color: #3ecf8e; border: 1px solid rgba(62,207,142,0.3); }
+    .pick-pill.open { background: rgba(201,168,76,0.14); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+    .pick-pill.archived { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+    .pick-client-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+    .pick-client-hint { font-size: 0.78rem; color: var(--muted); }
 
     .inbox-list { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
     .thread-card {
@@ -348,9 +365,9 @@
     <div class="inbox-header">
       <div class="inbox-header-row">
         <h2>💬 My Inbox</h2>
-
+        <button type="button" class="new-msg-btn" id="newMessageBtn" onclick="openPickClientModal()" title="Message a client">✎ New message</button>
       </div>
-      <input type="text" class="inbox-search" id="searchBox" placeholder="Search conversations or clients…" oninput="filterThreads()">
+      <input type="text" class="inbox-search" id="searchBox" placeholder="Search by name…" oninput="filterThreads()">
     </div>
     <div class="inbox-tabs">
       <button class="inbox-tab active" id="tabMessages" onclick="switchTab('messages')">
@@ -479,6 +496,25 @@
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" onclick="closeNewConversationModal()">Cancel</button>
       <button class="btn btn-gold btn-sm" onclick="submitNewConversation()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- New message: pick a client, then chat in the normal thread view -->
+<div class="modal-overlay" id="pickClientModal" onclick="if(event.target===this) closePickClientModal()">
+  <div class="modal-box" style="width:500px;">
+    <div class="pick-client-head">
+      <h3>New message</h3>
+      <button type="button" class="pick-client-x" onclick="closePickClientModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-field">
+      <label for="pickClientInput">To</label>
+      <input type="text" id="pickClientInput" placeholder="Search clients by name or email…" autocomplete="off" oninput="scheduleClientSearch()">
+    </div>
+    <div class="pick-client-list" id="pickClientList"></div>
+    <div class="pick-client-foot">
+      <span class="pick-client-hint" id="pickClientHint">Type at least 2 letters.</span>
+      <button class="btn btn-outline btn-sm" onclick="closePickClientModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -1029,7 +1065,6 @@ async function resolveSmsException(eventId) {
 function filterThreads() {
   if (activeTab !== 'documents' && activeTab !== 'archived') {
     renderInbox();
-    if (activeTab === 'messages') scheduleClientSearch();
     return;
   }
   clearTimeout(documentNotificationSearchTimer);
@@ -1190,7 +1225,6 @@ function renderInbox() {
     return name.includes(q) || (t.subject || '').toLowerCase().includes(q);
   });
   const archivedUploads = activeTab === 'archived' ? archivedDocumentNotifications : [];
-  const clientSection = activeTab === 'messages' ? clientSearchSectionHtml(threads) : '';
   const pendingCard = activeTab === 'messages' && pendingNewPerson ? pendingConversationCardHtml() : '';
 
   if (activeTab === 'archived' && !threads.length && archivedUploads.length) {
@@ -1200,7 +1234,7 @@ function renderInbox() {
 
   if (!threads.length && !archivedUploads.length) {
     const emptyText = activeTab === 'archived' ? 'No archived conversations or uploads.' : (q ? 'No matching conversations.' : 'No active threads.');
-    document.getElementById('inboxList').innerHTML = pendingCard + `<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">${emptyText}</div>` + clientSection;
+    document.getElementById('inboxList').innerHTML = pendingCard + `<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">${emptyText}</div>`;
     if (!pendingNewPerson) clearThreadPanel();
     return;
   }
@@ -1236,20 +1270,45 @@ function renderInbox() {
       </div>
     </div>`;
   }).join('') + archivedUploads.map(item => documentNotificationCard(item, true)).join('')
-    + (activeTab === 'archived' ? documentNotificationLoadMore(true) : '')
-    + clientSection;
+    + (activeTab === 'archived' ? documentNotificationLoadMore(true) : '');
 }
 
-// ── Start or reopen a client conversation from the inbox search ─────────────
+// ── New message: pick a client in a small modal, then chat in the thread view ─
+function openPickClientModal() {
+  const input = document.getElementById('pickClientInput');
+  input.value = '';
+  clientSearchSeq++;
+  clientSearchResults = [];
+  clientSearchQuery = '';
+  renderPickClientList();
+  document.getElementById('pickClientModal').classList.add('open');
+  setTimeout(() => input.focus(), 30);
+}
+
+function closePickClientModal() {
+  document.getElementById('pickClientModal').classList.remove('open');
+}
+
+document.getElementById('pickClientInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closePickClientModal(); e.preventDefault(); }
+  if (e.key === 'Enter') {
+    const q = this.value.trim();
+    if (q === clientSearchQuery && clientSearchResults.length) openClientConversation(clientSearchResults[0].id);
+    e.preventDefault();
+  }
+});
+
 function scheduleClientSearch() {
   clearTimeout(clientSearchTimer);
-  const q = (document.getElementById('searchBox').value || '').trim().slice(0, 100);
+  const q = (document.getElementById('pickClientInput').value || '').trim().slice(0, 100);
   if (q.length < 2) {
     clientSearchSeq++;
     clientSearchResults = [];
     clientSearchQuery = '';
+    renderPickClientList();
     return;
   }
+  document.getElementById('pickClientHint').textContent = 'Searching…';
   clientSearchTimer = setTimeout(async () => {
     const seq = ++clientSearchSeq;
     try {
@@ -1258,27 +1317,28 @@ function scheduleClientSearch() {
       if (seq !== clientSearchSeq) return;
       clientSearchResults = Array.isArray(rows) ? rows : [];
       clientSearchQuery = q;
-      if (activeTab === 'messages') renderInbox();
+      renderPickClientList();
     } catch (e) { /* search is best-effort */ }
   }, 250);
 }
 
-function clientSearchSectionHtml(visibleThreads) {
-  const q = (document.getElementById('searchBox').value || '').trim();
-  if (q.length < 2 || q !== clientSearchQuery) return '';
-  const shownPeople = new Set(visibleThreads.filter(t => !t.isParticipant).map(t => t.person?.id));
-  const people = clientSearchResults.filter(p => !shownPeople.has(p.id));
-  if (!people.length) return '';
-  return '<div class="client-search-heading">Clients</div>' + people.map(p => {
+function renderPickClientList() {
+  const hint = document.getElementById('pickClientHint');
+  const list = document.getElementById('pickClientList');
+  const q = (document.getElementById('pickClientInput').value || '').trim();
+  if (q.length < 2) { hint.textContent = 'Type at least 2 letters.'; list.innerHTML = ''; return; }
+  if (q !== clientSearchQuery) return;
+  const people = clientSearchResults;
+  hint.textContent = people.length ? 'Pick a client to open their conversation.' : 'No matching clients.';
+  list.innerHTML = people.map(p => {
     const name = esc(`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.email || 'Client');
-    const action = p.threadId
-      ? (p.threadArchived ? 'Archived conversation · click to bring it back' : 'Open conversation')
-      : 'Start a new conversation';
+    const pill = p.threadId
+      ? (p.threadArchived ? '<span class="pick-pill archived">Archived · brings it back</span>' : '<span class="pick-pill open">Open conversation</span>')
+      : '<span class="pick-pill new">New conversation</span>';
     const detail = [p.relationshipName, p.email].filter(Boolean).map(esc).join(' · ');
-    return `<div class="thread-card client-search-card" onclick="openClientConversation(${Number(p.id)})">
-      <div class="thread-card-name"><span>${name}</span></div>
-      <div class="thread-card-subject">${action}</div>
-      ${detail ? `<div class="thread-card-preview">${detail}</div>` : ''}
+    return `<div class="pick-client-item" onclick="openClientConversation(${Number(p.id)})">
+      <div><div class="pick-client-name">${name}</div>${detail ? `<div class="pick-client-detail">${detail}</div>` : ''}</div>
+      ${pill}
     </div>`;
   }).join('');
 }
@@ -1292,6 +1352,14 @@ function pendingConversationCardHtml() {
 }
 
 function clearInboxSearch() {
+  closePickClientModal();
+  if (activeTab !== 'messages') {
+    // Show the Messages tab without auto-opening its first thread.
+    activeTab = 'messages';
+    document.getElementById('tabMessages').classList.add('active');
+    ['tabDocumentUploads', 'tabArchived'].forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById('tabTasks').classList.remove('active', 'active-task');
+  }
   document.getElementById('searchBox').value = '';
   clientSearchSeq++;
   clientSearchResults = [];
