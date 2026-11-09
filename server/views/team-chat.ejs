@@ -164,6 +164,15 @@
   .tc-msg-edit-actions { display:flex; justify-content:flex-end; gap:0.4rem; }
   .tc-msg.pending .tc-msg-bubble { opacity:0.82; }
   .tc-msg.typing .tc-msg-bubble { min-width:56px; color:var(--muted); }
+  .tc-day-divider { align-self:stretch; display:flex; align-items:center; gap:0.75rem; color:var(--muted); font-size:0.7rem; font-weight:900; letter-spacing:0.04em; margin:0.2rem 0; }
+  .tc-day-divider::before, .tc-day-divider::after { content:""; height:1px; flex:1; background:rgba(143,163,184,0.18); }
+  .tc-day-divider span { border:1px solid rgba(143,163,184,0.2); border-radius:999px; padding:0.18rem 0.65rem; background:rgba(255,255,255,0.03); }
+  .tc-msg.run-continues { margin-bottom:-0.5rem; }
+  .tc-msg.run-continues > .tc-msg-avatar { visibility:hidden; }
+  .tc-msg.run-continues .tc-msg-meta-row { display:none; }
+  .tc-msg.run-continues:hover .tc-msg-meta-row, .tc-msg.run-continues:focus-within .tc-msg-meta-row { display:flex; }
+  @media (hover:none) { .tc-msg.run-continues .tc-msg-meta-row { display:flex; } .tc-msg.run-continues { margin-bottom:0; } }
+  .tc-typing-row .tc-typing-name { font-size:0.7rem; color:var(--muted); margin-top:0.25rem; }
   .tc-typing-dots { display:inline-flex; align-items:center; gap:0.22rem; height:1rem; }
   .tc-typing-dots span { width:0.34rem; height:0.34rem; border-radius:999px; background:currentColor; opacity:0.38; animation:tcTyping 1s infinite ease-in-out; }
   .tc-typing-dots span:nth-child(2) { animation-delay:0.16s; }
@@ -171,6 +180,11 @@
   @keyframes tcTyping { 0%, 80%, 100% { transform:translateY(0); opacity:0.35; } 40% { transform:translateY(-3px); opacity:1; } }
   .tc-attach-preview { display:flex; align-items:center; gap:0.45rem; font-weight:800; }
   .tc-msg.mine .tc-msg-time { color:rgba(15,25,35,0.68); }
+  .tc-msg.mine.pending .tc-msg-time { color:var(--muted); }
+  .tc-msg.mine.failed .tc-msg-time { color:var(--red); font-weight:800; }
+  .tc-msg.mine.failed .tc-msg-action { color:var(--text); border-color:rgba(143,163,184,0.32); background:rgba(255,255,255,0.07); }
+  .tc-msg.mine.failed .tc-msg-action:hover { color:var(--red); border-color:rgba(229,62,62,0.35); background:rgba(229,62,62,0.08); }
+  .tc-msg.mine.failed .tc-msg-action.edit:hover { color:var(--gold); border-color:rgba(201,168,76,0.38); background:rgba(201,168,76,0.12); }
 
   .tc-composer { flex:0 0 auto; border-top:1px solid var(--border); padding:0.85rem 1rem; background:rgba(15,25,35,0.96); position:relative; z-index:2; }
   .tc-compose-card { display:flex; align-items:flex-end; gap:0.55rem; background:var(--navy); border:1px solid var(--border); border-radius:14px; padding:0.55rem; flex-wrap:wrap; }
@@ -199,6 +213,7 @@
   .tc-attachment-image-button { display:block; width:100%; padding:0; border:0; background:rgba(0,0,0,0.18); cursor:zoom-in; }
   .tc-attachment-image-button:focus-visible { outline:3px solid var(--gold); outline-offset:-3px; }
   .tc-attachment-img { display:block; width:100%; max-height:360px; object-fit:contain; background:rgba(0,0,0,0.18); }
+  .tc-attachment-img:not([data-preview-loaded]) { min-height:180px; }
   .tc-attachment-pdf { display:block; width:100%; height:360px; border:0; background:#fff; }
   .tc-attachment-caption { display:flex; align-items:center; gap:0.35rem; padding:0.45rem 0.55rem; font-size:0.76rem; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .tc-attachment-footer { display:flex; align-items:center; gap:0.35rem; }
@@ -644,7 +659,8 @@
   var groupActionsChat = null;
   var mainAttachmentFiles = [];
   var editingMessageId = null;
-  var composerSendInFlight = false;
+  var sendQueues = {};
+  var resolvedDmConversations = {};
   var assistantSendInFlight = false;
   var localReads = loadJson('dl_team_chat_reads_v1', {});
   var storageKeyActive = 'dl_team_chat_active_peer_v1';
@@ -831,15 +847,10 @@
     var send = $('tc-send-btn');
     var attach = $('tc-main-attach-btn');
     var emoji = $('tc-emoji-btn');
-    [input, attach, emoji].forEach(function(el){ if (el) el.disabled = !enabled || composerSendInFlight; });
-    if (send) {
-      send.disabled = !enabled || composerSendInFlight;
-      send.textContent = composerSendInFlight ? 'Sending…' : 'Send';
-    }
-    if (form) {
-      form.classList.toggle('disabled', !enabled);
-      form.classList.toggle('sending', composerSendInFlight);
-    }
+    // The composer never locks while a message is on its way; sends are queued.
+    [input, attach, emoji].forEach(function(el){ if (el) el.disabled = !enabled; });
+    if (send) send.disabled = !enabled;
+    if (form) form.classList.toggle('disabled', !enabled);
     if (input) input.placeholder = enabled ? ('Message ' + ((activeChat && activeChat.title) || 'Team Chat') + '…') : (reason || 'Select a connected Team chat to start messaging.');
   }
   function clearUnreadForChat(chat) {
@@ -890,7 +901,6 @@
     if (!hasUnread) return;
     markActiveChatRead(latestStoredMessageId(lastServerMessages));
     renderMessages(lastServerMessages);
-    if (reason) setStatus('Marked messages read.', 'ok');
   }
   function setActiveChat(chat, opts) {
     opts = opts || {};
@@ -898,8 +908,11 @@
     activeFetchSeq = chatSwitchSeq;
     var seq = activeFetchSeq;
     saveActiveScrollPosition();
+    var switchingChat = !activeChat || !chat || chatKey(activeChat) !== chatKey(chat);
+    if (switchingChat && activeChat) saveDraftFor(activeChat, $('tc-message-input')?.value);
     if (!chat) {
       activeChat = null;
+      restoreDraftFor(null);
       setComposerState(false, 'Create or select a Team Chat conversation to start messaging.');
       if ($('tc-convo-title')) $('tc-convo-title').textContent = 'Team Chat';
       renderConversationParticipants(null);
@@ -909,6 +922,7 @@
     }
     activeChat = chat;
     var key = chatKey(chat);
+    if (switchingChat) restoreDraftFor(chat);
     if ($('tc-convo-title')) $('tc-convo-title').textContent = chat.title || chat.username || peerForChat(chat);
     if ($('tc-convo-avatar')) $('tc-convo-avatar').outerHTML = avatarForChat(chat).replace('<div ', '<div id="tc-convo-avatar" ');
     renderConversationParticipants(chat);
@@ -939,18 +953,29 @@
   function isMine(m) { return !!(m && (m.out || m.direction === 'outbound')); }
 	  function messageSignature(messages) {
 	    return messages.map(function(m){
-	      var attachments = Array.isArray(m.attachments) ? m.attachments.map(function(att){ return [att.id, att.file_name || att.fileName, att.byte_size || att.byteSize].join('~'); }).join(',') : (m.attachment_name || '');
-	      return String(m.message_id || m.id) + ':' + (isMine(m) ? '1' : '0') + ':' + (m.text || m.caption || '') + ':' + (m.attachment_kind || m.message_kind || '') + ':' + attachments + ':' + (m.pending ? 'p' : '') + ':' + (m.deleted_at || m.removed_at ? 'd' : '') + ':' + (m.edited_at || '') + ':' + (m.can_edit ? 'e' : '') + ':' + (m.can_delete ? 'r' : '') + ':' + (m.is_unread ? 'u' : '');
+	      var attachments = Array.isArray(m.attachments) ? m.attachments.map(function(att){ return [att.id, att.file_name || att.fileName, att.byte_size || att.byteSize, att.local_url ? 'l' : ''].join('~'); }).join(',') : (m.attachment_name || '');
+	      return String(m.message_id || m.id) + ':' + (isMine(m) ? '1' : '0') + ':' + (m.text || m.caption || '') + ':' + (m.attachment_kind || m.message_kind || '') + ':' + attachments + ':' + (m.pending ? 'p' : '') + (m.slow ? 's' : '') + (m.failed ? 'f' : '') + ':' + (m.deleted_at || m.removed_at ? 'd' : '') + ':' + (m.edited_at || '') + ':' + (m.can_edit ? 'e' : '') + ':' + (m.can_delete ? 'r' : '') + ':' + (m.is_unread ? 'u' : '');
 	    }).join('|');
 	  }
   function combinedMessages(serverMessages) {
     var serverIds = new Set((serverMessages || []).map(function(m){ return String(m.message_id || m.id || m.client_nonce || ''); }));
+    var serverByNonce = {};
+    (serverMessages || []).forEach(function(m){ if (m && m.client_nonce) serverByNonce[m.client_nonce] = m; });
     var cutoff = Date.now() - 90000;
     optimisticMessages = optimisticMessages.filter(function(m) {
       if (serverIds.has(String(m.message_id))) return false;
+      if (m.client_nonce && serverByNonce[m.client_nonce]) {
+        adoptLocalPreviews(m, serverByNonce[m.client_nonce]);
+        return false;
+      }
+      // Messages still on their way, or that failed, stay until they are resolved.
+      if (m.pending || m.failed) return true;
+      if (m.confirmed_ms) return m.confirmed_ms > Date.now() - 600000;
       return !m.created_ms || m.created_ms > cutoff;
     });
-    return (serverMessages || []).concat(optimisticMessages).sort(function(a, b) {
+    var activeKey = activeChat ? chatKey(activeChat) : '';
+    var visibleOptimistic = optimisticMessages.filter(function(m){ return !m.chat_key || m.chat_key === activeKey; });
+    return (serverMessages || []).concat(visibleOptimistic).sort(function(a, b) {
       return new Date(a.date || a.sent_at || a.created_at || 0).getTime() - new Date(b.date || b.sent_at || b.created_at || 0).getTime();
     });
   }
@@ -1000,6 +1025,24 @@
     attachmentPreviewUrlCache[key] = url;
     attachmentObjectUrls.add(url);
   }
+  // The picture the sender already sees becomes the preview for the stored
+  // attachment, so it is never downloaded again or redrawn.
+  function adoptLocalPreviews(localMessage, serverMessage) {
+    var localAtts = (localMessage && localMessage.attachments) || [];
+    var serverAtts = (serverMessage && serverMessage.attachments) || [];
+    localAtts.forEach(function(att, idx) {
+      if (!att || !att.local_url) return;
+      var stored = serverAtts[idx];
+      if (stored && stored.id && !cachedAttachmentPreviewUrl(stored.id)) rememberAttachmentObjectUrl(stored.id, att.local_url);
+      else if (!stored || !stored.id) { try { URL.revokeObjectURL(att.local_url); } catch (_) {} }
+      att.local_url = '';
+    });
+  }
+  function releaseLocalPreviews(localMessage) {
+    ((localMessage && localMessage.attachments) || []).forEach(function(att) {
+      if (att && att.local_url) { try { URL.revokeObjectURL(att.local_url); } catch (_) {} att.local_url = ''; }
+    });
+  }
   function attachmentPreviewUrl(id) {
     return '/api/team-chat/attachments/' + encodeURIComponent(id) + '/preview';
   }
@@ -1022,6 +1065,9 @@
         if (!blob || !blob.size) throw new Error('Empty preview');
         var url = URL.createObjectURL(blob);
         rememberAttachmentObjectUrl(id, url);
+        var previewBox = messagesBox();
+        var stickToBottom = previewBox && previewBox.contains(node) && isNearMessageBottom(previewBox);
+        if (stickToBottom && node.tagName === 'IMG') node.addEventListener('load', function(){ scrollMessagesToBottom('auto'); }, { once:true });
         if (node.tagName === 'IFRAME') node.src = url + '#toolbar=0';
         else node.src = url;
         node.dataset.previewLoaded = '1';
@@ -1065,6 +1111,9 @@
     var isPdf = contentType === 'application/pdf' || /\.pdf$/i.test(lowerName);
     var icon = isPdf ? '📄' : '📎';
     var label = icon + ' ' + esc(name);
+    if (att.local_url && isImage) {
+      return '<div class="tc-attachment-card"><button class="tc-attachment-image-button" type="button" data-image-name="' + esc(name) + '" aria-label="' + esc(name) + '"><img class="tc-attachment-img" data-preview-loaded="1" src="' + esc(att.local_url) + '" alt="' + esc(name) + '"></button><div class="tc-attachment-footer"><span class="tc-attachment-caption">' + label + '</span></div></div>';
+    }
     if (!id || message.pending) return '<span class="tc-attach-preview">' + label + '</span>';
     var downloadAttrs = 'href="#" data-attachment-id="' + esc(id) + '"';
     if (isImage) {
@@ -1137,7 +1186,8 @@
   }
   function renderMessageHtml(m, firstUnreadId) {
     var mine = isMine(m) ? ' mine' : '';
-    var pending = m.pending ? ' pending' : '';
+    // A send that lands quickly never shows a "sending" state at all.
+    var pending = m.failed ? ' pending failed' : (m.pending && m.slow) ? ' pending' : '';
     var currentId = String(m.id || m.message_id || m.client_nonce || '');
     var key = messageKey(m);
     var unreadDivider = firstUnreadId && currentId === firstUnreadId ? '<div class="tc-unread-divider" data-unread-divider="1" data-unread-for="' + esc(key) + '" data-mark-read="1" title="Click to mark read"><span class="tc-unread-divider-label">New messages — click or reply to mark read</span></div>' : '';
@@ -1155,7 +1205,10 @@
       : attachmentHtml
       ? attachmentHtml + (bodyText && bodyText !== '[attachment]' && bodyText !== '[' + kind + ']' && bodyText !== attachmentFallbackText ? '<div style="margin-top:0.35rem">' + linkifyText(bodyText) + '</div>' : '')
       : linkifyText(bodyText) + ((m.has_media || kind === 'photo' || kind === 'document') && (m.text || m.caption) ? ' 📎' : '');
-    var status = m.pending ? ' · sending…' : (' · #' + esc(m.id || 'stored') + (m.edited_at ? ' · edited' : ''));
+    var status = m.failed ? ' · not sent' : m.pending ? (m.slow ? ' · sending…' : '') : (m.edited_at ? ' · edited' : '');
+    var failedButtons = m.failed && m.client_nonce
+      ? '<button class="tc-msg-action edit" type="button" data-retry-nonce="' + esc(m.client_nonce) + '" title="Send again">Retry</button><button class="tc-msg-action" type="button" data-discard-nonce="' + esc(m.client_nonce) + '" title="Discard message">Discard</button>'
+      : '';
 	    var canEdit = !m.pending && messageId && String(messageId).indexOf('local-') !== 0 && m.can_edit === true;
 	    var canDelete = !m.pending && messageId && String(messageId).indexOf('local-') !== 0 && m.can_delete === true;
 	    var editButton = canEdit ? '<button class="tc-msg-action edit" type="button" data-edit-message-id="' + esc(messageId) + '" title="Edit message">Edit</button>' : '';
@@ -1163,10 +1216,72 @@
 	    var sig = messageSignature([m]);
 	    return unreadDivider + '<div class="tc-msg' + mine + pending + (emojiOnly ? ' emoji-only' : '') + '" data-message-id="' + esc(messageId) + '" data-message-key="' + esc(key) + '" data-message-sig="' + esc(sig) + '">' +
 	      messageAvatarHtml(m) +
-	      '<div><div class="tc-msg-bubble">' + body + '</div><div class="tc-msg-meta-row"><div class="tc-msg-time">' + esc(fmtTime(m.date || m.sent_at || m.created_at)) + status + '</div>' + editButton + deleteButton + '</div></div>' +
+	      '<div><div class="tc-msg-bubble">' + body + '</div><div class="tc-msg-meta-row"><div class="tc-msg-time">' + esc(fmtTime(m.date || m.sent_at || m.created_at)) + status + '</div>' + failedButtons + editButton + deleteButton + '</div></div>' +
 	    '</div>';
 	  }
+  function messageDayKey(m) {
+    var iso = m && (m.date || m.sent_at || m.created_at);
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function dayDividerLabel(dayKey) {
+    var parts = String(dayKey).split('-').map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var diff = Math.round((today - d) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    var fmt = { weekday:'long', month:'long', day:'numeric' };
+    if (d.getFullYear() !== today.getFullYear()) fmt.year = 'numeric';
+    try { return d.toLocaleDateString([], fmt); } catch (_) { return dayKey; }
+  }
+  function senderKeyOf(m) { return isMine(m) ? 'me' : String((m && (m.sender_staff_user_id || m.sender_name)) || ''); }
+  function messageTimeMs(m) { var t = Date.parse((m && (m.date || m.sent_at || m.created_at)) || ''); return isNaN(t) ? 0 : t; }
+  // Consecutive messages from one person within five minutes read as one run, like Slack.
+  function continuesRun(m, next, firstUnreadId) {
+    if (!m || !next || m.failed || next.failed) return false;
+    if (firstUnreadId && String(next.id || next.message_id || '') === firstUnreadId) return false;
+    var who = senderKeyOf(m);
+    if (!who || who !== senderKeyOf(next) || messageDayKey(m) !== messageDayKey(next)) return false;
+    var a = messageTimeMs(m), b = messageTimeMs(next);
+    return !!a && !!b && (b - a) < 300000;
+  }
+  function applyRunGrouping(box, displayMessages, firstUnreadId) {
+    var continues = {};
+    displayMessages.forEach(function(m, i){ continues[messageKey(m)] = continuesRun(m, displayMessages[i + 1], firstUnreadId); });
+    box.querySelectorAll('[data-message-key]').forEach(function(node){ node.classList.toggle('run-continues', !!continues[node.dataset.messageKey]); });
+  }
+  function buildMessagesHtml(displayMessages, firstUnreadId) {
+    var lastDay = '';
+    return displayMessages.map(function(m) {
+      var day = messageDayKey(m);
+      var divider = '';
+      if (day && day !== lastDay) {
+        divider = '<div class="tc-day-divider" data-node-key="day:' + esc(day) + '"><span>' + esc(dayDividerLabel(day)) + '</span></div>';
+        lastDay = day;
+      }
+      return divider + renderMessageHtml(m, firstUnreadId);
+    }).join('');
+  }
+  function liveNodeKey(el) {
+    if (!el || !el.dataset) return '';
+    if (el.dataset.messageKey) return 'm:' + el.dataset.messageKey;
+    return el.dataset.nodeKey || '';
+  }
+  function sameLiveNode(current, next) {
+    if (!current.dataset.messageKey) return current.outerHTML === next.outerHTML;
+    if (current.dataset.messageSig !== next.dataset.messageSig) return false;
+    if (!!current.querySelector('.tc-msg-edit') !== !!next.querySelector('.tc-msg-edit')) return false;
+    var strip = function(c){ return String(c || '').replace(/\brun-continues\b/g, '').replace(/\s+/g, ' ').trim(); };
+    return strip(current.className) === strip(next.className);
+  }
   function renderMessages(messages, opts) {
+    renderMessagesInner(messages, opts);
+    renderTypingIndicator();
+  }
+  function renderMessagesInner(messages, opts) {
     opts = opts || {};
     var box = $('tc-live-messages');
     if (!box) return;
@@ -1195,13 +1310,10 @@
         break;
       }
     }
-    var html = displayMessages.map(function(m) { return renderMessageHtml(m, firstUnreadId); }).join('');
-    var existingMessages = Array.from(box.querySelectorAll('[data-message-key]'));
-    var existingKeys = existingMessages.map(function(node){ return node.dataset.messageKey; });
-    var nextKeys = displayMessages.map(messageKey);
-    var canIncremental = !opts.forceFull && existingKeys.length > 0 && nextKeys.slice(0, existingKeys.length).every(function(key, idx){ return key === existingKeys[idx]; });
-    if (!canIncremental) {
+    var html = buildMessagesHtml(displayMessages, firstUnreadId);
+    if (opts.forceFull || !box.querySelector('[data-message-key]')) {
       box.innerHTML = html;
+      applyRunGrouping(box, displayMessages, firstUnreadId);
       hydrateAttachmentPreviews(box);
       var divider = box.querySelector('[data-unread-divider="1"]');
       requestAnimationFrame(function() {
@@ -1212,29 +1324,44 @@
       lastRenderedSignature = nextSignature;
       return;
     }
+    // Keyed reconcile: untouched messages keep their DOM nodes (and loaded images), so nothing flashes.
     var template = document.createElement('template');
     template.innerHTML = html;
-    var appendedCount = 0;
-    Array.from(template.content.querySelectorAll('[data-message-key]')).forEach(function(nextNode) {
-      var key = nextNode.dataset.messageKey;
-      var currentNode = box.querySelector('[data-message-key="' + cssAttr(key) + '"]');
-      var nextDivider = template.content.querySelector('[data-unread-for="' + cssAttr(key) + '"]');
-      var currentDivider = box.querySelector('[data-unread-for="' + cssAttr(key) + '"]');
-      if (!currentNode) {
-        if (nextDivider) appendBeforeNewMessagePill(nextDivider);
-        appendBeforeNewMessagePill(nextNode);
-        appendedCount += 1;
-        return;
+    var pill = $('tc-new-message-pill');
+    var existing = {};
+    var hadMessages = false;
+    Array.from(box.children).forEach(function(el) {
+      if (el === pill || el.classList.contains('tc-typing-row')) return;
+      var k = liveNodeKey(el);
+      if (k && !existing[k]) {
+        existing[k] = el;
+        if (el.dataset.messageKey) hadMessages = true;
+      } else {
+        el.remove();
       }
-      if (nextDivider && !currentDivider) currentNode.parentNode.insertBefore(nextDivider, currentNode);
-      if (!nextDivider && currentDivider) currentDivider.remove();
-      if (currentNode.dataset.messageSig !== nextNode.dataset.messageSig) currentNode.replaceWith(nextNode);
     });
-    var keep = new Set(nextKeys);
-    Array.from(box.querySelectorAll('[data-message-key]')).forEach(function(node){ if (!keep.has(node.dataset.messageKey)) node.remove(); });
-    Array.from(box.querySelectorAll('[data-unread-for]')).forEach(function(node){ if (!keep.has(node.dataset.unreadFor)) node.remove(); });
+    var appendedCount = 0;
+    var prev = null;
+    Array.from(template.content.children).forEach(function(next) {
+      var k = liveNodeKey(next);
+      var current = k ? existing[k] : null;
+      var node = next;
+      if (current) {
+        delete existing[k];
+        if (sameLiveNode(current, next)) node = current;
+        else current.replaceWith(next);
+      } else if (next.dataset && next.dataset.messageKey && hadMessages) {
+        appendedCount += 1;
+      }
+      var want = prev ? prev.nextSibling : box.firstChild;
+      if (node !== want) box.insertBefore(node, want);
+      prev = node;
+    });
+    Object.keys(existing).forEach(function(k){ existing[k].remove(); });
+    applyRunGrouping(box, displayMessages, firstUnreadId);
     hydrateAttachmentPreviews(box);
     requestAnimationFrame(function() {
+      if (opts.restoreScroll && restoreActiveScrollPosition()) return;
       if (opts.forceBottom === true || wasNearBottom) {
         scrollMessagesToBottom(opts.smooth ? 'smooth' : 'auto');
         hideNewMessagePill();
@@ -1245,6 +1372,102 @@
       }
     });
     lastRenderedSignature = nextSignature;
+  }
+  // --- Typing indicator (ephemeral, push only) ---
+  var typingState = {};
+  var typingTimers = {};
+  var lastTypingPingAt = 0;
+  function staffNameById(id) {
+    var staff = staffRowsCache.find(function(u){ return String(u.id) === String(id); });
+    return (staff && (staff.display_name || staff.name)) || 'Someone';
+  }
+  function noteTyping(conversationId, staffUserId) {
+    if (!conversationId || !staffUserId) return;
+    var convo = String(conversationId);
+    typingState[convo] = typingState[convo] || {};
+    typingState[convo][String(staffUserId)] = Date.now() + 5000;
+    var timerKey = convo + ':' + staffUserId;
+    clearTimeout(typingTimers[timerKey]);
+    typingTimers[timerKey] = setTimeout(function(){ clearTyping(convo, staffUserId); }, 5200);
+    if (activeChat && String(activeChat.id) === convo) renderTypingIndicator();
+  }
+  function clearTyping(conversationId, staffUserId) {
+    var convo = String(conversationId || '');
+    if (!typingState[convo] || !typingState[convo][String(staffUserId)]) return;
+    delete typingState[convo][String(staffUserId)];
+    if (activeChat && String(activeChat.id) === convo) renderTypingIndicator();
+  }
+  function renderTypingIndicator() {
+    var box = messagesBox();
+    if (!box) return;
+    var existing = box.querySelector('.tc-typing-row');
+    var convo = activeChat && activeChat.id ? String(activeChat.id) : '';
+    var now = Date.now();
+    var ids = Object.keys(typingState[convo] || {}).filter(function(id){ return typingState[convo][id] > now; });
+    if (!ids.length) { if (existing) existing.remove(); return; }
+    var names = ids.map(staffNameById);
+    var label = names.length === 1 ? names[0] + ' is typing…' : names.length === 2 ? names[0] + ' and ' + names[1] + ' are typing…' : 'Several people are typing…';
+    var wasNearBottom = isNearMessageBottom(box);
+    var row = existing || document.createElement('div');
+    row.className = 'tc-msg typing tc-typing-row';
+    row.setAttribute('aria-live', 'polite');
+    row.innerHTML = messageAvatarHtml({ sender_staff_user_id: ids[0], sender_name: names[0] }) +
+      '<div><div class="tc-msg-bubble"><span class="tc-typing-dots"><span></span><span></span><span></span></span></div><div class="tc-typing-name">' + esc(label) + '</div></div>';
+    var pill = $('tc-new-message-pill');
+    var lastReal = pill && pill.parentNode === box ? pill.previousElementSibling : box.lastElementChild;
+    if (lastReal !== row) appendBeforeNewMessagePill(row);
+    if (wasNearBottom) scrollMessagesToBottom('auto');
+  }
+  function sendTypingPing() {
+    if (!activeChat || !activeChat.id || activeChat.synthetic_dm) return;
+    var now = Date.now();
+    if (now - lastTypingPingAt < 3000) return;
+    lastTypingPingAt = now;
+    fetch('/api/team-chat/conversations/' + encodeURIComponent(activeChat.id) + '/typing', {
+      method:'POST', headers:{ Authorization:'Bearer ' + token, 'Content-Type':'application/json' }, body:'{}'
+    }).catch(function(){});
+  }
+
+  // --- Per-chat drafts ---
+  var storageKeyDrafts = 'dl_team_chat_drafts_v1';
+  var chatDrafts = loadJson(storageKeyDrafts, {});
+  function saveDraftFor(chat, value) {
+    var key = chat ? chatKey(chat) : '';
+    if (!key) return;
+    var text = String(value || '');
+    if (text.trim()) chatDrafts[key] = text;
+    else delete chatDrafts[key];
+    saveJson(storageKeyDrafts, chatDrafts);
+  }
+  function restoreDraftFor(chat) {
+    var input = $('tc-message-input');
+    if (!input) return;
+    input.value = (chat && chatDrafts[chatKey(chat)]) || '';
+    autoSizeTextarea(input);
+  }
+
+  // --- Reconnect catch-up ---
+  var catchUpTimer = null;
+  function catchUpAfterGap() {
+    clearTimeout(catchUpTimer);
+    catchUpTimer = setTimeout(function() {
+      if (activeChat && activeChat.id && !activeChat.synthetic_dm) {
+        refreshMessages(false, true, { chat:activeChat, seq:activeFetchSeq, syncLatest:true });
+      }
+      scheduleQuietChatListRefresh();
+    }, 150);
+  }
+  function setReconnectingUi(isReconnecting) {
+    var note = $('tc-reconnecting-note');
+    if (!isReconnecting) { if (note) note.remove(); return; }
+    if (note) return;
+    var title = $('tc-convo-title');
+    if (!title || !title.parentNode) return;
+    note = document.createElement('div');
+    note.id = 'tc-reconnecting-note';
+    note.className = 'tc-convo-sub';
+    note.textContent = 'Reconnecting…';
+    title.parentNode.appendChild(note);
   }
   function avatarText(name) {
     name = String(name || '?').trim();
@@ -1561,7 +1784,10 @@
       return new Date(a.date || a.created_at || 0).getTime() - new Date(b.date || b.created_at || 0).getTime();
     }).slice(-80);
     optimisticMessages = optimisticMessages.filter(function(m){
-      if (normalized.client_nonce && m.client_nonce === normalized.client_nonce) return false;
+      if (normalized.client_nonce && m.client_nonce === normalized.client_nonce) {
+        adoptLocalPreviews(m, normalized);
+        return false;
+      }
       return String(m.message_id || m.id || '') !== key;
     });
     renderMessages(lastServerMessages);
@@ -1584,7 +1810,6 @@
     setSetupCard('kickoff', 'Refreshing Team Chat workspace…', 'DarkLion is loading native staff/team conversations from the production API.', 78, 'Refresh is safe and only returns saved native conversations.');
     var count = await loadImportedChats();
     renderSetupStatus(lastSetupStatus || { api:'native' }, count);
-    setStatus('Loaded ' + count + ' conversations.', 'ok');
   }
   var manualRefreshBusy = false;
   function setManualRefreshBusy(busy) {
@@ -1679,9 +1904,33 @@
         channelAuthorization: { endpoint: '/pusher/auth/staff', transport: 'ajax', headers: { Authorization: 'Bearer ' + token } },
       });
       teamChatChannel = teamChatPusher.subscribe('private-team-chat-' + firmId + '-' + userId);
+      var everConnected = false;
+      var droppedSinceConnect = false;
+      var reconnectNoteTimer = null;
+      if (teamChatPusher.connection && typeof teamChatPusher.connection.bind === 'function') {
+        teamChatPusher.connection.bind('state_change', function(states) {
+          var current = states && states.current;
+          if (current === 'connected') {
+            clearTimeout(reconnectNoteTimer);
+            setReconnectingUi(false);
+            if (everConnected && droppedSinceConnect) catchUpAfterGap();
+            everConnected = true;
+            droppedSinceConnect = false;
+          } else if (everConnected && (current === 'connecting' || current === 'unavailable' || current === 'disconnected')) {
+            droppedSinceConnect = true;
+            clearTimeout(reconnectNoteTimer);
+            reconnectNoteTimer = setTimeout(function(){ setReconnectingUi(true); }, current === 'connecting' ? 2500 : 0);
+          }
+        });
+      }
+      teamChatChannel.bind('team-chat-typing', function(payload) {
+        if (!payload || String(payload.staff_user_id || '') === String(userId)) return;
+        noteTyping(payload.conversation_id, payload.staff_user_id);
+      });
       teamChatChannel.bind('team-chat-message', function(payload) {
         var activeId = activeChat?.id;
         var conversationId = payload?.conversation_id || payload?.message?.conversation_id;
+        if (conversationId && payload?.message?.sender_staff_user_id) clearTyping(conversationId, payload.message.sender_staff_user_id);
         var merged = conversationId && String(conversationId) === String(activeId) && mergeRealtimeMessage(payload.message);
         if (typeof window.updateTeamChatBadge === 'function') window.updateTeamChatBadge();
         var msg = payload && payload.message ? payload.message : {};
@@ -1695,7 +1944,11 @@
             });
           }
         }
-        scheduleQuietChatListRefresh();
+        var isMine = !!(msg.out || String(msg.sender_staff_user_id || '') === String(userId));
+        var seenNow = String(conversationId || '') === String(activeId || '') && !document.hidden;
+        var patched = patchChatRowFromMessage(conversationId, normalizePushMessage(msg), { incrementUnread: !isMine && !seenNow });
+        // The row is already current; this only reconciles with the server later.
+        scheduleQuietChatListRefresh(patched ? 6000 : 250);
         if (!merged && conversationId && String(conversationId) === String(activeId)) {
           scheduleMessageRefresh(activeChat, { syncLatest:false }, 350);
         }
@@ -1749,7 +2002,7 @@
     var targetKey = chatKey(targetChat);
     var seq = opts.seq || activeFetchSeq;
     // A teammate without a DM has no server-side conversation to read yet.
-    // Sending the first message creates it through ensureConcreteConversationForSend.
+    // Sending the first message creates it through resolveConversationForSend.
     if (targetChat?.synthetic_dm) {
       if (isActiveToken(seq, targetKey)) {
         renderMessages([]);
@@ -1779,7 +2032,6 @@
       var changed = sig !== lastRenderedSignature;
       if (changed || showOk !== false) renderMessages(messages, { forceBottom: !!opts.forceBottom, smooth: !!opts.smooth, restoreScroll: !!opts.restoreScroll });
       if (scrollBottom !== false && changed && opts.forceBottom) requestAnimationFrame(function(){ var box = $('tc-live-messages'); if (box && !box.querySelector('[data-unread-divider="1"]')) scrollMessagesToBottom(opts.smooth ? 'smooth' : 'auto'); });
-      if (showOk !== false) setStatus('Loaded ' + messages.length + ' stored messages from ' + ((activeChat && activeChat.title) || 'selected chat') + '.', 'ok');
       if (showOk !== false || changed) setLiveState('idle', 'Live');
       return { changed: changed, messages: messages };
     } catch (err) {
@@ -1815,7 +2067,6 @@
     } catch (_) {}
     if ($('tc-main-file-name')) $('tc-main-file-name').textContent = allowedFiles.map(function(file){ return file.name; }).join(', ') + ' · ' + allowedFiles.length + ' file' + (allowedFiles.length === 1 ? '' : 's') + (source ? ' · ' + source : '');
     $('tc-main-file-chip')?.classList.add('show');
-    setStatus('Attached ' + allowedFiles.length + ' file' + (allowedFiles.length === 1 ? '' : 's') + '.', 'ok');
   }
   function setMainFile(file, source) { setMainFiles(file ? [file] : [], source); }
   function clearMainFile() {
@@ -1824,94 +2075,194 @@
     if ($('tc-main-file-name')) $('tc-main-file-name').textContent = 'No file selected';
     $('tc-main-file-chip')?.classList.remove('show');
   }
-  async function ensureConcreteConversationForSend() {
-    if (!activeChat?.synthetic_dm) return activeChat;
-    var staffUserId = activeChat.staff_user_id || String(activeChat.id || '').replace(/^staff-/, '');
-    if (!staffUserId) return activeChat;
-    setLiveState('working', 'Starting DM');
-    setStatus('Starting direct message…');
-    var data = await apiJson('/api/team-chat/conversations/dm', { method:'POST', body: JSON.stringify({ staff_user_id: staffUserId }) });
-    await loadImportedChats();
-    if (data.conversation) setActiveChat(data.conversation, { refresh:false });
-    return data.conversation || activeChat;
+  // ── Sending ────────────────────────────────────────────────────────────
+  // A message is drawn the moment it is sent and the composer is free again
+  // straight away. Delivery runs in a per-conversation queue so order holds.
+  function findOptimistic(nonce) {
+    return optimisticMessages.find(function(m){ return m.client_nonce === nonce; }) || null;
   }
-  async function sendComposer(statusPrefix) {
-    if (composerSendInFlight) return;
+  function removeOptimistic(nonce) {
+    optimisticMessages = optimisticMessages.filter(function(m){ return m.client_nonce !== nonce; });
+  }
+  function isOptimisticVisible(m) {
+    return !!(m && activeChat && (!m.chat_key || m.chat_key === chatKey(activeChat)));
+  }
+  function startSlowTimer(nonce) {
+    setTimeout(function() {
+      var m = findOptimistic(nonce);
+      if (!m || !m.pending || m.slow) return;
+      m.slow = true;
+      if (isOptimisticVisible(m)) renderMessages(lastServerMessages);
+    }, 1000);
+  }
+  function patchChatRowFromMessage(conversationId, msg, opts) {
+    opts = opts || {};
+    var id = String(conversationId || '');
+    if (!id) return false;
+    var idx = -1;
+    for (var i = 0; i < chatRowsCache.length; i++) {
+      if (!chatRowsCache[i].synthetic_dm && String(chatRowsCache[i].id) === id) { idx = i; break; }
+    }
+    if (idx === -1) return false;
+    var chat = chatRowsCache[idx];
+    var next = Object.assign({}, chat, {
+      preview_text: String((msg && (msg.text || msg.body)) || ''),
+      last_message_at: (msg && (msg.date || msg.created_at || msg.sent_at)) || new Date().toISOString()
+    });
+    if (opts.incrementUnread) next.unread_count = Number(chat.unread_count || 0) + 1;
+    chatRowsCache[idx] = next;
+    if (activeChat && chatKey(activeChat) === chatKey(next)) {
+      activeChat.preview_text = next.preview_text;
+      activeChat.last_message_at = next.last_message_at;
+      if (opts.incrementUnread) activeChat.unread_count = next.unread_count;
+    }
+    saveJson('dl_team_chat_rows_cache_v1', chatRowsCache);
+    var key = chatKey(next);
+    var rowEl = null;
+    document.querySelectorAll('.tc-chat').forEach(function(row){ if (row.dataset.key === key) rowEl = row; });
+    if (rowEl) {
+      var display = rowEl.style.display;
+      var holder = document.createElement('div');
+      holder.innerHTML = rowForChat(next);
+      var fresh = holder.firstElementChild;
+      if (fresh) {
+        fresh.style.display = display;
+        rowEl.replaceWith(fresh);
+        bindChatInteractions();
+      }
+    }
+    return true;
+  }
+  async function resolveConversationForSend(chat, key) {
+    if (!chat.synthetic_dm) return chat;
+    if (resolvedDmConversations[key]) return resolvedDmConversations[key];
+    var staffUserId = chat.staff_user_id || String(chat.id || '').replace(/^staff-/, '');
+    var data = await apiJson('/api/team-chat/conversations/dm', { method:'POST', body: JSON.stringify({ staff_user_id: staffUserId }) });
+    if (!data.conversation || !data.conversation.id) throw new Error('Could not start the direct message.');
+    var conversation = Object.assign({}, data.conversation, { title: chat.title || data.conversation.title });
+    resolvedDmConversations[key] = conversation;
+    var newKey = chatKey(conversation);
+    optimisticMessages.forEach(function(m){ if (m.chat_key === key) m.chat_key = newKey; });
+    if (activeChat && chatKey(activeChat) === key) {
+      activeChat = conversation;
+      try { localStorage.setItem(storageKeyActive, newKey); } catch (_) {}
+    }
+    try { await loadImportedChats(); } catch (_) {}
+    return conversation;
+  }
+  async function deliverQueuedMessage(nonce, chat, key) {
+    var m = findOptimistic(nonce);
+    if (!m) return;
+    try {
+      var conversation = await resolveConversationForSend(chat, key);
+      var conversationId = conversation.id;
+      var files = m._files || [];
+      var body;
+      if (files.length) {
+        body = new FormData();
+        body.append('conversation_id', conversationId);
+        body.append('message', m._text || '');
+        body.append('client_nonce', nonce);
+        files.forEach(function(file){ body.append('attachments', file); });
+      } else {
+        body = JSON.stringify({ conversation_id: conversationId, message: m._text || '', client_nonce: nonce });
+      }
+      var data = await apiJson('/api/team-chat/messages/send', { method:'POST', body: body });
+      var stored = data.message ? Object.assign({}, data.message, { out:true, is_unread:false }) : null;
+      if (stored && !stored.message_id) stored.message_id = stored.id;
+      if (stored) adoptLocalPreviews(m, stored);
+      removeOptimistic(nonce);
+      var convKey = chatKey(conversation);
+      if (stored) {
+        var storedId = String(stored.message_id || stored.id || '');
+        var isDuplicate = function(row) {
+          return (storedId && String(row.message_id || row.id || '') === storedId) || (row.client_nonce && row.client_nonce === nonce);
+        };
+        if (activeChat && String(activeChat.id) === String(conversationId)) {
+          if (!lastServerMessages.some(isDuplicate)) lastServerMessages = lastServerMessages.concat([stored]);
+          renderMessages(lastServerMessages, { forceBottom:true });
+          acknowledgeActiveChatRead();
+        } else {
+          var cached = Array.isArray(messageCache[convKey]) ? messageCache[convKey] : [];
+          if (!cached.some(isDuplicate)) {
+            messageCache[convKey] = cached.concat([stored]).slice(-80);
+            saveJson('dl_team_chat_message_cache_v1', messageCache);
+          }
+        }
+        patchChatRowFromMessage(conversationId, stored, {});
+      } else if (isOptimisticVisible(m)) {
+        renderMessages(lastServerMessages);
+      }
+      setLiveState('idle', 'Live');
+    } catch (err) {
+      var failed = findOptimistic(nonce);
+      if (!failed) return;
+      failed.pending = false;
+      failed.failed = true;
+      failed.slow = false;
+      if (isOptimisticVisible(failed)) renderMessages(lastServerMessages);
+      setStatus('Send failed: ' + err.message, 'err');
+    }
+  }
+  function enqueueSend(nonce, chat, key) {
+    var previous = sendQueues[key] || Promise.resolve();
+    var job = previous.then(function(){ return deliverQueuedMessage(nonce, chat, key); });
+    sendQueues[key] = job.catch(function(){});
+    return job;
+  }
+  function sendComposer() {
     var input = $('tc-message-input');
-    var rawMessage = input?.value || '';
-    var message = rawMessage.replace(/^\n+|\n+$/g, '');
+    var message = (input?.value || '').replace(/^\n+|\n+$/g, '');
     var files = selectedMainFiles();
     if (!activeChat?.id) return setStatus('Select a Team Chat conversation before sending.', 'err');
     if (!message && !files.length) return setStatus('Type a message or attach up to 3 files first.', 'err');
-    composerSendInFlight = true;
-    setComposerState(true);
-    var sendStartedForChat = activeChat;
-    try {
-      await ensureConcreteConversationForSend();
-      if (files.length) await sendComposerAttachments(files, message);
-      else await sendMessage(message, statusPrefix || 'Sent message');
-      acknowledgeActiveChatRead('reply');
-      if (input && input.value === rawMessage) input.value = '';
-      autoSizeTextarea(input);
-      if (input) input.focus();
-    } catch (err) {
-      setLiveState('idle', 'Live');
-      setStatus('Send failed: ' + err.message, 'err');
-      if (input && sendStartedForChat === activeChat) input.focus();
-    } finally {
-      composerSendInFlight = false;
-      setComposerState(!!activeChat?.id);
-    }
-  }
-  async function sendComposerAttachments(files, caption) {
-    files = Array.from(files || []).slice(0, 3);
-    var nonce = makeClientNonce('tc-file');
-    var tempId = 'local-file-' + nonce;
-    optimisticMessages.push({ out:true, text:caption || '', attachments:files.map(function(file, idx){ return { id:'local-' + idx, file_name:file.name, content_type:file.type || 'application/octet-stream', byte_size:file.size }; }), has_media:true, attachment_kind:'document', date:new Date().toISOString(), message_id:tempId, pending:true, created_ms:Date.now(), client_nonce:nonce });
-    renderMessages(lastServerMessages, { forceBottom:true, smooth:true });
-    var fd = new FormData();
-    fd.append('conversation_id', activeChat.id);
-    fd.append('message', caption || '');
-    fd.append('client_nonce', nonce);
-    files.forEach(function(file){ fd.append('attachments', file); });
-    setLiveState('working', 'Sending file');
-    setStatus('Sending ' + files.length + ' file' + (files.length === 1 ? '' : 's') + '…');
-    try {
-      var data = await apiJson('/api/team-chat/messages/send', { method:'POST', body: fd });
-      optimisticMessages = optimisticMessages.map(function(m){ return m.message_id === tempId ? Object.assign({}, m, data.message || {}, { pending:false, message_id:(data.message && (data.message.message_id || data.message.id)) || tempId }) : m; });
-      renderMessages(lastServerMessages, { forceBottom:true });
-      clearMainFile();
-      setStatus('File attachment' + (files.length === 1 ? '' : 's') + ' sent.', 'ok');
-      scheduleMessageRefresh(activeChat, { syncLatest:true, forceBottom:true }, 450);
-    } catch (err) {
-      optimisticMessages = optimisticMessages.filter(function(m){ return m.message_id !== tempId; });
-      renderMessages(lastServerMessages);
-      throw err;
-    }
-  }
-
-  async function sendMessage(message, statusPrefix) {
-    var nonce = makeClientNonce('tc-msg');
-    var tempId = 'local-' + nonce;
-    optimisticMessages.push({ out: true, text: message, date: new Date().toISOString(), message_id: tempId, pending:true, created_ms:Date.now(), client_nonce:nonce });
-    renderMessages(lastServerMessages, { forceBottom:true, smooth:true });
-    try {
-      var data = await apiJson('/api/team-chat/messages/send', {
-        method: 'POST',
-        body: JSON.stringify({ conversation_id: activeChat.id, message: message, client_nonce: nonce })
+    var chat = activeChat;
+    var key = chatKey(chat);
+    var nonce = makeClientNonce(files.length ? 'tc-file' : 'tc-msg');
+    var optimistic = {
+      out:true, text:message, date:new Date().toISOString(), message_id:'local-' + nonce, client_nonce:nonce,
+      pending:true, created_ms:Date.now(), chat_key:key, _files:files, _text:message,
+      sender_staff_user_id: parseJwtPayload(token).userId || ''
+    };
+    if (files.length) {
+      optimistic.has_media = true;
+      optimistic.attachment_kind = 'document';
+      optimistic.attachments = files.map(function(file, idx) {
+        var isImage = /^image\/(png|jpe?g|gif|webp)$/i.test(file.type || '');
+        var localUrl = '';
+        if (isImage) { try { localUrl = URL.createObjectURL(file); } catch (_) {} }
+        return { id:'local-' + idx, file_name:file.name, content_type:file.type || 'application/octet-stream', byte_size:file.size, local_url:localUrl };
       });
-      optimisticMessages = optimisticMessages.map(function(m){ return m.message_id === tempId ? Object.assign({}, m, data.message || {}, { pending:false, message_id:(data.message && (data.message.message_id || data.message.id)) || tempId }) : m; });
-      renderMessages(lastServerMessages, { forceBottom:true });
-      setStatus((statusPrefix || 'Sent') + '.', 'ok');
-      scheduleMessageRefresh(activeChat, { syncLatest:true, forceBottom:true }, 450);
-    } catch (err) {
-      optimisticMessages = optimisticMessages.filter(function(m){ return m.message_id !== tempId; });
-      renderMessages(lastServerMessages);
-      throw err;
     }
+    optimisticMessages.push(optimistic);
+    renderMessages(lastServerMessages, { forceBottom:true, smooth:true });
+    if (input) { input.value = ''; autoSizeTextarea(input); input.focus(); }
+    saveDraftFor(chat, '');
+    lastTypingPingAt = 0;
+    if (files.length) clearMainFile();
+    startSlowTimer(nonce);
+    enqueueSend(nonce, chat, key);
   }
-
-
+  function retryFailedMessage(nonce) {
+    var m = findOptimistic(nonce);
+    if (!m || !m.failed) return;
+    m.failed = false;
+    m.pending = true;
+    m.slow = false;
+    renderMessages(lastServerMessages);
+    startSlowTimer(nonce);
+    var key = m.chat_key || (activeChat ? chatKey(activeChat) : '');
+    var chat = chatRowsCache.find(function(c){ return chatKey(c) === key; }) || resolvedDmConversations[key] || activeChat;
+    if (!chat) return;
+    enqueueSend(nonce, chat, key);
+  }
+  function discardFailedMessage(nonce) {
+    var m = findOptimistic(nonce);
+    if (!m) return;
+    releaseLocalPreviews(m);
+    removeOptimistic(nonce);
+    renderMessages(lastServerMessages);
+  }
   $('tc-live-messages')?.addEventListener('scroll', function() {
     if (isNearMessageBottom(this)) hideNewMessagePill();
     saveActiveScrollPosition();
@@ -1921,6 +2272,18 @@
     if (markReadTarget) {
       e.preventDefault();
       acknowledgeActiveChatRead('click');
+      return;
+    }
+    var retryBtn = e.target.closest('[data-retry-nonce]');
+    if (retryBtn) {
+      e.preventDefault();
+      retryFailedMessage(retryBtn.dataset.retryNonce);
+      return;
+    }
+    var discardBtn = e.target.closest('[data-discard-nonce]');
+    if (discardBtn) {
+      e.preventDefault();
+      discardFailedMessage(discardBtn.dataset.discardNonce);
       return;
     }
     var editBtn = e.target.closest('[data-edit-message-id]');
@@ -1944,19 +2307,19 @@
       var editMessageId = saveEditBtn.dataset.saveEditMessageId;
       var textarea = document.querySelector('[data-edit-body="' + CSS.escape(String(editMessageId || '')) + '"]');
       var nextBody = (textarea?.value || '').replace(/^\n+|\n+$/g, '');
-      saveEditBtn.disabled = true;
-      var originalEditText = saveEditBtn.textContent;
-      saveEditBtn.textContent = 'Saving…';
+      var beforeEdit = lastServerMessages.find(function(m){ return String(m.id || m.message_id) === String(editMessageId); });
+      if (beforeEdit) {
+        replaceMessageInState(Object.assign({}, beforeEdit, { text:nextBody, edited_at:beforeEdit.edited_at || new Date().toISOString() }));
+      }
+      editingMessageId = null;
+      renderMessages(lastServerMessages);
       try {
         var data = await apiJson('/api/team-chat/messages/' + encodeURIComponent(editMessageId), { method:'PATCH', body: JSON.stringify({ body:nextBody }) });
         replaceMessageInState(data.message);
-        editingMessageId = null;
         renderMessages(lastServerMessages);
-        setStatus('Message edited.', 'ok');
-        scheduleMessageRefresh(activeChat, { syncLatest:true }, 450);
       } catch (err) {
-        saveEditBtn.disabled = false;
-        saveEditBtn.textContent = originalEditText;
+        if (beforeEdit) replaceMessageInState(beforeEdit);
+        renderMessages(lastServerMessages);
         setStatus('Edit failed: ' + err.message, 'err');
       }
       return;
@@ -1966,19 +2329,15 @@
       e.preventDefault();
       var messageId = deleteBtn.dataset.deleteMessageId;
       if (!messageId || !confirm('Remove this Team Chat message?')) return;
-      deleteBtn.disabled = true;
-      var originalDeleteText = deleteBtn.textContent;
-      deleteBtn.textContent = 'Deleting…';
+      var removedServer = lastServerMessages;
+      lastServerMessages = lastServerMessages.filter(function(m){ return String(m.id || m.message_id) !== String(messageId); });
+      optimisticMessages = optimisticMessages.filter(function(m){ return String(m.id || m.message_id) !== String(messageId); });
+      renderMessages(lastServerMessages);
       try {
         await apiJson('/api/team-chat/messages/' + encodeURIComponent(messageId), { method:'DELETE' });
-        lastServerMessages = lastServerMessages.filter(function(m){ return String(m.id || m.message_id) !== String(messageId); });
-        optimisticMessages = optimisticMessages.filter(function(m){ return String(m.id || m.message_id) !== String(messageId); });
-        renderMessages(lastServerMessages);
-        setStatus('Message removed.', 'ok');
-        scheduleMessageRefresh(activeChat, { syncLatest:true }, 450);
       } catch (err) {
-        deleteBtn.disabled = false;
-        deleteBtn.textContent = originalDeleteText;
+        lastServerMessages = removedServer;
+        renderMessages(lastServerMessages);
         setStatus('Delete failed: ' + err.message, 'err');
       }
       return;
@@ -2024,6 +2383,12 @@
   });
   bindEnterToSubmit($('tc-message-input'), $('tc-send-form'), function(){ sendComposer('Sent message'); });
   $('tc-message-input')?.addEventListener('focus', function(){ acknowledgeActiveChatRead('focus'); });
+  $('tc-message-input')?.addEventListener('input', function() {
+    saveDraftFor(activeChat, this.value);
+    if (this.value.trim()) sendTypingPing();
+  });
+  window.addEventListener('online', function(){ catchUpAfterGap(); });
+  window.addEventListener('focus', function(){ if (activeChat?.id) catchUpAfterGap(); });
   $('tc-main-attach-btn')?.addEventListener('click', function(e) {
     e.preventDefault();
     $('tc-main-attachment')?.click();

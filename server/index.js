@@ -1022,6 +1022,8 @@ async function start() {
     const { startDocumentUploadNotificationWorker } = require('./services/documentUploadNotifications');
     startDocumentUploadNotificationWorker(app);
 
+    require('./services/communicationArchive').startTeamChatArchiveOutboxWorker();
+
     const { scheduleAt10PM, startBlueleafSync, startStatementReminders, startWeeklyMRRSync, startFirmMetricsRefresh, startBookkeeperScheduler, startBookkeepingQuestionsReminder } = require('./scheduler');
     scheduleAt10PM();
     startBlueleafSync();

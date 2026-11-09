@@ -80,6 +80,8 @@ async function insertReceipt({ event, sourceKey, objectMeta, status = 'archived'
 }
 
 async function enqueueOutbox({ firmId, sourceKey, event, error = null }) {
+  // A failed capture backs off (2, 4, 8 ... capped at 60 minutes) so the retry
+  // worker does not hammer storage while it is down. Rows stay 'pending'.
   await pool.query(
     `INSERT INTO communication_archive_outbox (firm_id, source_key, event_id, payload_json, status, last_error, next_attempt_at)
      VALUES ($1,$2,$3,$4,'pending',$5,NOW())
@@ -88,7 +90,7 @@ async function enqueueOutbox({ firmId, sourceKey, event, error = null }) {
        status = 'pending',
        last_error = EXCLUDED.last_error,
        attempt_count = communication_archive_outbox.attempt_count + 1,
-       next_attempt_at = NOW(),
+       next_attempt_at = NOW() + (LEAST(POWER(2, LEAST(communication_archive_outbox.attempt_count + 1, 6)), 60) * INTERVAL '1 minute'),
        updated_at = NOW()`,
     [firmId, sourceKey, event.event_id, JSON.stringify(event), error]
   );
@@ -155,6 +157,12 @@ async function captureEvent(input = {}, options = {}) {
     [event.firm_id, sourceKey]
   );
   if (existing.rows[0]?.status === 'archived' && existing.rows[0].archive_version_id) {
+    await pool.query(
+      `UPDATE communication_archive_outbox
+       SET status = 'archived', updated_at = NOW()
+       WHERE firm_id = $1 AND source_key = $2 AND status = 'pending'`,
+      [event.firm_id, sourceKey]
+    ).catch(() => {});
     return { event, receipt: existing.rows[0], alreadyArchived: true };
   }
 
@@ -375,16 +383,25 @@ async function loadTeamChatAttachments(messageId, firmId) {
   }));
 }
 
-async function archiveTeamChatMessageCreated({ firmId, messageId, requestedByStaffUserId = null, allowQueue = false }) {
-  const row = await loadTeamChatMessage(messageId, firmId);
-  if (!row) {
-    const err = new Error('Team Chat message not found for archive capture.');
-    err.statusCode = 404;
-    throw err;
-  }
-  const attachments = await loadTeamChatAttachments(messageId, firmId);
+function teamChatAttachmentForArchive(row) {
+  return {
+    attachment_id: row.id,
+    file_name: row.file_name,
+    content_type: row.content_type,
+    byte_size: row.byte_size,
+    storage_key: row.storage_key,
+    storage_bucket: row.metadata?.bucket || process.env.AWS_S3_BUCKET || '',
+    sha256: row.sha256,
+    metadata: row.metadata || {},
+    missing_binary: !row.storage_key,
+  };
+}
+
+// row: native_team_chat_messages row plus conversation_type and title.
+// attachments: already in archive shape (see teamChatAttachmentForArchive).
+function teamChatCreatedEventInput({ firmId, row, attachments = [] }) {
   const body = row.body_encrypted ? (decrypt(row.body_encrypted) || '') : '';
-  return captureEvent({
+  return {
     firm_id: firmId,
     event_type: 'message.created',
     communication_scope: 'internal',
@@ -411,7 +428,102 @@ async function archiveTeamChatMessageCreated({ firmId, messageId, requestedBySta
       visible_until: row.visible_until,
       metadata: row.metadata || {},
     },
-  }, { requestedByStaffUserId, allowQueue });
+  };
+}
+
+async function archiveTeamChatMessageCreated({ firmId, messageId, requestedByStaffUserId = null, allowQueue = false }) {
+  const row = await loadTeamChatMessage(messageId, firmId);
+  if (!row) {
+    const err = new Error('Team Chat message not found for archive capture.');
+    err.statusCode = 404;
+    throw err;
+  }
+  const attachments = await loadTeamChatAttachments(messageId, firmId);
+  return captureEvent(teamChatCreatedEventInput({ firmId, row, attachments }), { requestedByStaffUserId, allowQueue });
+}
+
+const TEAM_CHAT_SEND_KEY_PREFIX = 'team-chat-send:';
+
+// Durable promise to archive a just-sent Team Chat message. Runs on the same
+// database client as the message insert, so the message and its archive job
+// commit together. The capture itself happens right after the reply
+// (captureQueuedTeamChatMessage) and is retried by the outbox worker.
+async function queueTeamChatMessageArchive(db, { firmId, row, attachmentRows = [] }) {
+  const event = buildCanonicalEvent(teamChatCreatedEventInput({
+    firmId,
+    row,
+    attachments: attachmentRows.map(teamChatAttachmentForArchive),
+  }));
+  const sourceKey = TEAM_CHAT_SEND_KEY_PREFIX + sourceKeyForEvent(event);
+  await db.query(
+    `INSERT INTO communication_archive_outbox (firm_id, source_key, event_id, payload_json, status, next_attempt_at)
+     VALUES ($1,$2,$3,$4,'pending',NOW() + INTERVAL '2 minutes')
+     ON CONFLICT (firm_id, source_key) DO NOTHING`,
+    [firmId, sourceKey, event.event_id, JSON.stringify(event)]
+  );
+  return { event, sourceKey };
+}
+
+async function captureQueuedTeamChatMessage({ event, sourceKey, requestedByStaffUserId = null }) {
+  return captureEvent({ ...event, source_key: sourceKey }, { requestedByStaffUserId, allowQueue: true });
+}
+
+// Retries Team Chat sends whose archive capture has not completed. Each claim
+// takes a 5 minute lease by moving next_attempt_at forward; a failed capture
+// then sets its own backoff in enqueueOutbox. Nothing is ever dropped.
+async function processTeamChatArchiveOutbox({ limit = 10, capture = captureEvent } = {}) {
+  const { rows } = await pool.query(
+    `WITH due AS (
+       SELECT id
+       FROM communication_archive_outbox
+       WHERE status = 'pending'
+         AND next_attempt_at <= NOW()
+         AND source_key LIKE $1
+       ORDER BY next_attempt_at, id
+       FOR UPDATE SKIP LOCKED
+       LIMIT $2
+     )
+     UPDATE communication_archive_outbox o
+     SET next_attempt_at = NOW() + INTERVAL '5 minutes', updated_at = NOW()
+     FROM due
+     WHERE o.id = due.id
+     RETURNING o.id, o.firm_id, o.source_key, o.payload_json`,
+    [TEAM_CHAT_SEND_KEY_PREFIX + '%', Math.max(1, Math.min(Number(limit) || 10, 50))]
+  );
+  const result = { claimed: rows.length, archived: 0, failed: 0 };
+  for (const job of rows) {
+    try {
+      const payload = typeof job.payload_json === 'string' ? JSON.parse(job.payload_json) : job.payload_json;
+      const outcome = await capture({ ...payload, firm_id: Number(job.firm_id), source_key: job.source_key }, { allowQueue: true });
+      if (outcome?.queued) result.failed += 1;
+      else result.archived += 1;
+    } catch (error) {
+      result.failed += 1;
+      console.error('[communication-archive] outbox retry failed:', error.message);
+    }
+  }
+  return result;
+}
+
+let teamChatArchiveWorkerTimer = null;
+
+function startTeamChatArchiveOutboxWorker({ intervalMs = 60000 } = {}) {
+  if (teamChatArchiveWorkerTimer) return;
+  let running = false;
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await processTeamChatArchiveOutbox();
+    } catch (error) {
+      console.error('[communication-archive] outbox worker error:', error.message);
+    } finally {
+      running = false;
+    }
+  };
+  tick();
+  teamChatArchiveWorkerTimer = setInterval(tick, intervalMs);
+  if (teamChatArchiveWorkerTimer.unref) teamChatArchiveWorkerTimer.unref();
 }
 
 async function archiveTeamChatMessageCreatedFailClosed(args) {
@@ -1027,7 +1139,9 @@ async function getExportDownload({ firmId, exportId, staffUserId, fileName = 'ex
 
 async function healthStatus() {
   const pending = await pool.query(
-    `SELECT COUNT(*)::int AS count
+    `SELECT COUNT(*)::int AS count,
+            MIN(created_at) AS oldest_pending_at,
+            COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::int AS oldest_pending_age_seconds
      FROM communication_archive_outbox
      WHERE status = 'pending'`
   );
@@ -1041,6 +1155,8 @@ async function healthStatus() {
     fail_closed: failClosedEnabled(),
     bucket: archiveBucket() || null,
     pending_outbox: pending.rows[0]?.count || 0,
+    oldest_pending_at: pending.rows[0]?.oldest_pending_at || null,
+    oldest_pending_age_seconds: pending.rows[0]?.oldest_pending_age_seconds || 0,
     archived_events: archived.rows[0]?.count || 0,
     retention_years: RETENTION_YEARS,
     schema_version: SCHEMA_VERSION,
@@ -1054,6 +1170,10 @@ module.exports = {
   archiveClientMessageRemoved,
   archiveTeamChatMessageCreated,
   archiveTeamChatMessageCreatedFailClosed,
+  queueTeamChatMessageArchive,
+  captureQueuedTeamChatMessage,
+  processTeamChatArchiveOutbox,
+  startTeamChatArchiveOutboxWorker,
   archiveTeamChatMessageEdited,
   archiveTeamChatMessageRemoved,
   createExport,

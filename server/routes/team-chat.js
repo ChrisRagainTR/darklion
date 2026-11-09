@@ -7,7 +7,7 @@ const { pool } = require('../db');
 const { sendStaffMobilePush } = require('../services/mobilePush');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { getSignedDownloadUrl, uploadFile, buildKey, sanitizeFilename, downloadFile } = require('../services/s3');
-const { archiveTeamChatMessageCreatedFailClosed, archiveTeamChatMessageEdited, archiveTeamChatMessageRemoved } = require('../services/communicationArchive');
+const { queueTeamChatMessageArchive, captureQueuedTeamChatMessage, archiveTeamChatMessageEdited, archiveTeamChatMessageRemoved } = require('../services/communicationArchive');
 
 const router = Router();
 const upload = multer({
@@ -399,34 +399,37 @@ async function listConversations({ firmId, staffUserId, includeArchived = false,
   return Promise.all(rows.map(safeConversation));
 }
 
-async function listMessages({ firmId, staffUserId, conversationId, limit = 50 }) {
-  await requireConversationMember({ firmId, staffUserId, conversationId });
+// Caller must already have verified conversation membership.
+async function queryMessages({ firmId, staffUserId, conversationId, limit = 50, messageId = null }) {
   const { rows } = await pool.query(
-    `WITH attachment_json AS (
-       SELECT message_id,
-              JSON_AGG(JSON_BUILD_OBJECT('id', id, 'file_name', file_name, 'content_type', content_type, 'byte_size', byte_size, 'sha256', sha256, 'metadata', metadata) ORDER BY id) AS attachments
-       FROM native_team_chat_attachments
-       WHERE firm_id = $1
-       GROUP BY message_id
-     )
-     SELECT msg.*, $2::int AS current_staff_user_id, rs.last_read_message_id, COALESCE(NULLIF(u.display_name,''), NULLIF(u.name,''), u.email, 'Unknown') AS sender_name,
+    `SELECT msg.*, $2::int AS current_staff_user_id, rs.last_read_message_id, COALESCE(NULLIF(u.display_name,''), NULLIF(u.name,''), u.email, 'Unknown') AS sender_name,
             COALESCE(msg.visible_until, msg.created_at + ${TEAM_CHAT_VISIBLE_INTERVAL}) AS visible_until,
             (msg.sender_staff_user_id = $2 AND COALESCE(msg.visible_until, msg.created_at + ${TEAM_CHAT_VISIBLE_INTERVAL}) > NOW() AND msg.deleted_at IS NULL AND msg.removed_at IS NULL) AS can_edit,
             (msg.sender_staff_user_id = $2 AND COALESCE(msg.visible_until, msg.created_at + ${TEAM_CHAT_VISIBLE_INTERVAL}) > NOW() AND msg.deleted_at IS NULL AND msg.removed_at IS NULL) AS can_delete,
             COALESCE(att.attachments, '[]'::json) AS attachments
      FROM native_team_chat_messages msg
      LEFT JOIN firm_users u ON u.id = msg.sender_staff_user_id AND u.firm_id = msg.firm_id
-     LEFT JOIN attachment_json att ON att.message_id = msg.id
+     LEFT JOIN LATERAL (
+       SELECT JSON_AGG(JSON_BUILD_OBJECT('id', a.id, 'file_name', a.file_name, 'content_type', a.content_type, 'byte_size', a.byte_size, 'sha256', a.sha256, 'metadata', a.metadata) ORDER BY a.id) AS attachments
+       FROM native_team_chat_attachments a
+       WHERE a.firm_id = msg.firm_id AND a.message_id = msg.id
+     ) att ON TRUE
      LEFT JOIN native_team_chat_read_state rs ON rs.conversation_id = msg.conversation_id AND rs.firm_id = msg.firm_id AND rs.staff_user_id = $2
      WHERE msg.firm_id = $1 AND msg.conversation_id = $3
+       AND ($5::bigint IS NULL OR msg.id = $5::bigint)
        AND msg.deleted_at IS NULL
        AND msg.removed_at IS NULL
        AND COALESCE(msg.visible_until, msg.created_at + ${TEAM_CHAT_VISIBLE_INTERVAL}) > NOW()
      ORDER BY msg.created_at DESC, msg.id DESC
      LIMIT $4`,
-    [firmId, staffUserId, conversationId, Math.min(Number(limit) || 50, 200)]
+    [firmId, staffUserId, conversationId, Math.min(Number(limit) || 50, 200), messageId]
   );
   return rows.reverse().map(safeMessage);
+}
+
+async function listMessages({ firmId, staffUserId, conversationId, limit = 50 }) {
+  await requireConversationMember({ firmId, staffUserId, conversationId });
+  return queryMessages({ firmId, staffUserId, conversationId, limit });
 }
 
 async function listConversationMemberIds({ firmId, conversationId }) {
@@ -443,31 +446,45 @@ async function listConversationMemberIds({ firmId, conversationId }) {
   return rows.map(row => Number(row.staff_user_id)).filter(Boolean);
 }
 
-async function broadcastMessage(req, { firmId, conversationId, message }) {
+// One Pusher request per 10 members instead of one per member.
+async function triggerForMembers(pusher, { firmId, memberIds, name, data }) {
+  if (typeof pusher.triggerBatch !== 'function') {
+    await Promise.all(memberIds.map(staffUserId => pusher.trigger(`private-team-chat-${firmId}-${staffUserId}`, name, data)));
+    return;
+  }
+  const chunks = [];
+  for (let i = 0; i < memberIds.length; i += 10) {
+    chunks.push(memberIds.slice(i, i + 10).map(staffUserId => ({ channel: `private-team-chat-${firmId}-${staffUserId}`, name, data })));
+  }
+  await Promise.all(chunks.map(chunk => pusher.triggerBatch(chunk)));
+}
+
+async function broadcastMessage(req, { firmId, conversationId, message, memberIds = null }) {
   const pusher = req.app.get('pusher');
   if (!pusher || !message?.id) return;
   try {
-    const memberIds = await listConversationMemberIds({ firmId, conversationId });
-    await Promise.all(memberIds.map(staffUserId => pusher.trigger(
-      `private-team-chat-${firmId}-${staffUserId}`,
-      'team-chat-message',
-      {
+    const ids = memberIds || await listConversationMemberIds({ firmId, conversationId });
+    await triggerForMembers(pusher, {
+      firmId,
+      memberIds: ids,
+      name: 'team-chat-message',
+      data: {
         conversation_id: conversationId,
         message_id: message.id,
         sender_staff_user_id: message.sender_staff_user_id,
         sent_at: message.created_at || message.date || new Date().toISOString(),
         message,
-      }
-    )));
+      },
+    });
   } catch (err) {
     console.error('[team-chat] pusher broadcast failed:', err.message);
   }
 }
 
-async function pushTeamChatMessage({ firmId, conversationId, senderStaffUserId, message }) {
+async function pushTeamChatMessage({ firmId, conversationId, senderStaffUserId, message, memberIds = null }) {
   if (!message?.id) return;
-  const memberIds = await listConversationMemberIds({ firmId, conversationId });
-  const recipientIds = memberIds.filter(id => Number(id) !== Number(senderStaffUserId));
+  const ids = memberIds || await listConversationMemberIds({ firmId, conversationId });
+  const recipientIds = ids.filter(id => Number(id) !== Number(senderStaffUserId));
   if (!recipientIds.length) return;
 
   const senderName = message.sender_name || 'Team Chat';
@@ -523,8 +540,20 @@ async function broadcastEditedMessage(req, { firmId, conversationId, message }) 
   }
 }
 
-async function sendMessage({ firmId, staffUserId, conversationId, body, attachments = [], clientNonce = '' }) {
-  await requireConversationMember({ firmId, staffUserId, conversationId });
+async function findMessageIdByNonce({ firmId, conversationId, nonce }) {
+  if (!nonce) return null;
+  const { rows } = await pool.query(
+    `SELECT id FROM native_team_chat_messages WHERE firm_id = $1 AND conversation_id = $2 AND client_nonce = $3 LIMIT 1`,
+    [firmId, conversationId, nonce]
+  );
+  return rows[0]?.id || null;
+}
+
+// Writes the message, its attachments, the sender's read state and the durable
+// archive job in one transaction. Returns { message, created, archiveJob }.
+// created is false when this client_nonce was already stored (a retry).
+async function sendMessage({ firmId, staffUserId, conversationId, conversation = null, body, attachments = [], clientNonce = '' }) {
+  const conv = conversation || await requireConversationMember({ firmId, staffUserId, conversationId });
   const text = String(body || '').replace(/^\n+|\n+$/g, '');
   const attachmentRows = Array.isArray(attachments) ? attachments : [];
   if (!text && attachmentRows.length === 0) {
@@ -534,32 +563,65 @@ async function sendMessage({ firmId, staffUserId, conversationId, body, attachme
   }
   const nonce = String(clientNonce || crypto.randomUUID());
   const sha = crypto.createHash('sha256').update(`${firmId}:${conversationId}:${staffUserId}:${text}:${JSON.stringify(attachmentRows)}`).digest('hex');
-  const { rows } = await pool.query(
-    `INSERT INTO native_team_chat_messages (firm_id, conversation_id, sender_staff_user_id, message_kind, body_encrypted, immutable_sha256, client_nonce, metadata, visible_until)
-     VALUES ($1,$2,$3,'text',$4,$5,$6,$7,NOW() + ${TEAM_CHAT_VISIBLE_INTERVAL})
-     ON CONFLICT (firm_id, conversation_id, client_nonce) DO NOTHING
-     RETURNING *`,
-    [firmId, conversationId, staffUserId, text ? encrypt(text) : null, sha, nonce, JSON.stringify({ source: 'native_team_chat' })]
-  );
-  let message = rows[0];
-  if (!message) {
-    const existing = await pool.query(
-      `SELECT * FROM native_team_chat_messages WHERE firm_id = $1 AND conversation_id = $2 AND client_nonce = $3 LIMIT 1`,
-      [firmId, conversationId, nonce]
+  let messageId = null;
+  let created = false;
+  let archiveJob = null;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `INSERT INTO native_team_chat_messages (firm_id, conversation_id, sender_staff_user_id, message_kind, body_encrypted, immutable_sha256, client_nonce, metadata, visible_until)
+       VALUES ($1,$2,$3,'text',$4,$5,$6,$7,NOW() + ${TEAM_CHAT_VISIBLE_INTERVAL})
+       ON CONFLICT (firm_id, conversation_id, client_nonce) DO NOTHING
+       RETURNING *`,
+      [firmId, conversationId, staffUserId, text ? encrypt(text) : null, sha, nonce, JSON.stringify({ source: 'native_team_chat' })]
     );
-    message = existing.rows[0];
-  } else {
-    for (const att of attachmentRows) {
-      await pool.query(
-        `INSERT INTO native_team_chat_attachments (firm_id, message_id, storage_key, file_name, content_type, byte_size, sha256, metadata)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [firmId, message.id, att.storage_key || att.storageKey || '', att.file_name || att.fileName || '', att.content_type || att.contentType || '', att.byte_size || att.byteSize || null, att.sha256 || '', JSON.stringify(att.metadata || {})]
+    const inserted = rows[0];
+    if (inserted) {
+      created = true;
+      messageId = inserted.id;
+      const storedAttachments = [];
+      for (const att of attachmentRows) {
+        const stored = await client.query(
+          `INSERT INTO native_team_chat_attachments (firm_id, message_id, storage_key, file_name, content_type, byte_size, sha256, metadata)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           RETURNING id, storage_key, file_name, content_type, byte_size, sha256, metadata`,
+          [firmId, inserted.id, att.storage_key || att.storageKey || '', att.file_name || att.fileName || '', att.content_type || att.contentType || '', att.byte_size || att.byteSize || null, att.sha256 || '', JSON.stringify(att.metadata || {})]
+        );
+        storedAttachments.push(stored.rows[0]);
+      }
+      await client.query(`UPDATE native_team_chat_conversations SET updated_at = NOW() WHERE firm_id = $1 AND id = $2`, [firmId, conversationId]);
+      await client.query(
+        `INSERT INTO native_team_chat_read_state (firm_id, conversation_id, staff_user_id, last_read_message_id, last_read_at, updated_at)
+         VALUES ($1,$2,$3,$4,NOW(),NOW())
+         ON CONFLICT (firm_id, conversation_id, staff_user_id) DO UPDATE SET
+           last_read_message_id = GREATEST(COALESCE(native_team_chat_read_state.last_read_message_id, 0), COALESCE(EXCLUDED.last_read_message_id, 0)),
+           last_read_at = NOW(), updated_at = NOW()`,
+        [firmId, conversationId, staffUserId, inserted.id]
       );
+      // The archive job commits with the message: a message can never exist
+      // without a durable record that it still has to be archived.
+      archiveJob = await queueTeamChatMessageArchive(client, {
+        firmId,
+        row: { ...inserted, conversation_type: conv.conversation_type, title: conv.title },
+        attachmentRows: storedAttachments,
+      });
     }
-    await pool.query(`UPDATE native_team_chat_conversations SET updated_at = NOW() WHERE firm_id = $1 AND id = $2`, [firmId, conversationId]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
-  await markRead({ firmId, staffUserId, conversationId, messageId: message.id });
-  return (await listMessages({ firmId, staffUserId, conversationId, limit: 1 }))[0];
+  if (!messageId) messageId = await findMessageIdByNonce({ firmId, conversationId, nonce });
+  const message = (await queryMessages({ firmId, staffUserId, conversationId, limit: 1, messageId }))[0];
+  if (!message) {
+    const err = new Error('Message not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+  return { message, created, archiveJob };
 }
 
 async function loadEditableMessage({ firmId, staffUserId, messageId }) {
@@ -602,9 +664,10 @@ async function loadEditableMessage({ firmId, staffUserId, messageId }) {
   return message;
 }
 
+// Callers have already verified membership (loadEditableMessage joins it).
 async function getMessageById({ firmId, staffUserId, conversationId, messageId }) {
-  const messages = await listMessages({ firmId, staffUserId, conversationId, limit: 200 });
-  return messages.find(m => Number(m.id) === Number(messageId)) || null;
+  const messages = await queryMessages({ firmId, staffUserId, conversationId, limit: 1, messageId });
+  return messages[0] || null;
 }
 
 async function setUserState({ firmId, staffUserId, conversationId, field, value }) {
@@ -809,6 +872,10 @@ router.post('/messages/send', upload.fields([
       err.statusCode = 400;
       throw err;
     }
+    const firmId = req.firm.id;
+    const staffUserId = req.firm.userId;
+    const clientNonce = String(req.body?.client_nonce || req.body?.clientNonce || '');
+    const conversation = await requireConversationMember({ firmId, staffUserId, conversationId });
     let attachments = req.body?.attachments || [];
     const uploadedFiles = flattenUploadedTeamChatFiles(req.files);
     if (uploadedFiles.length > 3) {
@@ -816,38 +883,47 @@ router.post('/messages/send', upload.fields([
       err.statusCode = 400;
       throw err;
     }
-    if (uploadedFiles.length) {
+    // A retry of a message that already landed must not upload its files again.
+    const alreadyStored = uploadedFiles.length ? await findMessageIdByNonce({ firmId, conversationId, nonce: clientNonce }) : null;
+    if (uploadedFiles.length && !alreadyStored) {
       const bucket = process.env.AWS_S3_BUCKET || 'darklion-s3';
-      attachments = [];
-      for (const file of uploadedFiles) {
-        validateTeamChatUpload(file);
+      for (const file of uploadedFiles) validateTeamChatUpload(file);
+      attachments = await Promise.all(uploadedFiles.map(async (file) => {
         const filename = sanitizeFilename(file.originalname || 'team-chat-file');
         const storageKey = buildKey({
-          firmId: req.firm.id,
+          firmId,
           ownerType: 'team-chat',
           ownerId: conversationId,
           year: new Date().getFullYear(),
           docType: 'attachments',
           filename,
         });
-        await uploadFile({ firmId: req.firm.id, buffer: file.buffer, key: storageKey, mimeType: file.mimetype, bucket });
-        attachments.push({
+        await uploadFile({ firmId, buffer: file.buffer, key: storageKey, mimeType: file.mimetype, bucket });
+        return {
           storage_key: storageKey,
           file_name: filename,
           content_type: file.mimetype,
           byte_size: file.size,
           sha256: crypto.createHash('sha256').update(file.buffer).digest('hex'),
           metadata: { source: 'native_team_chat_upload', bucket },
-        });
-      }
+        };
+      }));
     }
-    const message = await sendMessage({ firmId: req.firm.id, staffUserId: req.firm.userId, conversationId, body: req.body?.message || req.body?.body || '', attachments, clientNonce: req.body?.client_nonce || req.body?.clientNonce || '' });
-    await archiveTeamChatMessageCreatedFailClosed({ firmId: req.firm.id, messageId: message.id || message.message_id, requestedByStaffUserId: req.firm.userId });
-    broadcastMessage(req, { firmId: req.firm.id, conversationId, message }).catch(err => console.error('[team-chat] broadcast enqueue failed:', err.message));
-    pushTeamChatMessage({ firmId: req.firm.id, conversationId, senderStaffUserId: req.firm.userId, message }).catch(err => console.error('[mobile-push] team-chat non-fatal:', err.message));
+    const { message, created, archiveJob } = await sendMessage({ firmId, staffUserId, conversationId, conversation, body: req.body?.message || req.body?.body || '', attachments, clientNonce });
     res.status(201).json({ message });
+    // Everything below runs after the reply. A retried nonce is not announced twice.
+    if (!created) return;
+    listConversationMemberIds({ firmId, conversationId }).then((memberIds) => {
+      broadcastMessage(req, { firmId, conversationId, message, memberIds }).catch(err => console.error('[team-chat] broadcast enqueue failed:', err.message));
+      pushTeamChatMessage({ firmId, conversationId, senderStaffUserId: staffUserId, message, memberIds }).catch(err => console.error('[mobile-push] team-chat non-fatal:', err.message));
+    }).catch(err => console.error('[team-chat] member lookup failed:', err.message));
+    if (archiveJob) {
+      captureQueuedTeamChatMessage({ ...archiveJob, requestedByStaffUserId: staffUserId })
+        .catch(err => console.error('[team-chat] archive capture deferred to retry worker:', err.message));
+    }
   } catch (err) {
-    handleError(res, 'messages/send', err);
+    if (res.headersSent) console.error('[team-chat] messages/send after reply:', err);
+    else handleError(res, 'messages/send', err);
   }
 });
 
@@ -986,10 +1062,19 @@ router.get('/attachments/:id/preview', async (req, res) => {
       throw err;
     }
     const bucket = attachment.metadata?.bucket || process.env.AWS_S3_BUCKET || 'darklion-s3';
+    // Attachments never change once stored, so the browser may keep its copy.
+    const etag = attachment.sha256 ? `"${attachment.sha256}"` : '';
+    const cacheControl = 'private, max-age=86400, immutable';
+    if (etag && String(req.headers['if-none-match'] || '').split(',').map(v => v.trim().replace(/^W\//, '')).includes(etag)) {
+      res.setHeader('ETag', etag);
+      res.setHeader('Cache-Control', cacheControl);
+      return res.status(304).end();
+    }
     const buffer = await downloadFile({ key: attachment.storage_key, bucket });
     res.setHeader('Content-Type', attachment.content_type || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('Cache-Control', cacheControl);
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (etag) res.setHeader('ETag', etag);
     res.send(buffer);
   } catch (err) {
     handleError(res, 'attachments/preview', err);
@@ -1014,6 +1099,30 @@ router.post('/conversations/:id/read', async (req, res) => {
     res.json({ read_state });
   } catch (err) {
     handleError(res, 'conversations/read', err);
+  }
+});
+
+// Ephemeral "is typing" ping. Nothing is stored; members other than the sender get a push event.
+router.post('/conversations/:id/typing', async (req, res) => {
+  try {
+    const conversationId = intId(req.params.id);
+    if (!conversationId) return res.status(204).end();
+    await requireConversationMember({ firmId: req.firm.id, staffUserId: req.firm.userId, conversationId });
+    res.status(204).end();
+    const pusher = req.app.get('pusher');
+    if (!pusher) return;
+    const memberIds = (await listConversationMemberIds({ firmId: req.firm.id, conversationId }))
+      .filter(id => String(id) !== String(req.firm.userId));
+    if (!memberIds.length) return;
+    await triggerForMembers(pusher, {
+      firmId: req.firm.id,
+      memberIds,
+      name: 'team-chat-typing',
+      data: { conversation_id: conversationId, staff_user_id: req.firm.userId },
+    });
+  } catch (err) {
+    if (res.headersSent) console.error('[team-chat] typing broadcast failed:', err.message);
+    else handleError(res, 'conversations/typing', err);
   }
 });
 
