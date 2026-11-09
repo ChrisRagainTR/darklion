@@ -891,6 +891,59 @@ router.get('/document-picker', async (req, res) => {
   }
 });
 
+// ── GET /messages/client-search — find clients to message from the inbox ─────
+router.get('/client-search', async (req, res) => {
+  const firmId = req.firm.id;
+  const q = String(req.query.q || '').trim().slice(0, 100);
+  if (q.length < 2) return res.json([]);
+
+  try {
+    const userId = await currentFirmUserId(req);
+    const like = '%' + q.replace(/[\\%_]/g, ch => '\\' + ch) + '%';
+    const { rows } = await pool.query(
+      `SELECT p.id, p.first_name, p.last_name, p.email, p.phone,
+              r.name AS relationship_name,
+              t.id AS thread_id,
+              (t.staff_archived_at IS NOT NULL OR t.status = 'archived') AS thread_archived
+         FROM people p
+         LEFT JOIN relationships r ON r.id = p.relationship_id AND r.firm_id = p.firm_id
+         LEFT JOIN LATERAL (
+           SELECT mt.id, mt.staff_archived_at, mt.status
+             FROM message_threads mt
+            WHERE mt.firm_id = p.firm_id AND mt.person_id = p.id
+              AND mt.staff_user_id = $3
+              AND mt.category IS DISTINCT FROM 'internal'
+            ORDER BY mt.last_message_at DESC NULLS LAST
+            LIMIT 1
+         ) t ON true
+        WHERE p.firm_id = $1
+          AND (
+            p.first_name ILIKE $2 OR p.last_name ILIKE $2
+            OR (p.first_name || ' ' || p.last_name) ILIKE $2
+            OR p.email ILIKE $2
+            OR COALESCE(p.spouse_name, '') ILIKE $2
+            OR COALESCE(r.name, '') ILIKE $2
+          )
+        ORDER BY p.last_name, p.first_name
+        LIMIT 8`,
+      [firmId, like, userId || 0]
+    );
+    res.json(rows.map(row => ({
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      email: row.email || '',
+      phone: row.phone || '',
+      relationshipName: row.relationship_name || '',
+      threadId: row.thread_id || null,
+      threadArchived: row.thread_id ? row.thread_archived === true : false,
+    })));
+  } catch (err) {
+    console.error('[GET /messages/client-search] error:', err);
+    res.status(500).json({ error: 'Failed to search clients' });
+  }
+});
+
 // ── GET /messages/:threadId ───────────────────────────────────────────────────
 router.get('/:threadId', async (req, res) => {
   const firmId = req.firm.id;
@@ -1091,7 +1144,7 @@ router.post('/', async (req, res) => {
   try {
     // Verify person belongs to this firm
     const { rows: personRows } = await pool.query(
-      'SELECT id, first_name, last_name FROM people WHERE id = $1 AND firm_id = $2',
+      'SELECT id, first_name, last_name, email FROM people WHERE id = $1 AND firm_id = $2',
       [person_id, firmId]
     );
     if (!personRows[0]) return res.status(404).json({ error: 'Person not found' });
@@ -1154,6 +1207,18 @@ router.post('/', async (req, res) => {
     }
 
     if (!is_internal) {
+      const { rows: firmRows } = await pool.query('SELECT name FROM firms WHERE id = $1', [firmId]);
+      scheduleClientNotification({
+        threadId,
+        personId: personRows[0].id,
+        toEmail: personRows[0].email,
+        toName: `${personRows[0].first_name} ${personRows[0].last_name}`,
+        firmName: firmRows[0]?.name,
+        firmId,
+        messagePreview: initialBody ? initialBody.trim() : null,
+        messageId,
+      });
+
       setImmediate(() => {
         sendClientMobilePush({
           firmId,

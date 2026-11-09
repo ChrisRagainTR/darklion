@@ -20,6 +20,9 @@
       margin-bottom: 0.5rem;
     }
     .inbox-search:focus { outline: none; border-color: var(--gold); }
+    .client-search-heading { padding: 0.6rem 1rem 0.3rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .client-search-card .thread-card-subject { color: var(--gold); }
+    .new-conversation-empty { color: var(--muted); padding: 2rem 1rem; font-size: 0.85rem; text-align: center; }
 
     .inbox-list { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
     .thread-card {
@@ -347,7 +350,7 @@
         <h2>💬 My Inbox</h2>
 
       </div>
-      <input type="text" class="inbox-search" id="searchBox" placeholder="Search by name…" oninput="filterThreads()">
+      <input type="text" class="inbox-search" id="searchBox" placeholder="Search conversations or clients…" oninput="filterThreads()">
     </div>
     <div class="inbox-tabs">
       <button class="inbox-tab active" id="tabMessages" onclick="switchTab('messages')">
@@ -532,6 +535,11 @@ let activeTab = 'messages'; // 'messages' | 'documents' | 'tasks' | 'archived'
 let firmUsers = [];
 let attachedFiles = [];
 let attachedClientDocs = [];
+let pendingNewPerson = null;   // client picked from search with no conversation yet
+let clientSearchResults = [];
+let clientSearchQuery = '';
+let clientSearchTimer = null;
+let clientSearchSeq = 0;
 
 const _jwtPayload = JSON.parse(atob(token.split('.')[1]));
 const _firmId = _jwtPayload.firmId || _jwtPayload.id;
@@ -968,7 +976,7 @@ async function loadInbox(showSpinner = false) {
       archivedDocumentNotifications = freshArchivedDocuments;
       renderInbox();
       // Auto-open first thread of the active tab if none selected yet
-      if (!activeThreadId && activeTab !== 'documents') {
+      if (!activeThreadId && !pendingNewPerson && activeTab !== 'documents') {
         const tabFirst = threadsForActiveTab()[0];
         if (tabFirst) loadThread(tabFirst.id);
       }
@@ -1021,6 +1029,7 @@ async function resolveSmsException(eventId) {
 function filterThreads() {
   if (activeTab !== 'documents' && activeTab !== 'archived') {
     renderInbox();
+    if (activeTab === 'messages') scheduleClientSearch();
     return;
   }
   clearTimeout(documentNotificationSearchTimer);
@@ -1036,6 +1045,7 @@ function filterThreads() {
 
 function switchTab(tab, preferredThreadId = null) {
   activeTab = tab;
+  pendingNewPerson = null;
   const msgBtn = document.getElementById('tabMessages');
   const documentBtn = document.getElementById('tabDocumentUploads');
   const taskBtn = document.getElementById('tabTasks');
@@ -1180,6 +1190,8 @@ function renderInbox() {
     return name.includes(q) || (t.subject || '').toLowerCase().includes(q);
   });
   const archivedUploads = activeTab === 'archived' ? archivedDocumentNotifications : [];
+  const clientSection = activeTab === 'messages' ? clientSearchSectionHtml(threads) : '';
+  const pendingCard = activeTab === 'messages' && pendingNewPerson ? pendingConversationCardHtml() : '';
 
   if (activeTab === 'archived' && !threads.length && archivedUploads.length) {
     clearThreadPanel();
@@ -1187,13 +1199,13 @@ function renderInbox() {
   }
 
   if (!threads.length && !archivedUploads.length) {
-    const emptyText = activeTab === 'archived' ? 'No archived conversations or uploads.' : 'No active threads.';
-    document.getElementById('inboxList').innerHTML = `<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">${emptyText}</div>`;
-    clearThreadPanel();
+    const emptyText = activeTab === 'archived' ? 'No archived conversations or uploads.' : (q ? 'No matching conversations.' : 'No active threads.');
+    document.getElementById('inboxList').innerHTML = pendingCard + `<div style="color:var(--muted);padding:1.5rem 1rem;font-size:0.85rem;">${emptyText}</div>` + clientSection;
+    if (!pendingNewPerson) clearThreadPanel();
     return;
   }
 
-  document.getElementById('inboxList').innerHTML = threads.map(t => {
+  document.getElementById('inboxList').innerHTML = pendingCard + threads.map(t => {
     const isTaskThread = t.hasTaskMessages && t.category === 'internal';
     const personName = esc((t.person?.firstName || '') + ' ' + (t.person?.lastName || ''));
     const name = isTaskThread ? esc(t.subject || 'Task') : personName;
@@ -1224,7 +1236,161 @@ function renderInbox() {
       </div>
     </div>`;
   }).join('') + archivedUploads.map(item => documentNotificationCard(item, true)).join('')
-    + (activeTab === 'archived' ? documentNotificationLoadMore(true) : '');
+    + (activeTab === 'archived' ? documentNotificationLoadMore(true) : '')
+    + clientSection;
+}
+
+// ── Start or reopen a client conversation from the inbox search ─────────────
+function scheduleClientSearch() {
+  clearTimeout(clientSearchTimer);
+  const q = (document.getElementById('searchBox').value || '').trim().slice(0, 100);
+  if (q.length < 2) {
+    clientSearchSeq++;
+    clientSearchResults = [];
+    clientSearchQuery = '';
+    return;
+  }
+  clientSearchTimer = setTimeout(async () => {
+    const seq = ++clientSearchSeq;
+    try {
+      const res = await apiFetch(`/api/messages/client-search?q=${encodeURIComponent(q)}`);
+      const rows = res.ok ? await res.json() : [];
+      if (seq !== clientSearchSeq) return;
+      clientSearchResults = Array.isArray(rows) ? rows : [];
+      clientSearchQuery = q;
+      if (activeTab === 'messages') renderInbox();
+    } catch (e) { /* search is best-effort */ }
+  }, 250);
+}
+
+function clientSearchSectionHtml(visibleThreads) {
+  const q = (document.getElementById('searchBox').value || '').trim();
+  if (q.length < 2 || q !== clientSearchQuery) return '';
+  const shownPeople = new Set(visibleThreads.filter(t => !t.isParticipant).map(t => t.person?.id));
+  const people = clientSearchResults.filter(p => !shownPeople.has(p.id));
+  if (!people.length) return '';
+  return '<div class="client-search-heading">Clients</div>' + people.map(p => {
+    const name = esc(`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.email || 'Client');
+    const action = p.threadId
+      ? (p.threadArchived ? 'Archived conversation · click to bring it back' : 'Open conversation')
+      : 'Start a new conversation';
+    const detail = [p.relationshipName, p.email].filter(Boolean).map(esc).join(' · ');
+    return `<div class="thread-card client-search-card" onclick="openClientConversation(${Number(p.id)})">
+      <div class="thread-card-name"><span>${name}</span></div>
+      <div class="thread-card-subject">${action}</div>
+      ${detail ? `<div class="thread-card-preview">${detail}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function pendingConversationCardHtml() {
+  const p = pendingNewPerson;
+  return `<div class="thread-card active client-search-card">
+    <div class="thread-card-name"><span>${esc(`${p.firstName || ''} ${p.lastName || ''}`.trim())}</span></div>
+    <div class="thread-card-subject">New conversation</div>
+  </div>`;
+}
+
+function clearInboxSearch() {
+  document.getElementById('searchBox').value = '';
+  clientSearchSeq++;
+  clientSearchResults = [];
+  clientSearchQuery = '';
+}
+
+async function openClientConversation(personId) {
+  const person = clientSearchResults.find(p => p.id === personId);
+  if (!person) return;
+  try {
+    if (person.threadId) {
+      if (person.threadArchived) {
+        const res = await apiFetch(`/api/messages/${person.threadId}/restore`, { method: 'PUT' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Could not bring the conversation back');
+      }
+      clearInboxSearch();
+      pendingNewPerson = null;
+      await loadInbox(false);
+      await window.loadThread(person.threadId);
+      return;
+    }
+    clearInboxSearch();
+    startPendingConversation(person);
+  } catch (e) {
+    window.toast ? window.toast(e.message, 'error') : alert(e.message);
+  }
+}
+
+function startPendingConversation(person) {
+  activeThreadId = null;
+  activeThreadArchived = false;
+  activeReplyChannel = 'portal';
+  activeDraftId = null;
+  activeDraftBody = '';
+  pendingNewPerson = person;
+  updateReplyChannelControls();
+  renderInbox();
+
+  document.getElementById('noThreadSelected').style.display = 'none';
+  const tv = document.getElementById('threadView');
+  tv.style.display = 'flex';
+  tv.style.flexDirection = 'column';
+  tv.style.flex = '1';
+  tv.style.height = '100%';
+  const name = esc(`${person.firstName || ''} ${person.lastName || ''}`.trim());
+  document.getElementById('detailHeader').innerHTML = `
+    <div class="detail-header-left">
+      <div class="detail-header-person">
+        <a href="/crm/person/${Number(person.id)}" style="font-size:1.05rem;font-weight:700;color:var(--text);">${name}</a>
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:0.1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+        ${person.email ? `<span>${esc(person.email)}</span>` : ''}
+        ${person.phone ? `<span style="color:var(--gold);">${esc(person.phone)}</span>` : ''}
+        ${person.relationshipName ? `<span>· ${esc(person.relationshipName)}</span>` : ''}
+      </div>
+    </div>`;
+  const archivedBanner = document.getElementById('archivedThreadBanner');
+  if (archivedBanner) archivedBanner.style.display = 'none';
+  document.getElementById('detailMessages').innerHTML = `<div class="new-conversation-empty">No messages with ${name} yet.<br>Write below to start the conversation.</div>`;
+  renderDateNavigation([]);
+  const replyBoxEl = document.getElementById('replyBox');
+  if (replyBoxEl) replyBoxEl.style.display = '';
+  const draftBanner = document.getElementById('agentDraftBanner');
+  if (draftBanner) draftBanner.style.display = 'none';
+  const replyEl = document.getElementById('replyBody');
+  replyEl.value = '';
+  autoSizeReplyTextarea();
+  attachedFiles = [];
+  attachedClientDocs = [];
+  renderAttachChips();
+  openMobileThread();
+  replyEl.focus();
+}
+
+async function sendFirstMessage(body, filesToSend, docsToSend) {
+  const person = pendingNewPerson;
+  const res = await apiFetch('/api/messages', {
+    method: 'POST',
+    body: JSON.stringify({ person_id: person.id, subject: '', body, is_internal: false, document_ids: docsToSend.map(d => d.id) }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to send message');
+  if (filesToSend.length) {
+    const fd = new FormData();
+    fd.append('body', '');
+    fd.append('is_internal', 'false');
+    filesToSend.forEach(f => fd.append('files', f));
+    const fileRes = await apiFetch(`/api/messages/${data.threadId}/reply`, { method: 'POST', body: fd });
+    if (!fileRes.ok) window.toast && window.toast('Message sent, but the attachments failed to upload', 'error');
+  }
+  return data.threadId;
+}
+
+async function finishPendingConversation(threadId) {
+  pendingNewPerson = null;
+  activeThreadId = threadId;
+  await loadInbox(false);
+  await loadThread(threadId);
 }
 
 async function archiveThread(threadId) {
@@ -1319,6 +1485,7 @@ async function loadInboxSummary(force = false) {
 function clearThreadPanel() {
   activeThreadId = null;
   activeThreadArchived = false;
+  pendingNewPerson = null;
   activeReplyChannel = 'portal';
   updateReplyChannelControls();
   document.getElementById('threadView').style.display = 'none';
@@ -1327,6 +1494,7 @@ function clearThreadPanel() {
 
 async function loadThread(threadId, silent = false) {
   activeThreadId = threadId;
+  pendingNewPerson = null;
   renderInbox();
 
   document.getElementById('noThreadSelected').style.display = 'none';
@@ -1494,10 +1662,10 @@ function renderAttachChips() {
 }
 
 function openClientDocAttachPicker() {
-  if (!activeThreadId) return alert('Select a message thread first.');
+  if (!activeThreadId && !pendingNewPerson) return alert('Select a message thread first.');
   ClientDocPicker.open({
     apiFetch,
-    scope: { threadId: activeThreadId },
+    scope: activeThreadId ? { threadId: activeThreadId } : { personId: pendingNewPerson.id },
     selected: attachedClientDocs,
     onApply: docs => { attachedClientDocs = docs; renderAttachChips(); },
   });
@@ -1635,10 +1803,36 @@ function sendAlternateReply() {
 }
 
 async function sendReply(options = {}) {
-  if (!activeThreadId) return;
+  if (!activeThreadId && !pendingNewPerson) return;
   const replyEl = document.getElementById('replyBody');
   const body = replyEl.value.replace(/^\n+|\n+$/g, '');
   if (!body && attachedFiles.length === 0 && attachedClientDocs.length === 0) return;
+  if (pendingNewPerson) {
+    if (/@[A-Za-z]/.test(body)) {
+      window.toast ? window.toast('@mentions are internal notes — send the client a message first, then loop in a colleague.', 'error') : alert('Send the client a message first, then use @mentions.');
+      return;
+    }
+    const filesToSend = attachedFiles.slice();
+    const docsToSend = attachedClientDocs.slice();
+    const btn = document.getElementById('primaryReplyBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const threadId = await sendFirstMessage(body, filesToSend, docsToSend);
+      replyEl.value = '';
+      attachedFiles = [];
+      attachedClientDocs = [];
+      renderAttachChips();
+      _justSent = true;
+      setTimeout(() => { _justSent = false; }, 3000);
+      await finishPendingConversation(threadId);
+      window.toast && window.toast('Message sent');
+    } catch (e) {
+      window.toast ? window.toast(e.message || 'Failed to send message', 'error') : alert(e.message || 'Failed to send message');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+    return;
+  }
   const isInternal = document.getElementById('internalToggle').checked;
   const draftIdToMark = activeDraftId;
   const originalDraftBody = activeDraftBody;
@@ -1682,13 +1876,31 @@ async function sendReply(options = {}) {
   } catch(e) { failInboxPending(tempId); window.toast ? window.toast(e.message || 'Failed to send reply', 'error') : alert('Failed to send reply'); }
 }
 async function sendReplyAsSms() {
-  if (!activeThreadId) return;
+  if (!activeThreadId && !pendingNewPerson) return;
   if (attachedFiles.length || attachedClientDocs.length) {
     alert('Attachments and client documents must be sent through the secure portal, not by text.');
     return;
   }
   const body = document.getElementById('replyBody').value.replace(/^\n+|\n+$/g, '');
   if (!body) { alert('Write a message first'); return; }
+  if (pendingNewPerson) {
+    try {
+      const smsRes = await apiFetch('/api/messages/sms', {
+        method: 'POST',
+        body: JSON.stringify({ person_id: pendingNewPerson.id, body }),
+      });
+      const smsData = await smsRes.json().catch(() => ({}));
+      if (!smsRes.ok && !smsData.thread_id) throw new Error(smsData.error || 'SMS failed');
+      document.getElementById('replyBody').value = '';
+      autoSizeReplyTextarea();
+      if (smsData.thread_id) await finishPendingConversation(smsData.thread_id);
+      if (!smsRes.ok) throw new Error(smsData.error || 'SMS failed');
+      window.toast && window.toast('Text message sent');
+    } catch (e) {
+      alert('Failed to send text: ' + e.message);
+    }
+    return;
+  }
   const thread = allThreads.find(t => t.id === activeThreadId);
   const personId = thread?.person?.id;
   if (!personId) { alert('No person linked to this thread'); return; }
@@ -1935,6 +2147,7 @@ function closeMobileThread() {
   document.getElementById('detailPanel').classList.remove('mobile-visible');
   document.getElementById('mobileBackBtn').style.display = 'none';
   activeThreadId = null;
+  pendingNewPerson = null;
   renderInbox();
   window.scrollTo(0, 0);
 }
