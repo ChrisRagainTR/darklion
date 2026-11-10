@@ -9,7 +9,7 @@ const { classifyMessage } = require('../services/claude');
 const { sendPortalNotification } = require('../services/email');
 const { createReplyToken } = require('../services/emailReplyTokens');
 const { archiveClientMessageCreatedFailClosed, archiveClientMessageRemoved } = require('../services/communicationArchive');
-const { sendClientMobilePush } = require('../services/mobilePush');
+const { sendClientMobilePush, sendStaffMobilePush } = require('../services/mobilePush');
 const { uploadFile, buildKey, sanitizeFilename, getSignedDownloadUrl, downloadFile } = require('../services/s3');
 
 const router = Router();
@@ -357,6 +357,13 @@ router.get('/unread-count', async (req, res) => {
            FROM messages m
            JOIN my_threads t ON t.id = m.thread_id
            WHERE m.sender_type = 'client' AND m.removed_at IS NULL AND m.read_at IS NULL
+         ), 0)::int
+         + COALESCE((
+           SELECT COUNT(DISTINCT mtfu.thread_id)
+           FROM message_thread_forwards mtfu
+           JOIN message_threads ft ON ft.id = mtfu.thread_id AND ft.firm_id = mtfu.firm_id
+           JOIN my_threads t ON t.id = mtfu.thread_id
+           WHERE mtfu.firm_id = $1 AND mtfu.forwarded_to_id = $2 AND mtfu.seen_at IS NULL AND ft.staff_user_id = $2
          ), 0)::int AS unread_count,
          COALESCE((
            SELECT COUNT(*)
@@ -405,7 +412,8 @@ router.get('/', async (req, res) => {
          (SELECT body FROM messages m WHERE m.thread_id = mt.id AND m.removed_at IS NULL ORDER BY m.created_at DESC LIMIT 1) as last_body,
          (SELECT message_type FROM messages m WHERE m.thread_id = mt.id AND m.removed_at IS NULL ORDER BY m.created_at DESC LIMIT 1) as last_message_type,
          (SELECT created_at FROM messages m WHERE m.thread_id = mt.id AND m.removed_at IS NULL ORDER BY m.created_at DESC LIMIT 1) as last_message_at_sub,
-         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = mt.id AND m.removed_at IS NULL AND m.sender_type = 'client' AND m.read_at IS NULL) as unread_count,
+         (SELECT COUNT(*) FROM messages m WHERE m.thread_id = mt.id AND m.removed_at IS NULL AND m.sender_type = 'client' AND m.read_at IS NULL)
+           + (CASE WHEN mt.staff_user_id = $2 AND EXISTS (SELECT 1 FROM message_thread_forwards mtfu WHERE mtfu.thread_id = mt.id AND mtfu.firm_id = mt.firm_id AND mtfu.forwarded_to_id = $2 AND mtfu.seen_at IS NULL) THEN 1 ELSE 0 END) as unread_count,
          (SELECT COUNT(*) FROM message_drafts md WHERE md.thread_id = mt.id AND md.status = 'pending') as pending_draft_count,
          (SELECT COUNT(*) > 0 FROM messages m WHERE m.thread_id = mt.id AND m.removed_at IS NULL AND m.message_type = 'task' LIMIT 1) as has_task_messages
        FROM message_threads mt
@@ -1007,6 +1015,14 @@ router.get('/:threadId', async (req, res) => {
          WHERE thread_id = $1 AND sender_type = 'client' AND read_at IS NULL`,
         [threadId]
       );
+
+      if (callerUserId) {
+        await pool.query(
+          `UPDATE message_thread_forwards SET seen_at = NOW()
+           WHERE thread_id = $1 AND firm_id = $2 AND forwarded_to_id = $3 AND seen_at IS NULL`,
+          [threadId, firmId, callerUserId]
+        ).catch(() => {});
+      }
 
       await pool.query(
         `DELETE FROM message_mentions mm
@@ -1637,6 +1653,34 @@ router.post('/:threadId/forward', async (req, res) => {
     await client.query('COMMIT');
     await archiveClientMessageCreatedFailClosed({ firmId, messageId: systemMessageRows[0].id, requestedByStaffUserId: userId });
     res.json({ ok: true, threadId, forwardedToId: targetStaffId, forwardedToName: target.name, forwardedByName: forwarderName });
+
+    // Tell the new owner right away: live inbox refresh plus a phone push.
+    const pusher = req.app.get('pusher');
+    if (pusher) {
+      Promise.resolve(pusher.trigger(`private-firm-${firmId}`, 'message-new', {
+        threadId, senderType: 'transfer', toStaffId: targetStaffId, fromName: forwarderName,
+      })).catch(e => console.error('[forward] pusher non-fatal:', e.message));
+    }
+    setImmediate(async () => {
+      try {
+        const { rows: pr } = await pool.query(
+          'SELECT first_name, last_name FROM people WHERE id = $1 AND firm_id = $2',
+          [thread.person_id, firmId]
+        );
+        const clientName = [pr[0]?.first_name, pr[0]?.last_name].filter(Boolean).join(' ') || 'a client';
+        const fromFirst = String(forwarderName || 'A teammate').split(' ')[0];
+        await sendStaffMobilePush({
+          firmId,
+          staffUserId: targetStaffId,
+          type: 'client_message',
+          title: `${fromFirst} transferred a conversation to you`,
+          body: note ? `${clientName}: ${note}` : `Conversation with ${clientName}`,
+          data: { threadId, personId: thread.person_id, transfer: true },
+        });
+      } catch (e) {
+        console.error('[forward] push non-fatal:', e.message);
+      }
+    });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /messages/:threadId/forward] error:', err);
@@ -1817,6 +1861,14 @@ router.put('/:threadId/read', async (req, res) => {
        WHERE thread_id = $1 AND sender_type = 'client' AND read_at IS NULL`,
       [threadId]
     );
+    const readerId = await currentFirmUserId(req);
+    if (readerId && !req.firm.supportSession) {
+      await pool.query(
+        `UPDATE message_thread_forwards SET seen_at = NOW()
+         WHERE thread_id = $1 AND firm_id = $2 AND forwarded_to_id = $3 AND seen_at IS NULL`,
+        [threadId, firmId, readerId]
+      );
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('[PUT /messages/:threadId/read] error:', err);

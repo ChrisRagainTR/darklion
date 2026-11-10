@@ -592,7 +592,19 @@ _pusher.connection.bind('state_change', ({ current }) => {
   if (!panel || current === 'connected') return window.DLStability?.hideInlineUpdating(panel);
   if (['connecting','unavailable','disconnected'].includes(current)) window.DLStability?.showInlineUpdating(panel, current === 'connecting' ? 'Reconnecting…' : 'Offline');
 });
-_firmChannel.bind('message-new', ({ threadId, senderType }) => {
+_firmChannel.bind('message-new', ({ threadId, senderType, toStaffId, fromName }) => {
+  if (senderType === 'transfer') {
+    loadInbox();
+    if (window.updateBrowserUnreadIndicator) window.updateBrowserUnreadIndicator();
+    if (parseInt(toStaffId, 10) === parseInt(_myUserId || 0, 10)) {
+      const who = String(fromName || 'A teammate').split(' ')[0];
+      window.toast && window.toast(`${who} transferred a conversation to you`);
+      if (window.DLDesktop && typeof window.DLDesktop.notifyOnce === 'function') {
+        window.DLDesktop.notifyOnce(`transfer-${threadId}`, { title: 'Conversation transferred to you', body: `${who} transferred a client conversation to you.`, route: '/messages' });
+      }
+    }
+    return;
+  }
   loadInbox();
   if (senderType !== 'staff' && window.DLDesktop && typeof window.DLDesktop.notifyOnce === 'function') {
     const activeAndVisible = activeThreadId === threadId && !document.hidden;

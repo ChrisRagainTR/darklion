@@ -137,8 +137,17 @@ async function getStaffBadgeCount({ firmId, staffUserId }) {
     [firmId, staffUserId]
   );
 
-  const [clientMessages, teamChat] = await Promise.all([clientMessagePromise, teamChatPromise]);
-  return (clientMessages.rows[0]?.count || 0) + (teamChat.rows[0]?.count || 0);
+  const transferPromise = pool.query(
+    `SELECT COUNT(DISTINCT f.thread_id)::int AS count
+     FROM message_thread_forwards f
+     JOIN message_threads mt ON mt.id = f.thread_id AND mt.firm_id = f.firm_id
+     WHERE f.firm_id = $1 AND f.forwarded_to_id = $2 AND f.seen_at IS NULL
+       AND mt.staff_user_id = $2 AND mt.status != 'archived' AND mt.staff_archived_at IS NULL`,
+    [firmId, staffUserId]
+  ).catch(() => ({ rows: [{ count: 0 }] }));
+
+  const [clientMessages, teamChat, transfers] = await Promise.all([clientMessagePromise, teamChatPromise, transferPromise]);
+  return (clientMessages.rows[0]?.count || 0) + (teamChat.rows[0]?.count || 0) + (transfers.rows[0]?.count || 0);
 }
 
 async function activeDevicesForPerson({ firmId, personId, type }) {

@@ -1698,6 +1698,23 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_message_thread_forwards_thread ON message_thread_forwards(firm_id, thread_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_message_thread_forwards_to ON message_thread_forwards(firm_id, forwarded_to_id, created_at DESC);
+    -- A transfer stays unread for its recipient until they open the thread.
+    ALTER TABLE message_thread_forwards ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ DEFAULT NULL;
+    CREATE TABLE IF NOT EXISTS one_time_data_updates (
+      name TEXT PRIMARY KEY,
+      ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      rows_changed INTEGER NOT NULL DEFAULT 0
+    );
+    DO $$
+    DECLARE changed INTEGER;
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM one_time_data_updates WHERE name = 'message_thread_forwards_seen_backfill') THEN
+        UPDATE message_thread_forwards SET seen_at = created_at
+         WHERE seen_at IS NULL AND created_at < NOW() - INTERVAL '24 hours';
+        GET DIAGNOSTICS changed = ROW_COUNT;
+        INSERT INTO one_time_data_updates (name, rows_changed) VALUES ('message_thread_forwards_seen_backfill', changed);
+      END IF;
+    END $$;
 
     -- ===================== PIPELINE TRIGGERS & ACTIONS =====================
 
