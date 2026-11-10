@@ -240,6 +240,7 @@
         <div id="overview-companies-panel" class="ov2-card">
           <div class="loading-state"><div class="loading-spinner"></div></div>
         </div>
+        <div id="overview-staff-access-panel" class="ov2-card" style="display:none;"></div>
         <div class="ov2-card">
           <div class="ov2-card-head">
             <div class="ov2-card-title">Internal Notes</div>
@@ -1683,6 +1684,8 @@
     const spouseEl = document.getElementById('overview-spouse-panel');
     if (spouseEl) spouseEl.style.display = 'none';
 
+    loadStaffAccessPanel(p.id);
+
     // ── Tax work ──
     const taxEl = document.getElementById('overview-tax-panel');
     taxEl.innerHTML = `
@@ -1807,6 +1810,54 @@
     });
 
     loadOverviewPipelineHistory();
+  }
+
+  async function loadStaffAccessPanel(personId) {
+    const el = document.getElementById('overview-staff-access-panel');
+    if (!el || !personId) return;
+    try {
+      const res = await apiFetch(`/api/people/${personId}/staff-access`);
+      if (!res.ok) { el.style.display = 'none'; return; }
+      renderStaffAccessPanel(personId, await res.json());
+    } catch (e) { el.style.display = 'none'; }
+  }
+
+  function renderStaffAccessPanel(personId, data) {
+    const el = document.getElementById('overview-staff-access-panel');
+    const staff = (data && data.staff) || [];
+    if (!staff.length) { el.style.display = 'none'; return; }
+    const canEdit = !!data.canEdit;
+    const hiddenCount = staff.filter(s => !s.canMessage).length;
+    const rows = staff.map(s => `
+      <label style="display:flex;align-items:center;gap:0.55rem;padding:0.3rem 0;font-size:0.84rem;cursor:${canEdit ? 'pointer' : 'default'};">
+        <input type="checkbox" data-staff-id="${s.id}" ${s.canMessage ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onchange="saveStaffAccess(${personId})">
+        <span style="color:${s.canMessage ? 'var(--text)' : 'var(--muted)'};">${esc(s.name)}</span>
+      </label>`).join('');
+    el.innerHTML = `
+      <div class="ov2-card-head">
+        <div class="ov2-card-title">Who can message</div>
+        <span id="staff-access-status" style="font-size:0.72rem;color:var(--muted);">${hiddenCount ? hiddenCount + ' hidden' : 'Whole team'}</span>
+      </div>
+      <div style="font-size:0.76rem;color:var(--muted);margin-bottom:0.4rem;">${canEdit ? 'Uncheck anyone this client should not be able to message.' : 'Only the firm owner can change this.'}</div>
+      <div id="staff-access-list">${rows}</div>`;
+    el.style.display = '';
+  }
+
+  async function saveStaffAccess(personId) {
+    const boxes = [...document.querySelectorAll('#staff-access-list input[data-staff-id]')];
+    const hidden = boxes.filter(b => !b.checked).map(b => parseInt(b.dataset.staffId));
+    const status = document.getElementById('staff-access-status');
+    if (status) status.textContent = 'Saving…';
+    boxes.forEach(b => { b.disabled = true; });
+    try {
+      const res = await apiFetch(`/api/people/${personId}/staff-access`, { method: 'PUT', body: JSON.stringify({ hidden }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not save');
+      renderStaffAccessPanel(personId, data);
+    } catch (e) {
+      if (status) status.textContent = e.message || 'Could not save';
+      loadStaffAccessPanel(personId);
+    }
   }
 
   async function loadOverviewPipelineHistory() {

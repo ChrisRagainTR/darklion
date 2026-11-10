@@ -2376,6 +2376,17 @@ async function initDB() {
       added_at TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (relationship_id, firm_user_id)
     );
+    -- Clients can message every active staff member by default. The firm owner
+    -- can hide specific staff from a specific client; one row per hidden pair.
+    CREATE TABLE IF NOT EXISTS client_staff_hidden (
+      firm_id INTEGER NOT NULL REFERENCES firms(id) ON DELETE CASCADE,
+      person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+      firm_user_id INTEGER NOT NULL REFERENCES firm_users(id) ON DELETE CASCADE,
+      created_by INTEGER,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (person_id, firm_user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_client_staff_hidden_firm ON client_staff_hidden(firm_id, person_id);
     CREATE TABLE IF NOT EXISTS engagement_letters (
       id SERIAL PRIMARY KEY,
       firm_id INTEGER NOT NULL,

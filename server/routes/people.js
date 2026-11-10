@@ -203,6 +203,68 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// --- GET/PUT /api/people/:id/staff-access ---
+// Every active staff member can be messaged by this client unless the firm owner hides them here.
+async function loadStaffAccess(personId, firmId) {
+  const { rows } = await pool.query(
+    `SELECT fu.id, COALESCE(NULLIF(fu.display_name, ''), NULLIF(fu.name, ''), fu.email) AS name, fu.role,
+            (h.firm_user_id IS NOT NULL) AS hidden
+       FROM firm_users fu
+       LEFT JOIN client_staff_hidden h ON h.firm_user_id = fu.id AND h.person_id = $1 AND h.firm_id = $2
+      WHERE fu.firm_id = $2 AND fu.archived_at IS NULL AND fu.accepted_at IS NOT NULL AND fu.role <> 'agent'
+      ORDER BY (fu.role = 'owner') DESC, 2`,
+    [personId, firmId]
+  );
+  return rows.map(r => ({ id: r.id, name: String(r.name || '').trim(), role: r.role, canMessage: !r.hidden }));
+}
+
+router.get('/:id/staff-access', async (req, res) => {
+  const firmId = req.firm.id;
+  const id = parseInt(req.params.id);
+  try {
+    const { rows } = await pool.query('SELECT id FROM people WHERE id = $1 AND firm_id = $2', [id, firmId]);
+    if (!rows[0]) return res.status(404).json({ error: 'Person not found' });
+    res.json({ canEdit: req.firm.role === 'owner', staff: await loadStaffAccess(id, firmId) });
+  } catch (err) {
+    console.error('GET /people/:id/staff-access error:', err);
+    res.status(500).json({ error: 'Failed to load staff access' });
+  }
+});
+
+router.put('/:id/staff-access', async (req, res) => {
+  const firmId = req.firm.id;
+  const id = parseInt(req.params.id);
+  if (req.firm.role !== 'owner') return res.status(403).json({ error: 'Only the firm owner can change who a client can message' });
+  const hiddenIds = Array.isArray(req.body?.hidden) ? [...new Set(req.body.hidden.map(n => parseInt(n)).filter(Number.isInteger))] : null;
+  if (!hiddenIds) return res.status(400).json({ error: 'hidden must be a list of staff ids' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT id FROM people WHERE id = $1 AND firm_id = $2', [id, firmId]);
+    if (!rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Person not found' }); }
+    if (hiddenIds.length) {
+      const staff = await client.query('SELECT id FROM firm_users WHERE firm_id = $1 AND id = ANY($2::int[])', [firmId, hiddenIds]);
+      if (staff.rowCount !== hiddenIds.length) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Select staff from this firm' }); }
+    }
+    await client.query('DELETE FROM client_staff_hidden WHERE person_id = $1 AND firm_id = $2 AND NOT (firm_user_id = ANY($3::int[]))', [id, firmId, hiddenIds]);
+    for (const staffId of hiddenIds) {
+      await client.query(
+        `INSERT INTO client_staff_hidden (firm_id, person_id, firm_user_id, created_by) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (person_id, firm_user_id) DO NOTHING`,
+        [firmId, id, staffId, req.firm.userId || null]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ canEdit: true, staff: await loadStaffAccess(id, firmId) });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('PUT /people/:id/staff-access error:', err);
+    res.status(500).json({ error: 'Failed to save staff access' });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /:id/move-relationship — move person to another relationship and optionally sync company access
 router.post('/:id/move-relationship', async (req, res) => {
   const firmId = req.firm.id;

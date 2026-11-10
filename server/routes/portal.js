@@ -565,6 +565,20 @@ async function assignedStaffRoles(personId, firmId) {
   return roles;
 }
 
+// Staff the firm owner has hidden from this client.
+async function hiddenStaffIds(personId, firmId) {
+  try {
+    const { rows } = await pool.query(
+      'SELECT firm_user_id FROM client_staff_hidden WHERE person_id = $1 AND firm_id = $2',
+      [personId, firmId]
+    );
+    return new Set(rows.map(r => r.firm_user_id));
+  } catch (e) {
+    if (e.code === '42P01') return new Set();
+    throw e;
+  }
+}
+
 function staffRoleLabel(kinds, firmRole) {
   if (kinds && kinds.includes('preparer') && kinds.includes('bookkeeper')) return 'Your tax preparer and bookkeeper';
   if (kinds && kinds.includes('preparer')) return 'Your tax preparer';
@@ -602,7 +616,7 @@ router.get('/messages', async (req, res) => {
     const { rows: allStaffRows } = await pool.query(
       `SELECT id, COALESCE(NULLIF(display_name, ''), NULLIF(name, ''), 'Advisor') as name, avatar_url, credentials, role
        FROM firm_users
-       WHERE firm_id = $1 AND archived_at IS NULL AND accepted_at IS NOT NULL
+       WHERE firm_id = $1 AND archived_at IS NULL AND accepted_at IS NOT NULL AND role <> 'agent'
        ${searchStaffFilter}
        ORDER BY COALESCE(NULLIF(display_name, ''), NULLIF(name, ''), 'Advisor')`,
       staffParams
@@ -645,17 +659,14 @@ router.get('/messages', async (req, res) => {
 
     const preferences = await require('../services/firmPreferences').getFirmPreferences(firmId);
     const assigned = await assignedStaffRoles(personId, firmId);
-    // Clients see the people they work with: anyone they already have a conversation with, plus their assigned team.
-    // A client with neither still gets a way in: the firm's configured contact order, else the owners, else everyone.
-    let staffRows = search ? allStaffRows : allStaffRows.filter(s => talkedWith.has(s.id) || assigned.has(s.id));
-    if (!staffRows.length && !search) {
-      const configured = allStaffRows.filter(s => preferences.staffContactOrder.includes(s.id));
-      const owners = allStaffRows.filter(s => s.role === 'owner');
-      staffRows = configured.length ? configured : owners.length ? owners : allStaffRows;
-    }
+    // Clients can message every active staff member, except anyone the firm owner hid from this client.
+    // Their own people (assigned or already talking) come first, then the firm's contact order.
+    const hidden = await hiddenStaffIds(personId, firmId);
+    const staffRows = allStaffRows.filter(s => !hidden.has(s.id));
     const rank = s => { const idRank=preferences.staffContactOrder.indexOf(s.id); if(idRank>=0)return idRank;
       const nameRank=preferences.legacyStaffNames.indexOf(String(s.name||'').toLowerCase());return nameRank>=0?nameRank:1000; };
-    staffRows.sort((a,b)=>rank(a)-rank(b)||String(a.name).localeCompare(String(b.name)));
+    const tier = s => (assigned.has(s.id) || talkedWith.has(s.id) ? 0 : 1);
+    staffRows.sort((a,b)=>tier(a)-tier(b)||rank(a)-rank(b)||String(a.name).localeCompare(String(b.name)));
 
     // Sign avatar URLs and merge with thread data
     const result = await Promise.all(staffRows.map(async (s) => {
@@ -944,10 +955,13 @@ router.post('/messages/send', withUpload(upload.array('files', 8)), async (req, 
   try {
     // Validate staff_user_id belongs to this firm
     const { rows: staffCheck } = await pool.query(
-      'SELECT id FROM firm_users WHERE id = $1 AND firm_id = $2',
+      'SELECT id FROM firm_users WHERE id = $1 AND firm_id = $2 AND archived_at IS NULL',
       [staffUserId, firmId]
     );
     if (!staffCheck[0]) return res.status(404).json({ error: 'Staff member not found' });
+    if ((await hiddenStaffIds(personId, firmId)).has(staffUserId)) {
+      return res.status(403).json({ error: 'This team member is not available to message' });
+    }
 
     // Find or create the permanent stream for this person + staff pair.
     // Advisor-side archive only hides the staff inbox; it must not fork or
